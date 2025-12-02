@@ -61,21 +61,14 @@ scrape_configs:
           component: 'kafka-connect-api'
     scrape_interval: 30s
 
-  # PostgreSQL exporter (optional, install if needed)
-  # - job_name: 'postgresql'
-  #   static_configs:
-  #     - targets: ['postgres-exporter:9187']
-  #       labels:
-  #         component: 'postgresql'
-  #         database: 'warehouse_target'
-
-  # SQL Server exporter (optional, install if needed)
-  # - job_name: 'sqlserver'
-  #   static_configs:
-  #     - targets: ['sqlserver-exporter:9399']
-  #       labels:
-  #         component: 'sqlserver'
-  #         database: 'warehouse_source'
+  # PostgreSQL exporter
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          component: 'postgresql'
+          database: 'warehouse_target'
+    scrape_interval: 30s
 
   # Custom Python reconciliation metrics
   - job_name: 'reconciliation'

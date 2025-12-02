@@ -125,28 +125,28 @@
 
 ### Tests for User Story 2 (TDD) ⚠️
 
-- [ ] T045 [P] [US2] Integration test for Prometheus metrics collection in tests/integration/test_monitoring.py
-- [ ] T046 [P] [US2] Integration test for Grafana dashboard accessibility in tests/integration/test_monitoring.py
-- [ ] T047 [P] [US2] Integration test for alert firing when lag exceeds threshold in tests/integration/test_monitoring.py
-- [ ] T048 [P] [US2] Integration test for alert firing when error rate exceeds threshold in tests/integration/test_monitoring.py
-- [ ] T049 [P] [US2] Integration test for Jaeger trace collection in tests/integration/test_monitoring.py
-- [ ] T050 [P] [US2] Integration test for resource usage validation (4GB memory, 2 CPU limits) in tests/integration/test_monitoring.py
+- [X] T045 [P] [US2] Integration test for Prometheus metrics collection in tests/integration/test_monitoring.py
+- [X] T046 [P] [US2] Integration test for Grafana dashboard accessibility in tests/integration/test_monitoring.py
+- [X] T047 [P] [US2] Integration test for alert firing when lag exceeds threshold in tests/integration/test_monitoring.py
+- [X] T048 [P] [US2] Integration test for alert firing when error rate exceeds threshold in tests/integration/test_monitoring.py
+- [X] T049 [P] [US2] Integration test for Jaeger trace collection in tests/integration/test_monitoring.py
+- [X] T050 [P] [US2] Integration test for resource usage validation (4GB memory, 2 CPU limits) in tests/integration/test_monitoring.py
 
 **Verify all tests FAIL before proceeding**
 
 ### Implementation for User Story 2
 
-- [ ] T051 [P] [US2] Configure Kafka Connect JMX exporter for Prometheus scraping in docker/docker-compose.yml
-- [ ] T052 [P] [US2] Configure SQL Server exporter for Prometheus (CDC table metrics) in docker/docker-compose.yml
-- [ ] T053 [P] [US2] Configure PostgreSQL exporter for Prometheus in docker/docker-compose.yml
-- [ ] T054 [US2] Verify Prometheus scrapes metrics from all exporters and Kafka Connect
-- [ ] T055 [US2] Import Grafana dashboards (cdc-pipeline.json, kafka-connect.json) and verify data displays
-- [ ] T056 [US2] Configure Prometheus Alertmanager with webhook for alert notifications
-- [ ] T057 [US2] Test alert rules by simulating high lag and error scenarios
-- [ ] T058 [US2] Configure Jaeger agent to capture Kafka Connect traces
-- [ ] T059 [US2] Create scripts/bash/monitor.sh to query connector status and metrics via REST API
-- [ ] T060 [US2] Execute monitoring integration tests and verify all pass
-- [ ] T061 [US2] Document monitoring setup and troubleshooting in docs/operations.md
+- [X] T051 [P] [US2] Configure Kafka Connect JMX exporter for Prometheus scraping in docker/docker-compose.yml
+- [X] T052 [P] [US2] Configure SQL Server exporter for Prometheus (CDC table metrics) in docker/docker-compose.yml
+- [X] T053 [P] [US2] Configure PostgreSQL exporter for Prometheus in docker/docker-compose.yml
+- [X] T054 [US2] Verify Prometheus scrapes metrics from all exporters and Kafka Connect
+- [X] T055 [US2] Import Grafana dashboards (cdc-pipeline.json, kafka-connect.json) and verify data displays
+- [X] T056 [US2] Configure Prometheus Alertmanager with webhook for alert notifications
+- [X] T057 [US2] Test alert rules by simulating high lag and error scenarios
+- [X] T058 [US2] Configure Jaeger agent to capture Kafka Connect traces
+- [X] T059 [US2] Create scripts/bash/monitor.sh to query connector status and metrics via REST API
+- [X] T060 [US2] Execute monitoring integration tests and verify all pass
+- [X] T061 [US2] Document monitoring setup and troubleshooting in docs/operations.md
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 

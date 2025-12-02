@@ -90,28 +90,28 @@
 
 ### Tests for User Story 1 (TDD - MUST write and verify failing tests first) ⚠️
 
-- [ ] T028 [P] [US1] Contract test for Debezium source connector config validation in tests/contract/test_debezium_schema.py
-- [ ] T029 [P] [US1] Contract test for JDBC sink connector config validation in tests/contract/test_jdbc_sink_schema.py
-- [ ] T030 [P] [US1] Integration test for INSERT replication in tests/integration/test_replication_flow.py
-- [ ] T031 [P] [US1] Integration test for UPDATE replication in tests/integration/test_replication_flow.py
-- [ ] T032 [P] [US1] Integration test for DELETE replication in tests/integration/test_replication_flow.py
-- [ ] T033 [P] [US1] Integration test for transactional consistency (multi-row transaction) in tests/integration/test_replication_flow.py
-- [ ] T034 [P] [US1] Integration test for bulk insert (10K rows) in tests/integration/test_replication_flow.py
-- [ ] T035 [P] [US1] Integration test for NULL value handling (preserving NULL vs empty string) in tests/integration/test_replication_flow.py
-- [ ] T036 [P] [US1] Performance benchmark test to validate 10K rows/sec throughput in tests/integration/test_performance.py
+- [X] T028 [P] [US1] Contract test for Debezium source connector config validation in tests/contract/test_debezium_schema.py
+- [X] T029 [P] [US1] Contract test for JDBC sink connector config validation in tests/contract/test_jdbc_sink_schema.py
+- [X] T030 [P] [US1] Integration test for INSERT replication in tests/integration/test_replication_flow.py
+- [X] T031 [P] [US1] Integration test for UPDATE replication in tests/integration/test_replication_flow.py
+- [X] T032 [P] [US1] Integration test for DELETE replication in tests/integration/test_replication_flow.py
+- [X] T033 [P] [US1] Integration test for transactional consistency (multi-row transaction) in tests/integration/test_replication_flow.py
+- [X] T034 [P] [US1] Integration test for bulk insert (10K rows) in tests/integration/test_replication_flow.py
+- [X] T035 [P] [US1] Integration test for NULL value handling (preserving NULL vs empty string) in tests/integration/test_replication_flow.py
+- [X] T036 [P] [US1] Performance benchmark test to validate 10K rows/sec throughput in tests/integration/test_performance.py
 
 **Verify all tests FAIL before proceeding to implementation**
 
 ### Implementation for User Story 1
 
-- [ ] T037 [US1] Create scripts/bash/deploy-connector.sh to deploy connectors via Kafka Connect REST API
-- [ ] T038 [US1] Deploy Debezium SQL Server source connector using deploy-connector.sh and validate connector status is RUNNING
-- [ ] T039 [US1] Create sample SQL Server tables (customers, orders, line_items) with CDC enabled for testing
-- [ ] T040 [US1] Create corresponding PostgreSQL target tables matching SQL Server schema
-- [ ] T041 [US1] Deploy JDBC PostgreSQL sink connector using deploy-connector.sh and validate status
-- [ ] T042 [US1] Verify Kafka topics are created automatically with correct partitioning (3 partitions per table)
-- [ ] T043 [US1] Execute integration tests and verify all replication tests pass
-- [ ] T044 [US1] Document connector deployment process in docs/operations.md
+- [X] T037 [US1] Create scripts/bash/deploy-connector.sh to deploy connectors via Kafka Connect REST API
+- [X] T038 [US1] Deploy Debezium SQL Server source connector using deploy-connector.sh and validate connector status is RUNNING
+- [X] T039 [US1] Create sample SQL Server tables (customers, orders, line_items) with CDC enabled for testing
+- [X] T040 [US1] Create corresponding PostgreSQL target tables matching SQL Server schema
+- [X] T041 [US1] Deploy JDBC PostgreSQL sink connector using deploy-connector.sh and validate status
+- [X] T042 [US1] Verify Kafka topics are created automatically with correct partitioning (3 partitions per table)
+- [X] T043 [US1] Execute integration tests and verify all replication tests pass
+- [X] T044 [US1] Document connector deployment process in docs/operations.md
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 

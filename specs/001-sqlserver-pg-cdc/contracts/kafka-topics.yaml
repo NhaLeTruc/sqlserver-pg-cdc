@@ -1,0 +1,237 @@
+# Kafka Topics Configuration for SQL Server to PostgreSQL CDC Pipeline
+#
+# This file documents the Kafka topic structure and configuration.
+# Topics are created automatically by Kafka Connect or manually via kafka-topics.sh script.
+#
+# Topic Naming Convention:
+#   CDC Topics: {source}.{database}.{schema}.{table}
+#   DLQ Topics: dlq-{connector-name}
+#   Internal: connect-{configs,offsets,status}
+
+version: "1.0"
+description: "Kafka topics for CDC pipeline replication"
+
+# CDC Event Topics (one per source table)
+topics:
+  - name: sqlserver.warehouse_source.dbo.customers
+    description: "Customer table changes from SQL Server"
+    partitions: 3
+    replication_factor: 3  # Production: 3, Local: 1
+    config:
+      retention.ms: 604800000  # 7 days (168 hours)
+      retention.bytes: -1      # Unlimited per partition
+      compression.type: lz4
+      min.insync.replicas: 2   # Production: 2, Local: 1
+      cleanup.policy: delete
+      segment.ms: 3600000      # 1 hour segments
+    schema:
+      key:
+        type: struct
+        fields:
+          - name: id
+            type: int64
+            description: "Customer primary key"
+      value:
+        type: struct
+        fields:
+          - name: id
+            type: int64
+          - name: name
+            type: string
+          - name: email
+            type: string
+          - name: created_at
+            type: timestamp_micros
+          - name: updated_at
+            type: timestamp_micros
+
+  - name: sqlserver.warehouse_source.dbo.orders
+    description: "Order table changes from SQL Server"
+    partitions: 3
+    replication_factor: 3
+    config:
+      retention.ms: 604800000
+      retention.bytes: -1
+      compression.type: lz4
+      min.insync.replicas: 2
+      cleanup.policy: delete
+      segment.ms: 3600000
+    schema:
+      key:
+        type: struct
+        fields:
+          - name: id
+            type: int64
+      value:
+        type: struct
+        fields:
+          - name: id
+            type: int64
+          - name: customer_id
+            type: int64
+          - name: order_date
+            type: timestamp_micros
+          - name: total_amount
+            type: decimal
+          - name: status
+            type: string
+
+  - name: sqlserver.warehouse_source.dbo.line_items
+    description: "Order line items from SQL Server"
+    partitions: 3
+    replication_factor: 3
+    config:
+      retention.ms: 604800000
+      retention.bytes: -1
+      compression.type: lz4
+      min.insync.replicas: 2
+      cleanup.policy: delete
+      segment.ms: 3600000
+    schema:
+      key:
+        type: struct
+        fields:
+          - name: id
+            type: int64
+      value:
+        type: struct
+        fields:
+          - name: id
+            type: int64
+          - name: order_id
+            type: int64
+          - name: product_id
+            type: int64
+          - name: quantity
+            type: int32
+          - name: unit_price
+            type: decimal
+
+# Dead Letter Queue Topics
+  - name: dlq-postgresql-sink
+    description: "Dead letter queue for failed PostgreSQL writes"
+    partitions: 1  # Single partition for ordering
+    replication_factor: 3
+    config:
+      retention.ms: 2592000000  # 30 days (longer retention for DLQ)
+      retention.bytes: 10737418240  # 10 GB max per partition
+      compression.type: lz4
+      min.insync.replicas: 2
+      cleanup.policy: delete
+      segment.ms: 86400000  # 24 hour segments
+    schema:
+      value:
+        type: struct
+        fields:
+          - name: original_topic
+            type: string
+          - name: original_partition
+            type: int32
+          - name: original_offset
+            type: int64
+          - name: original_key
+            type: bytes
+          - name: original_value
+            type: bytes
+          - name: error_timestamp
+            type: timestamp_millis
+          - name: error_class
+            type: string
+          - name: error_message
+            type: string
+          - name: error_stack_trace
+            type: string
+
+# Kafka Connect Internal Topics (automatically created)
+  - name: connect-configs
+    description: "Kafka Connect connector configurations"
+    partitions: 1
+    replication_factor: 3
+    config:
+      cleanup.policy: compact
+      compression.type: gzip
+      min.insync.replicas: 2
+    internal: true
+
+  - name: connect-offsets
+    description: "Kafka Connect connector offsets/checkpoints"
+    partitions: 25  # High partition count for parallel offset commits
+    replication_factor: 3
+    config:
+      cleanup.policy: compact
+      compression.type: gzip
+      min.insync.replicas: 2
+    internal: true
+
+  - name: connect-status
+    description: "Kafka Connect connector and task status"
+    partitions: 5
+    replication_factor: 3
+    config:
+      cleanup.policy: compact
+      compression.type: gzip
+      min.insync.replicas: 2
+    internal: true
+
+# Topic Management Scripts
+scripts:
+  create_topics:
+    description: "Create all CDC topics"
+    command: |
+      #!/bin/bash
+      # Create CDC topics
+      kafka-topics.sh --create --bootstrap-server kafka:9092 \
+        --topic sqlserver.warehouse_source.dbo.customers \
+        --partitions 3 --replication-factor 1 \
+        --config retention.ms=604800000 \
+        --config compression.type=lz4
+
+      kafka-topics.sh --create --bootstrap-server kafka:9092 \
+        --topic sqlserver.warehouse_source.dbo.orders \
+        --partitions 3 --replication-factor 1 \
+        --config retention.ms=604800000 \
+        --config compression.type=lz4
+
+      kafka-topics.sh --create --bootstrap-server kafka:9092 \
+        --topic dlq-postgresql-sink \
+        --partitions 1 --replication-factor 1 \
+        --config retention.ms=2592000000 \
+        --config compression.type=lz4
+
+  list_topics:
+    description: "List all topics"
+    command: kafka-topics.sh --list --bootstrap-server kafka:9092
+
+  describe_topic:
+    description: "Describe a specific topic"
+    command: kafka-topics.sh --describe --bootstrap-server kafka:9092 --topic <topic-name>
+
+  delete_topic:
+    description: "Delete a topic (use with caution)"
+    command: kafka-topics.sh --delete --bootstrap-server kafka:9092 --topic <topic-name>
+
+# Configuration Guidelines
+guidelines:
+  partitioning:
+    - "Use 3 partitions for most CDC topics (allows 3 parallel sink tasks)"
+    - "Partition by primary key for ordering within same entity"
+    - "DLQ topics use single partition to preserve error ordering"
+
+  retention:
+    - "CDC topics: 7 days (enough for failure recovery)"
+    - "DLQ topics: 30 days (time to investigate and fix issues)"
+    - "Adjust retention.bytes if disk space is limited"
+
+  replication:
+    - "Production: replication_factor=3, min.insync.replicas=2"
+    - "Local dev: replication_factor=1, min.insync.replicas=1"
+    - "Ensures durability without sacrificing availability"
+
+  compression:
+    - "Use lz4 for best balance of CPU and compression ratio"
+    - "gzip for internal topics (lower traffic, higher compression)"
+
+  performance:
+    - "segment.ms=3600000 (1 hour) for active log segment rotation"
+    - "Higher partitions enable more parallelism but increase overhead"
+    - "Monitor lag metrics and adjust partitions if sink falls behind"

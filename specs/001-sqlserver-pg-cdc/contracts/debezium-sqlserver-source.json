@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Debezium SQL Server CDC Source Connector Configuration",
+  "description": "Contract for Debezium SQL Server connector that captures CDC events from SQL Server and publishes to Kafka topics",
+  "type": "object",
+  "required": ["name", "config"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique name for this connector instance",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "examples": ["sqlserver-cdc-source", "warehouse-source-connector"]
+    },
+    "config": {
+      "type": "object",
+      "required": [
+        "connector.class",
+        "database.hostname",
+        "database.port",
+        "database.user",
+        "database.password",
+        "database.names",
+        "table.include.list"
+      ],
+      "properties": {
+        "connector.class": {
+          "type": "string",
+          "const": "io.debezium.connector.sqlserver.SqlServerConnector",
+          "description": "Debezium SQL Server connector class"
+        },
+        "database.hostname": {
+          "type": "string",
+          "description": "SQL Server hostname or Vault reference",
+          "examples": ["${vault:secret/db#sqlserver_host}", "sqlserver.example.com"]
+        },
+        "database.port": {
+          "type": "string",
+          "description": "SQL Server port number",
+          "default": "1433",
+          "pattern": "^[0-9]+$"
+        },
+        "database.user": {
+          "type": "string",
+          "description": "SQL Server username or Vault reference",
+          "examples": ["${vault:secret/db#sqlserver_user}"]
+        },
+        "database.password": {
+          "type": "string",
+          "description": "SQL Server password or Vault reference (NEVER plaintext)",
+          "examples": ["${vault:secret/db#sqlserver_password}"]
+        },
+        "database.names": {
+          "type": "string",
+          "description": "Comma-separated list of database names to capture",
+          "examples": ["warehouse_source", "sales,inventory"]
+        },
+        "table.include.list": {
+          "type": "string",
+          "description": "Comma-separated list of tables to capture (schema.table format)",
+          "examples": ["dbo.customers,dbo.orders", "sales..*"]
+        },
+        "snapshot.mode": {
+          "type": "string",
+          "enum": ["initial", "schema_only", "no_snapshot"],
+          "default": "initial",
+          "description": "Snapshot mode for initial data load"
+        },
+        "snapshot.isolation.mode": {
+          "type": "string",
+          "enum": ["snapshot", "repeatable_read", "read_uncommitted"],
+          "default": "snapshot",
+          "description": "Transaction isolation level for snapshots"
+        },
+        "decimal.handling.mode": {
+          "type": "string",
+          "enum": ["precise", "double", "string"],
+          "default": "precise",
+          "description": "How to handle DECIMAL/NUMERIC types (precise = bytes)"
+        },
+        "time.precision.mode": {
+          "type": "string",
+          "enum": ["adaptive", "connect"],
+          "default": "adaptive",
+          "description": "Precision for temporal types (adaptive = microseconds)"
+        },
+        "tombstones.on.delete": {
+          "type": "string",
+          "enum": ["true", "false"],
+          "default": "true",
+          "description": "Emit tombstone events for deletes (enables log compaction)"
+        },
+        "max.batch.size": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "default": "2048",
+          "description": "Maximum number of records per batch"
+        },
+        "max.queue.size": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "default": "8192",
+          "description": "Internal queue size (should be 4x max.batch.size)"
+        },
+        "poll.interval.ms": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "default": "500",
+          "description": "How often to poll SQL Server CDC tables (milliseconds)"
+        },
+        "tasks.max": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "default": "1",
+          "description": "Maximum number of tasks (keep at 1 for SQL Server CDC)"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "name": "sqlserver-cdc-source",
+      "config": {
+        "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector",
+        "database.hostname": "${vault:secret/db#sqlserver_host}",
+        "database.port": "1433",
+        "database.user": "${vault:secret/db#sqlserver_user}",
+        "database.password": "${vault:secret/db#sqlserver_password}",
+        "database.names": "warehouse_source",
+        "table.include.list": "dbo.customers,dbo.orders,dbo.line_items",
+        "snapshot.mode": "initial",
+        "snapshot.isolation.mode": "snapshot",
+        "decimal.handling.mode": "precise",
+        "time.precision.mode": "adaptive",
+        "tombstones.on.delete": "true",
+        "max.batch.size": "2048",
+        "max.queue.size": "8192",
+        "poll.interval.ms": "500",
+        "tasks.max": "1"
+      }
+    }
+  ]
+}

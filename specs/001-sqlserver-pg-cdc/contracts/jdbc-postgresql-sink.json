@@ -1,0 +1,172 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Confluent JDBC PostgreSQL Sink Connector Configuration",
+  "description": "Contract for JDBC Sink connector that writes Kafka events to PostgreSQL tables",
+  "type": "object",
+  "required": ["name", "config"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique name for this connector instance",
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "examples": ["postgresql-jdbc-sink", "warehouse-target-sink"]
+    },
+    "config": {
+      "type": "object",
+      "required": [
+        "connector.class",
+        "connection.url",
+        "connection.user",
+        "connection.password",
+        "topics",
+        "insert.mode"
+      ],
+      "properties": {
+        "connector.class": {
+          "type": "string",
+          "const": "io.confluent.connect.jdbc.JdbcSinkConnector",
+          "description": "Confluent JDBC Sink connector class"
+        },
+        "connection.url": {
+          "type": "string",
+          "description": "PostgreSQL JDBC URL with Vault references",
+          "examples": [
+            "jdbc:postgresql://${vault:secret/db#postgres_host}:5432/warehouse_target",
+            "jdbc:postgresql://postgres:5432/warehouse?sslmode=require"
+          ]
+        },
+        "connection.user": {
+          "type": "string",
+          "description": "PostgreSQL username or Vault reference",
+          "examples": ["${vault:secret/db#postgres_user}"]
+        },
+        "connection.password": {
+          "type": "string",
+          "description": "PostgreSQL password or Vault reference (NEVER plaintext)",
+          "examples": ["${vault:secret/db#postgres_password}"]
+        },
+        "topics": {
+          "type": "string",
+          "description": "Comma-separated list of Kafka topics to consume",
+          "examples": ["sqlserver.dbo.customers,sqlserver.dbo.orders"]
+        },
+        "insert.mode": {
+          "type": "string",
+          "enum": ["insert", "upsert", "update"],
+          "default": "upsert",
+          "description": "How to write records (upsert for idempotency)"
+        },
+        "pk.mode": {
+          "type": "string",
+          "enum": ["none", "kafka", "record_key", "record_value"],
+          "default": "record_value",
+          "description": "Source of primary key (record_value uses event payload)"
+        },
+        "pk.fields": {
+          "type": "string",
+          "description": "Comma-separated primary key fields (required for upsert mode)",
+          "examples": ["id", "customer_id,order_id"]
+        },
+        "table.name.format": {
+          "type": "string",
+          "default": "${topic}",
+          "description": "Template for target table names",
+          "examples": ["${topic}", "target_${topic}"]
+        },
+        "auto.create": {
+          "type": "string",
+          "enum": ["true", "false"],
+          "default": "false",
+          "description": "Automatically create target tables (false for production)"
+        },
+        "auto.evolve": {
+          "type": "string",
+          "enum": ["true", "false"],
+          "default": "true",
+          "description": "Automatically add columns to existing tables"
+        },
+        "batch.size": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "default": "3000",
+          "description": "Number of records per batch insert"
+        },
+        "connection.pool.size": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "default": "10",
+          "description": "JDBC connection pool size per task"
+        },
+        "connection.attempts": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "default": "10",
+          "description": "Number of connection retry attempts"
+        },
+        "connection.backoff.ms": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "default": "5000",
+          "description": "Backoff time between connection retries (milliseconds)"
+        },
+        "errors.tolerance": {
+          "type": "string",
+          "enum": ["none", "all"],
+          "default": "all",
+          "description": "Error tolerance (all = use DLQ, none = fail on error)"
+        },
+        "errors.deadletterqueue.topic.name": {
+          "type": "string",
+          "description": "Dead letter queue topic for failed records",
+          "examples": ["dlq-postgresql-sink"]
+        },
+        "errors.deadletterqueue.context.headers.enable": {
+          "type": "string",
+          "enum": ["true", "false"],
+          "default": "true",
+          "description": "Include error context in DLQ headers"
+        },
+        "tasks.max": {
+          "type": "string",
+          "pattern": "^[0-9]+$",
+          "default": "3",
+          "description": "Number of parallel sink tasks (match topic partitions)"
+        }
+      },
+      "if": {
+        "properties": {
+          "insert.mode": {"const": "upsert"}
+        }
+      },
+      "then": {
+        "required": ["pk.mode", "pk.fields"]
+      }
+    }
+  },
+  "examples": [
+    {
+      "name": "postgresql-jdbc-sink",
+      "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "connection.url": "jdbc:postgresql://${vault:secret/db#postgres_host}:5432/warehouse_target",
+        "connection.user": "${vault:secret/db#postgres_user}",
+        "connection.password": "${vault:secret/db#postgres_password}",
+        "topics": "sqlserver.dbo.customers,sqlserver.dbo.orders",
+        "insert.mode": "upsert",
+        "pk.mode": "record_value",
+        "pk.fields": "id",
+        "table.name.format": "${topic}",
+        "auto.create": "false",
+        "auto.evolve": "true",
+        "batch.size": "3000",
+        "connection.pool.size": "10",
+        "connection.attempts": "10",
+        "connection.backoff.ms": "5000",
+        "errors.tolerance": "all",
+        "errors.deadletterqueue.topic.name": "dlq-postgresql-sink",
+        "errors.deadletterqueue.context.headers.enable": "true",
+        "tasks.max": "3"
+      }
+    }
+  ]
+}

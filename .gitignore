@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+*.log
+.mypy_cache/
+.ruff_cache/
+
+# Docker
+docker/data/
+docker/logs/
+docker/*.local.yml
+*.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.backup
+*.pid
+
+# Secrets (NEVER commit)
+*.key
+*.pem
+*.crt
+secrets/
+vault-keys.json
+.vault-token
+
+# Test artifacts
+.tox/
+.nox/
+.hypothesis/
+.pytest_cache/
+coverage.xml
+*.cover
+.coverage.*
+nosetests.xml
+test-results/
+
+# Documentation builds
+docs/_build/
+site/
+
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini

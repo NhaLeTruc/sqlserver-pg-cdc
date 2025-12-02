@@ -1,0 +1,53 @@
+version: '3.8'
+
+# Test environment override for Testcontainers-based integration testing
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.test.yml up
+
+services:
+  # Simplified SQL Server for testing (faster startup)
+  sqlserver:
+    environment:
+      MSSQL_COLLATION: SQL_Latin1_General_CP1_CI_AS
+    volumes:
+      - ./test-data/sqlserver-init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # Simplified PostgreSQL for testing
+  postgres:
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - ./test-data/postgres-init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # Kafka with minimal resources for testing
+  kafka:
+    environment:
+      KAFKA_NUM_PARTITIONS: 1
+      KAFKA_LOG_RETENTION_HOURS: 1
+      KAFKA_LOG_SEGMENT_BYTES: 52428800  # 50MB segments
+
+  # Kafka Connect with test-specific configuration
+  kafka-connect:
+    environment:
+      CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_STATUS_STORAGE_REPLICATION_FACTOR: 1
+      CONNECT_OFFSET_FLUSH_INTERVAL_MS: 1000  # Faster offset commits in tests
+
+  # Vault with pre-initialized test secrets
+  vault:
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: test-token
+    volumes:
+      - ./test-data/vault-init.json:/vault/data/init.json
+
+  # Prometheus with minimal retention for testing
+  prometheus:
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=1h'
+
+# Test-specific network configuration
+networks:
+  cdc-network:
+    name: cdc-test-network

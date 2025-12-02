@@ -1,0 +1,165 @@
+{
+  "dashboard": {
+    "title": "Kafka Connect Metrics",
+    "tags": ["kafka-connect", "connectors"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Source Connector - Records Polled",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(kafka_connect_source_task_source_record_poll_total[1m])",
+            "legendFormat": "{{ connector }} - {{ task }}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "rps", "label": "Records/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Sink Connector - Records Written",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(kafka_connect_sink_task_sink_record_send_total[1m])",
+            "legendFormat": "{{ connector }} - {{ task }}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "rps", "label": "Records/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Task Status",
+        "type": "stat",
+        "gridPos": {"h": 6, "w": 8, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "kafka_connect_task_status",
+            "legendFormat": "{{ connector }}/{{ task }}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "RUNNING", "color": "green"},
+              {"type": "value", "value": "0", "text": "FAILED", "color": "red"}
+            ]
+          }
+        }
+      },
+      {
+        "id": 4,
+        "title": "Connector Errors",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 8, "x": 8, "y": 8},
+        "targets": [
+          {
+            "expr": "increase(kafka_connect_task_error_total[5m])",
+            "legendFormat": "{{ connector }} - Errors",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Error Count"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Offset Commit Time",
+        "type": "graph",
+        "gridPos": {"h": 6, "w": 8, "x": 16, "y": 8},
+        "targets": [
+          {
+            "expr": "kafka_connect_coordinator_offset_commit_time_ms",
+            "legendFormat": "{{ connector }}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "ms", "label": "Milliseconds"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Batch Size Distribution",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 14},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(kafka_connect_source_task_source_record_poll_batch_avg[5m]))",
+            "legendFormat": "p50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(kafka_connect_source_task_source_record_poll_batch_avg[5m]))",
+            "legendFormat": "p95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(kafka_connect_source_task_source_record_poll_batch_avg[5m]))",
+            "legendFormat": "p99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Records per Batch"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Connector Task Metrics",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 14},
+        "targets": [
+          {
+            "expr": "kafka_connect_task_status",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "includeByName": {
+                "connector": true,
+                "task": true,
+                "state": true,
+                "worker_id": true
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["10s", "30s", "1m", "5m"]
+    }
+  }
+}

@@ -1,0 +1,30 @@
+# Core dependencies for SQL Server to PostgreSQL CDC Pipeline
+# Python 3.11+
+
+# Database drivers
+psycopg2-binary>=2.9.9          # PostgreSQL driver
+pyodbc>=5.0.1                   # SQL Server ODBC driver (requires unixODBC and msodbcsql18)
+
+# HashiCorp Vault integration
+hvac>=2.1.0                     # Vault client for credential management
+
+# Scheduling and automation
+APScheduler>=3.10.4             # Job scheduling for reconciliation
+
+# Monitoring and metrics
+prometheus-client>=0.19.0       # Prometheus metrics publishing
+
+# HTTP client
+requests>=2.31.0                # REST API calls to Kafka Connect
+
+# Data validation
+pydantic>=2.5.0                 # Schema validation for configurations
+
+# Development dependencies (install with: pip install -e ".[dev]")
+# pytest>=7.4.3
+# pytest-cov>=4.1.0
+# pytest-asyncio>=0.21.1
+# testcontainers>=3.7.1
+# black>=23.12.1
+# ruff>=0.1.8
+# mypy>=1.7.1

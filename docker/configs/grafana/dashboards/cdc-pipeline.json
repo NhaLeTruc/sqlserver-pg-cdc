@@ -1,0 +1,180 @@
+{
+  "dashboard": {
+    "title": "CDC Pipeline Overview",
+    "tags": ["cdc", "pipeline", "replication"],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Replication Lag (Records)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "kafka_connect_source_task_source_record_poll_total - kafka_connect_sink_task_sink_record_send_total",
+            "legendFormat": "{{ connector }} - Lag",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Records"},
+          {"format": "short"}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [1000], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "name": "High Replication Lag"
+        }
+      },
+      {
+        "id": 2,
+        "title": "Throughput (Records/sec)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "rate(kafka_connect_source_task_source_record_poll_total[1m])",
+            "legendFormat": "Source - {{ connector }}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(kafka_connect_sink_task_sink_record_send_total[1m])",
+            "legendFormat": "Sink - {{ connector }}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "rps", "label": "Records/sec"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Error Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "rate(kafka_connect_task_error_total[5m])",
+            "legendFormat": "{{ connector }} - {{ task }}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percentunit", "label": "Error Rate"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Connector Status",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "kafka_connect_connector_status",
+            "legendFormat": "{{ connector }}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "colorMode": "background",
+          "graphMode": "none",
+          "textMode": "auto"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"type": "value", "value": "1", "text": "RUNNING", "color": "green"},
+              {"type": "value", "value": "0", "text": "STOPPED", "color": "red"}
+            ]
+          }
+        }
+      },
+      {
+        "id": 5,
+        "title": "Dead Letter Queue Size",
+        "type": "graph",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+        "targets": [
+          {
+            "expr": "kafka_log_log_size{topic=\"dlq-postgresql-sink\"}",
+            "legendFormat": "DLQ Messages",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "label": "Messages"},
+          {"format": "short"}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Kafka Topics",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "kafka_log_log_size",
+            "format": "table",
+            "refId": "A"
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "includeByName": {
+                "topic": true,
+                "partition": true,
+                "Value": true
+              },
+              "renameByName": {
+                "Value": "Size (bytes)"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "id": 7,
+        "title": "Resource Usage",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "container_memory_usage_bytes{name=~\"cdc-.*\"}",
+            "legendFormat": "{{ name }} - Memory",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(container_cpu_usage_seconds_total{name=~\"cdc-.*\"}[5m])",
+            "legendFormat": "{{ name }} - CPU",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "bytes", "label": "Memory"},
+          {"format": "percentunit", "label": "CPU"}
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {
+      "refresh_intervals": ["10s", "30s", "1m", "5m"]
+    }
+  }
+}

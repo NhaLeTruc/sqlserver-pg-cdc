@@ -1,0 +1,46 @@
+# Jaeger Configuration for CDC Pipeline Distributed Tracing
+# Captures trace data from Kafka Connect and custom components
+
+# Service name
+service_name: cdc-pipeline
+
+# Sampling configuration
+sampler:
+  type: probabilistic
+  param: 1.0  # 100% sampling for development (reduce to 0.1 in production)
+
+# Reporter configuration
+reporter:
+  logSpans: true
+  localAgentHostPort: jaeger:6831
+  queueSize: 1000
+  bufferFlushInterval: 10s
+
+# Storage configuration
+storage:
+  type: memory
+  memory:
+    max_traces: 10000
+
+# Query service configuration
+query:
+  base_path: /
+  static_files: /usr/share/jaeger/ui
+
+# Collector configuration
+collector:
+  zipkin:
+    http_port: 9411
+  otlp:
+    grpc:
+      host_port: 0.0.0.0:4317
+    http:
+      host_port: 0.0.0.0:4318
+
+# Agent configuration
+agent:
+  host_port: 0.0.0.0:6831
+
+# Spans storage
+spans_storage:
+  type: memory

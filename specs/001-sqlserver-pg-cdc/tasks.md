@@ -27,10 +27,10 @@
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create project directory structure per implementation plan (docker/, scripts/, src/, tests/, docs/)
-- [ ] T002 Initialize Python project with pyproject.toml and requirements.txt for Python 3.11
-- [ ] T003 [P] Create .gitignore for Python, Docker, and IDE files
-- [ ] T004 [P] Create docker/.env.example template with environment variable documentation
+- [X] T001 Create project directory structure per implementation plan (docker/, scripts/, src/, tests/, docs/)
+- [X] T002 Initialize Python project with pyproject.toml and requirements.txt for Python 3.11
+- [X] T003 [P] Create .gitignore for Python, Docker, and IDE files
+- [X] T004 [P] Create docker/.env.example template with environment variable documentation
 
 ---
 
@@ -42,40 +42,40 @@
 
 ### Docker Compose Infrastructure
 
-- [ ] T005 Create docker/docker-compose.yml with SQL Server 2019 service definition
-- [ ] T006 Add PostgreSQL 15 service to docker/docker-compose.yml
-- [ ] T007 Add Zookeeper service to docker/docker-compose.yml (required for Kafka)
-- [ ] T008 Add Kafka 3.6+ broker service to docker/docker-compose.yml
-- [ ] T009 Add Confluent Schema Registry 7.5+ service to docker/docker-compose.yml
-- [ ] T010 Add Kafka Connect 3.6+ workers service to docker/docker-compose.yml with Debezium and JDBC connectors
-- [ ] T011 Add HashiCorp Vault 1.15+ service to docker/docker-compose.yml (dev mode for local)
-- [ ] T012 Add Prometheus 2.48+ service to docker/docker-compose.yml
-- [ ] T013 Add Grafana 10.2+ service to docker/docker-compose.yml
-- [ ] T014 Add Jaeger 1.51+ service to docker/docker-compose.yml for distributed tracing
-- [ ] T015 Create docker/docker-compose.test.yml for Testcontainers-based testing environment
+- [X] T005 Create docker/docker-compose.yml with SQL Server 2019 service definition
+- [X] T006 Add PostgreSQL 15 service to docker/docker-compose.yml
+- [X] T007 Add Zookeeper service to docker/docker-compose.yml (required for Kafka)
+- [X] T008 Add Kafka 3.6+ broker service to docker/docker-compose.yml
+- [X] T009 Add Confluent Schema Registry 7.5+ service to docker/docker-compose.yml
+- [X] T010 Add Kafka Connect 3.6+ workers service to docker/docker-compose.yml with Debezium and JDBC connectors
+- [X] T011 Add HashiCorp Vault 1.15+ service to docker/docker-compose.yml (dev mode for local)
+- [X] T012 Add Prometheus 2.48+ service to docker/docker-compose.yml
+- [X] T013 Add Grafana 10.2+ service to docker/docker-compose.yml
+- [X] T014 Add Jaeger 1.51+ service to docker/docker-compose.yml for distributed tracing
+- [X] T015 Create docker/docker-compose.test.yml for Testcontainers-based testing environment
 
 ### Connector Configurations
 
-- [ ] T016 Create docker/configs/debezium/sqlserver-source.json from contract specification
-- [ ] T017 Create docker/configs/kafka-connect/postgresql-sink.json from contract specification
-- [ ] T018 [P] Create Kafka topic creation scripts based on contracts/kafka-topics.yaml
+- [X] T016 Create docker/configs/debezium/sqlserver-source.json from contract specification
+- [X] T017 Create docker/configs/kafka-connect/postgresql-sink.json from contract specification
+- [X] T018 [P] Create Kafka topic creation scripts based on contracts/kafka-topics.yaml
 
 ### Monitoring Configurations
 
-- [ ] T019 [P] Create docker/configs/prometheus/prometheus.yml with scrape configs for Kafka Connect JMX
-- [ ] T020 [P] Create docker/configs/prometheus/alert-rules.yml with replication lag, error rate, and downtime alerts
-- [ ] T021 [P] Create docker/configs/grafana/dashboards/cdc-pipeline.json for pipeline overview
-- [ ] T022 [P] Create docker/configs/grafana/dashboards/kafka-connect.json for connector metrics
-- [ ] T023 [P] Create docker/configs/jaeger/jaeger-config.yml for trace collection
+- [X] T019 [P] Create docker/configs/prometheus/prometheus.yml with scrape configs for Kafka Connect JMX
+- [X] T020 [P] Create docker/configs/prometheus/alert-rules.yml with replication lag, error rate, and downtime alerts
+- [X] T021 [P] Create docker/configs/grafana/dashboards/cdc-pipeline.json for pipeline overview
+- [X] T022 [P] Create docker/configs/grafana/dashboards/kafka-connect.json for connector metrics
+- [X] T023 [P] Create docker/configs/jaeger/jaeger-config.yml for trace collection
 
 ### Vault Configuration
 
-- [ ] T024 [P] Create docker/configs/vault/config.hcl with KV v2 secrets engine and audit logging
-- [ ] T025 [P] Create docker/configs/vault/policies/kafka-connect-policy.hcl for read-only DB secret access
+- [X] T024 [P] Create docker/configs/vault/config.hcl with KV v2 secrets engine and audit logging
+- [X] T025 [P] Create docker/configs/vault/policies/kafka-connect-policy.hcl for read-only DB secret access
 
 ### Foundational Scripts
 
-- [ ] T026 Create scripts/bash/vault-init.sh to initialize Vault with database credentials
+- [X] T026 Create scripts/bash/vault-init.sh to initialize Vault with database credentials
 - [ ] T027 Verify full Docker Compose stack starts successfully (all services healthy within 2 minutes)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel

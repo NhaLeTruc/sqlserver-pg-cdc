@@ -1,0 +1,182 @@
+# Prometheus Alert Rules for CDC Pipeline
+# Monitors replication lag, error rates, and connector health
+
+groups:
+  - name: cdc_pipeline_alerts
+    interval: 30s
+    rules:
+      # Replication Lag Alerts
+      - alert: HighReplicationLag
+        expr: |
+          kafka_connect_source_task_source_record_poll_total
+          - kafka_connect_sink_task_sink_record_send_total > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: replication
+        annotations:
+          summary: "High replication lag detected"
+          description: "Replication lag is above 1000 records for more than 5 minutes. Current lag: {{ $value }}"
+
+      - alert: CriticalReplicationLag
+        expr: |
+          kafka_connect_source_task_source_record_poll_total
+          - kafka_connect_sink_task_sink_record_send_total > 10000
+        for: 2m
+        labels:
+          severity: critical
+          component: replication
+        annotations:
+          summary: "CRITICAL: Very high replication lag"
+          description: "Replication lag exceeds 10000 records. Immediate attention required. Current lag: {{ $value }}"
+
+      # Error Rate Alerts
+      - alert: HighErrorRate
+        expr: |
+          rate(kafka_connect_task_error_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: kafka-connect
+        annotations:
+          summary: "High error rate in Kafka Connect"
+          description: "Error rate is above 5% for connector {{ $labels.connector }}. Current rate: {{ $value | humanizePercentage }}"
+
+      - alert: CriticalErrorRate
+        expr: |
+          rate(kafka_connect_task_error_total[5m]) > 0.20
+        for: 2m
+        labels:
+          severity: critical
+          component: kafka-connect
+        annotations:
+          summary: "CRITICAL: Very high error rate"
+          description: "Error rate exceeds 20% for connector {{ $labels.connector }}. Current rate: {{ $value | humanizePercentage }}"
+
+      # Connector Health Alerts
+      - alert: ConnectorDown
+        expr: |
+          kafka_connect_connector_status{state="RUNNING"} == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: kafka-connect
+        annotations:
+          summary: "Connector is not running"
+          description: "Connector {{ $labels.connector }} has been down for more than 5 minutes. State: {{ $labels.state }}"
+
+      - alert: TaskFailed
+        expr: |
+          kafka_connect_task_status{state="FAILED"} > 0
+        for: 2m
+        labels:
+          severity: critical
+          component: kafka-connect
+        annotations:
+          summary: "Connector task has failed"
+          description: "Task {{ $labels.task }} for connector {{ $labels.connector }} is in FAILED state."
+
+      # Kafka Broker Health
+      - alert: KafkaDown
+        expr: |
+          up{job="kafka"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: kafka
+        annotations:
+          summary: "Kafka broker is down"
+          description: "Kafka broker has been unreachable for more than 1 minute."
+
+      # Database Connection Alerts
+      - alert: DatabaseConnectionFailures
+        expr: |
+          increase(kafka_connect_jdbc_connection_failed_total[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database connection failures detected"
+          description: "{{ $value }} database connection failures in the last 5 minutes."
+
+      # Dead Letter Queue Alerts
+      - alert: DeadLetterQueueGrowing
+        expr: |
+          kafka_log_log_size{topic="dlq-postgresql-sink"} > 1000
+        for: 10m
+        labels:
+          severity: warning
+          component: dlq
+        annotations:
+          summary: "Dead Letter Queue is growing"
+          description: "DLQ topic has {{ $value }} messages. Investigate failed records."
+
+      - alert: CriticalDLQSize
+        expr: |
+          kafka_log_log_size{topic="dlq-postgresql-sink"} > 10000
+        for: 5m
+        labels:
+          severity: critical
+          component: dlq
+        annotations:
+          summary: "CRITICAL: Dead Letter Queue size exceeded"
+          description: "DLQ has {{ $value }} messages. Immediate attention required to prevent data loss."
+
+      # Resource Usage Alerts
+      - alert: HighMemoryUsage
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High memory usage detected"
+          description: "Container {{ $labels.name }} is using {{ $value | humanizePercentage }} of its memory limit."
+
+      - alert: HighCPUUsage
+        expr: |
+          rate(container_cpu_usage_seconds_total[5m]) > 1.8
+        for: 10m
+        labels:
+          severity: warning
+          component: resources
+        annotations:
+          summary: "High CPU usage detected"
+          description: "Container {{ $labels.name }} is using more than 90% CPU (2 cores limit)."
+
+      # Schema Registry Health
+      - alert: SchemaRegistryDown
+        expr: |
+          up{job="schema-registry"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: schema-registry
+        annotations:
+          summary: "Schema Registry is down"
+          description: "Schema Registry has been unreachable for more than 2 minutes. CDC pipeline cannot process events."
+
+      # Reconciliation Alerts
+      - alert: ReconciliationDiscrepancy
+        expr: |
+          reconciliation_row_count_diff > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: reconciliation
+        annotations:
+          summary: "Data reconciliation discrepancy detected"
+          description: "Row count difference of {{ $value }} detected between source and target for table {{ $labels.table }}."
+
+      - alert: ReconciliationFailed
+        expr: |
+          reconciliation_run_success == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: reconciliation
+        annotations:
+          summary: "Reconciliation run failed"
+          description: "The latest reconciliation run has failed. Check logs for details."

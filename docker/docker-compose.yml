@@ -19,6 +19,23 @@ services:
       - sqlserver-data:/var/opt/mssql
     networks:
       - cdc-network
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - CHOWN
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          memory: 2G
     healthcheck:
       test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$${SA_PASSWORD}" -Q "SELECT 1" || exit 1
       interval: 10s
@@ -44,6 +61,24 @@ services:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - cdc-network
+    # Security hardening
+    user: postgres
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - CHOWN
+      - DAC_OVERRIDE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 512M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 10s
@@ -70,6 +105,22 @@ services:
       - zookeeper-logs:/var/lib/zookeeper/log
     networks:
       - cdc-network
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - CHOWN
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 512M
     healthcheck:
       test: echo stat | nc localhost 2181
       interval: 10s
@@ -114,6 +165,23 @@ services:
       - kafka-data:/var/lib/kafka/data
     networks:
       - cdc-network
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - CHOWN
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          memory: 1G
     healthcheck:
       test: kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1
       interval: 10s
@@ -142,6 +210,22 @@ services:
       - "8081:8081"
     networks:
       - cdc-network
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 256M
     healthcheck:
       test: curl -f http://localhost:8081/subjects || exit 1
       interval: 10s
@@ -222,6 +306,23 @@ services:
       - ./configs/kafka-connect:/etc/kafka-connect/jdbc
     networks:
       - cdc-network
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETGID
+      - SETUID
+      - CHOWN
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          memory: 1G
     command:
       - bash
       - -c
@@ -263,8 +364,22 @@ services:
       - ./configs/vault:/vault/config
     networks:
       - cdc-network
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     cap_add:
       - IPC_LOCK
+      - SETGID
+      - SETUID
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 128M
     command: server -dev -dev-root-token-id=${VAULT_DEV_ROOT_TOKEN_ID:-dev-root-token}
     healthcheck:
       test: ["CMD", "vault", "status"]
@@ -283,13 +398,29 @@ services:
     depends_on:
       - kafka-connect
     volumes:
-      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./configs/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
       - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     networks:
       - cdc-network
+    # Security hardening
+    user: "nobody"
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 256M
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
@@ -319,12 +450,27 @@ services:
       GF_SERVER_ROOT_URL: http://localhost:3000
       GF_INSTALL_PLUGINS: ""
     volumes:
-      - ./configs/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./configs/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - grafana-data:/var/lib/grafana
     ports:
       - "3000:3000"
     networks:
       - cdc-network
+    # Security hardening
+    user: "472"  # grafana user
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          memory: 128M
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
       interval: 10s
@@ -356,6 +502,20 @@ services:
       - jaeger-data:/tmp
     networks:
       - cdc-network
+    # Security hardening
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          memory: 256M
     healthcheck:
       test: wget --no-verbose --tries=1 --spider http://localhost:14269/ || exit 1
       interval: 10s

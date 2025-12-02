@@ -42,10 +42,11 @@ from src.reconciliation.report import (
 )
 from src.reconciliation.scheduler import (
     ReconciliationScheduler,
-    reconcile_job_wrapper,
-    setup_logging
+    reconcile_job_wrapper
 )
 from src.utils.vault_client import get_credentials_from_vault
+from src.utils.logging_config import setup_logging, get_logger
+from src.utils.metrics import initialize_metrics
 
 
 logger = logging.getLogger(__name__)
@@ -173,6 +174,28 @@ def parse_args():
         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
         default="INFO",
         help="Logging level (default: INFO)"
+    )
+    parser.add_argument(
+        "--log-file",
+        help="Log file path (default: console only)"
+    )
+    parser.add_argument(
+        "--json-logs",
+        action="store_true",
+        help="Use JSON format for logs"
+    )
+
+    # Metrics
+    parser.add_argument(
+        "--enable-metrics",
+        action="store_true",
+        help="Enable Prometheus metrics endpoint"
+    )
+    parser.add_argument(
+        "--metrics-port",
+        type=int,
+        default=9091,
+        help="Prometheus metrics port (default: 9091)"
     )
 
     return parser.parse_args()
@@ -422,8 +445,21 @@ def main():
     """Main entry point"""
     args = parse_args()
 
-    # Setup logging
-    setup_logging(args.log_level)
+    # Setup logging with JSON format if specified
+    setup_logging(
+        level=args.log_level,
+        console_output=True,
+        json_format=args.json_logs if hasattr(args, 'json_logs') else False,
+        log_file=args.log_file if hasattr(args, 'log_file') else None,
+    )
+
+    logger = get_logger(__name__)
+
+    # Initialize metrics if enabled
+    metrics = None
+    if hasattr(args, 'enable_metrics') and args.enable_metrics:
+        metrics = initialize_metrics(port=args.metrics_port if hasattr(args, 'metrics_port') else 9091)
+        logger.info(f"Metrics enabled on port {args.metrics_port if hasattr(args, 'metrics_port') else 9091}")
 
     try:
         if args.schedule:

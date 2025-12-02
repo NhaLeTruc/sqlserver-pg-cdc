@@ -457,9 +457,311 @@ docker logs cdc-schema-registry --tail 100
 
 ---
 
+## Data Reconciliation
+
+The reconciliation tool validates data consistency between SQL Server (source) and PostgreSQL (target) by comparing row counts and checksums.
+
+### Quick Start - On-Demand Reconciliation
+
+**Using Vault for credentials** (recommended):
+```bash
+# Set Vault environment variables
+export VAULT_ADDR=http://localhost:8200
+export VAULT_TOKEN=dev-root-token
+
+# Reconcile a single table
+python scripts/python/reconcile.py \
+  --use-vault \
+  --source-table dbo.customers \
+  --target-table customers \
+  --output /tmp/reconcile_report.json
+
+# Reconcile multiple tables
+python scripts/python/reconcile.py \
+  --use-vault \
+  --source-tables "dbo.customers,dbo.orders,dbo.line_items" \
+  --target-tables "customers,orders,line_items" \
+  --output /tmp/reconcile_report.json
+```
+
+**Using explicit credentials**:
+```bash
+python scripts/python/reconcile.py \
+  --source-server localhost \
+  --source-database warehouse_source \
+  --source-username sa \
+  --source-password 'YourStrong!Passw0rd' \
+  --target-host localhost \
+  --target-database warehouse_target \
+  --target-username postgres \
+  --target-password postgres_secure_password \
+  --source-table dbo.customers \
+  --target-table customers \
+  --output /tmp/reconcile_report.json
+```
+
+### Checksum Validation
+
+For thorough data integrity checks, enable checksum validation (slower but detects data corruption):
+
+```bash
+python scripts/python/reconcile.py \
+  --use-vault \
+  --source-table dbo.customers \
+  --target-table customers \
+  --validate-checksums \
+  --output /tmp/reconcile_report.json
+```
+
+**Note**: Checksum validation compares MD5 hashes of all rows. For large tables (>1M rows), this can take several minutes.
+
+### Output Formats
+
+**JSON format** (default, machine-readable):
+```bash
+python scripts/python/reconcile.py \
+  --use-vault \
+  --source-table dbo.customers \
+  --target-table customers \
+  --output report.json \
+  --format json
+```
+
+**CSV format** (for spreadsheets):
+```bash
+python scripts/python/reconcile.py \
+  --use-vault \
+  --source-table dbo.customers \
+  --target-table customers \
+  --output report.csv \
+  --format csv
+```
+
+**Console format** (human-readable terminal output):
+```bash
+python scripts/python/reconcile.py \
+  --use-vault \
+  --source-table dbo.customers \
+  --target-table customers \
+  --format console
+```
+
+### Scheduled Reconciliation
+
+Run reconciliation automatically on a schedule:
+
+**Every 6 hours** (interval mode):
+```bash
+python scripts/python/reconcile.py \
+  --schedule \
+  --use-vault \
+  --source-tables "dbo.customers,dbo.orders,dbo.line_items" \
+  --target-tables "customers,orders,line_items" \
+  --interval 21600 \
+  --output-dir /var/reconcile/reports \
+  --log-level INFO
+```
+
+**Using cron expression**:
+```bash
+# Daily at midnight
+python scripts/python/reconcile.py \
+  --schedule \
+  --use-vault \
+  --source-tables "dbo.customers,dbo.orders" \
+  --target-tables "customers,orders" \
+  --cron "0 0 * * *" \
+  --output-dir /var/reconcile/reports
+
+# Every 30 minutes
+python scripts/python/reconcile.py \
+  --schedule \
+  --use-vault \
+  --source-tables "dbo.customers" \
+  --target-tables "customers" \
+  --cron "*/30 * * * *" \
+  --output-dir /var/reconcile/reports
+```
+
+**Run as background service** (using systemd):
+```bash
+# Create systemd service file
+sudo tee /etc/systemd/system/cdc-reconcile.service << EOF
+[Unit]
+Description=CDC Reconciliation Service
+After=network.target docker.service
+
+[Service]
+Type=simple
+User=cdcuser
+WorkingDirectory=/opt/cdc-pipeline
+Environment="VAULT_ADDR=http://localhost:8200"
+Environment="VAULT_TOKEN=dev-root-token"
+ExecStart=/usr/bin/python3 scripts/python/reconcile.py \\
+  --schedule \\
+  --use-vault \\
+  --source-tables "dbo.customers,dbo.orders,dbo.line_items" \\
+  --target-tables "customers,orders,line_items" \\
+  --interval 21600 \\
+  --output-dir /var/reconcile/reports \\
+  --log-level INFO
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Start service
+sudo systemctl enable cdc-reconcile.service
+sudo systemctl start cdc-reconcile.service
+
+# Check status
+sudo systemctl status cdc-reconcile.service
+
+# View logs
+sudo journalctl -u cdc-reconcile.service -f
+```
+
+### Understanding Reconciliation Reports
+
+**Sample JSON report**:
+```json
+{
+  "status": "FAIL",
+  "total_tables": 3,
+  "tables_matched": 2,
+  "tables_mismatched": 1,
+  "source_total_rows": 15000,
+  "target_total_rows": 14950,
+  "timestamp": "2025-12-02T20:15:30.123456",
+  "summary": "Reconciliation found discrepancies in 1 of 3 tables. 2 tables are consistent.",
+  "discrepancies": [
+    {
+      "table": "customers",
+      "issue_type": "ROW_COUNT_MISMATCH",
+      "severity": "HIGH",
+      "details": {
+        "source_count": 10000,
+        "target_count": 9950,
+        "missing_rows": 50,
+        "extra_rows": 0
+      },
+      "timestamp": "2025-12-02T20:15:30.123456"
+    }
+  ],
+  "recommendations": [
+    "Target database is missing 50 rows. Check replication lag and connector status.",
+    "Review Kafka Connect logs for errors or backpressure.",
+    "Consult docs/troubleshooting.md for detailed resolution steps."
+  ]
+}
+```
+
+**Report fields**:
+- `status`: `PASS` (all matched), `FAIL` (discrepancies found), or `NO_DATA` (no data to compare)
+- `discrepancies`: List of issues found
+- `issue_type`: `ROW_COUNT_MISMATCH` (different row counts) or `CHECKSUM_MISMATCH` (data corruption)
+- `severity`: `LOW` (<0.1% diff), `MEDIUM` (<1%), `HIGH` (<10%), `CRITICAL` (>10% or data corruption)
+
+**Exit codes**:
+- `0`: Success, all tables matched
+- `1`: Failure, discrepancies found or error occurred
+- `130`: User interrupted (Ctrl+C)
+
+### Troubleshooting Reconciliation
+
+**Missing rows (target < source)**:
+1. Check replication lag: Review Grafana dashboard
+2. Check connector status: `curl http://localhost:8083/connectors/postgresql-jdbc-sink/status`
+3. Review dead letter queue: `docker exec cdc-kafka kafka-console-consumer --topic dlq-postgresql-sink`
+4. Run reconciliation again after 5-10 minutes
+
+**Extra rows (target > source)**:
+1. Check for duplicate inserts
+2. Review CDC configuration: `EXEC sys.sp_cdc_help_change_data_capture` on SQL Server
+3. Check for manual inserts to PostgreSQL target
+
+**Checksum mismatch (data corruption)**:
+1. Check type conversion issues in Kafka Connect
+2. Verify schema evolution: `curl http://localhost:8081/subjects`
+3. Check for data transformation issues in SMTs
+4. Run detailed row-by-row comparison query
+
+**Connection failures**:
+1. Verify Vault credentials: `docker exec cdc-vault vault kv get secret/database/sqlserver`
+2. Check database connectivity:
+   ```bash
+   docker exec cdc-kafka-connect ping sqlserver
+   docker exec cdc-kafka-connect ping postgres
+   ```
+3. Verify ODBC driver: `docker exec cdc-kafka-connect odbcinst -j`
+
+**Performance issues**:
+1. For large tables (>1M rows), expect 5-10 minutes per table
+2. Disable checksum validation for faster checks
+3. Run reconciliation during low-traffic periods
+4. Use scheduled mode to avoid concurrent reconciliations
+
+### Advanced Usage
+
+**Reconcile with custom columns**:
+```python
+# In Python script
+from src.reconciliation.compare import reconcile_table
+
+result = reconcile_table(
+    source_cursor,
+    target_cursor,
+    source_table="dbo.customers",
+    target_table="customers",
+    validate_checksum=True,
+    columns=["id", "name", "email"]  # Only compare specific columns
+)
+```
+
+**Integrate with monitoring**:
+```bash
+# Send report to Prometheus Pushgateway
+python scripts/python/reconcile.py \
+  --use-vault \
+  --source-table dbo.customers \
+  --target-table customers \
+  --format json \
+  --output /tmp/report.json
+
+# Parse and push metrics
+jq -r '.tables_mismatched' /tmp/report.json | \
+  curl --data-binary @- http://localhost:9091/metrics/job/reconciliation
+```
+
+**Send alerts on failure**:
+```bash
+#!/bin/bash
+# reconcile-and-alert.sh
+
+python scripts/python/reconcile.py \
+  --use-vault \
+  --source-tables "dbo.customers,dbo.orders" \
+  --target-tables "customers,orders" \
+  --format json \
+  --output /tmp/report.json
+
+EXIT_CODE=$?
+
+if [ $EXIT_CODE -ne 0 ]; then
+  # Send alert (webhook, email, Slack, etc.)
+  curl -X POST https://hooks.slack.com/services/YOUR/WEBHOOK/URL \
+    -H 'Content-Type: application/json' \
+    -d "{\"text\": \"Reconciliation failed. Check /tmp/report.json\"}"
+fi
+```
+
+---
+
 ## Next Steps
 
 - Set up alerting: Configure Alertmanager for Prometheus alerts
 - Production hardening: Review [quickstart.md](../specs/001-sqlserver-pg-cdc/quickstart.md)
-- Run reconciliation: See reconciliation tool documentation (coming soon)
+- Schedule reconciliation: Set up systemd service for automated checks
 - Disaster recovery: Document backup and restore procedures

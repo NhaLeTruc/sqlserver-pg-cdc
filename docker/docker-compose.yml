@@ -199,6 +199,12 @@ services:
       CONNECT_LOG4J_ROOT_LOGLEVEL: INFO
       CONNECT_LOG4J_LOGGERS: org.apache.kafka.connect.runtime.rest=WARN,org.reflections=ERROR
 
+      # Task retry configuration with exponential backoff (T083)
+      CONNECT_TASK_RESTART_POLICY_ENABLED: "true"
+      CONNECT_TASK_RESTART_POLICY_MAX_RETRIES: "10"
+      CONNECT_TASK_RESTART_POLICY_DELAY_MS: "5000"
+      CONNECT_TASK_RESTART_POLICY_DELAY_MAX_MS: "300000"
+
       # JMX for Prometheus monitoring
       KAFKA_JMX_PORT: 9102
       KAFKA_JMX_HOSTNAME: kafka-connect

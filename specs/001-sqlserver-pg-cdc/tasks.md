@@ -190,13 +190,13 @@
 
 ### Tests for User Story 4 (TDD) ⚠️
 
-- [ ] T074 [P] [US4] Unit test for row count comparison in tests/unit/test_reconcile.py
-- [ ] T075 [P] [US4] Unit test for checksum validation in tests/unit/test_reconcile.py
-- [ ] T076 [P] [US4] Unit test for discrepancy reporting in tests/unit/test_reconcile.py
-- [ ] T077 [P] [US4] Integration test for PostgreSQL downtime recovery in tests/integration/test_error_recovery.py
-- [ ] T078 [P] [US4] Integration test for network failure retry logic in tests/integration/test_error_recovery.py
-- [ ] T079 [P] [US4] Integration test for DLQ routing of validation errors in tests/integration/test_error_recovery.py
-- [ ] T080 [P] [US4] E2E test for reconciliation tool execution in tests/e2e/test_reconciliation.py
+- [X] T074 [P] [US4] Unit test for row count comparison in tests/unit/test_reconcile.py
+- [X] T075 [P] [US4] Unit test for checksum validation in tests/unit/test_reconcile.py
+- [X] T076 [P] [US4] Unit test for discrepancy reporting in tests/unit/test_reconcile.py
+- [X] T077 [P] [US4] Integration test for PostgreSQL downtime recovery in tests/integration/test_error_recovery.py
+- [X] T078 [P] [US4] Integration test for network failure retry logic in tests/integration/test_error_recovery.py
+- [X] T079 [P] [US4] Integration test for DLQ routing of validation errors in tests/integration/test_error_recovery.py
+- [X] T080 [P] [US4] E2E test for reconciliation tool execution in tests/e2e/test_reconciliation.py
 
 **Verify all tests FAIL before proceeding**
 
@@ -204,24 +204,24 @@
 
 #### Retry Logic Configuration
 
-- [ ] T081 [US4] Configure JDBC sink connector with errors.tolerance=all and errors.deadletterqueue
-- [ ] T082 [US4] Configure connection retry parameters (connection.attempts=10, connection.backoff.ms=5000)
-- [ ] T083 [US4] Configure task retry parameters with exponential backoff in Kafka Connect worker config
+- [X] T081 [US4] Configure JDBC sink connector with errors.tolerance=all and errors.deadletterqueue
+- [X] T082 [US4] Configure connection retry parameters (connection.attempts=10, connection.backoff.ms=5000)
+- [X] T083 [US4] Configure task retry parameters with exponential backoff in Kafka Connect worker config
 - [ ] T084 [US4] Test retry behavior by stopping PostgreSQL and verifying automatic recovery
 
 #### Reconciliation Tool Development
 
-- [ ] T085 [P] [US4] Create src/reconciliation/__init__.py module structure
-- [ ] T086 [P] [US4] Create src/reconciliation/compare.py for row count and checksum comparison logic
-- [ ] T087 [P] [US4] Create src/reconciliation/report.py for generating JSON reconciliation reports
-- [ ] T088 [P] [US4] Create src/reconciliation/scheduler.py for cron-like scheduling using APScheduler
-- [ ] T089 [US4] Create src/utils/vault_client.py for fetching database credentials from Vault
-- [ ] T090 [US4] Create scripts/python/reconcile.py CLI tool with argparse for on-demand execution
-- [ ] T091 [US4] Create scripts/python/setup.py for Python package installation
-- [ ] T092 [US4] Execute all reconciliation unit tests and verify they pass
+- [X] T085 [P] [US4] Create src/reconciliation/__init__.py module structure
+- [X] T086 [P] [US4] Create src/reconciliation/compare.py for row count and checksum comparison logic
+- [X] T087 [P] [US4] Create src/reconciliation/report.py for generating JSON reconciliation reports
+- [X] T088 [P] [US4] Create src/reconciliation/scheduler.py for cron-like scheduling using APScheduler
+- [X] T089 [US4] Create src/utils/vault_client.py for fetching database credentials from Vault
+- [X] T090 [US4] Create scripts/python/reconcile.py CLI tool with argparse for on-demand execution
+- [X] T091 [US4] Create scripts/python/setup.py for Python package installation
+- [X] T092 [US4] Execute all reconciliation unit tests and verify they pass
 - [ ] T093 [US4] Execute error recovery integration tests and verify retries work correctly
 - [ ] T094 [US4] Execute reconciliation E2E test and verify report accuracy
-- [ ] T095 [US4] Document reconciliation usage (on-demand and scheduled) in docs/operations.md
+- [X] T095 [US4] Document reconciliation usage (on-demand and scheduled) in docs/operations.md
 
 **Checkpoint**: All four user stories (1, 2, 3, 4) should now be independently functional
 

@@ -1,0 +1,270 @@
+"""
+Reconciliation scheduler module
+
+Provides cron-like scheduling functionality for automated reconciliation
+using APScheduler.
+"""
+
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
+from datetime import datetime
+from pathlib import Path
+from typing import Dict, List, Any, Callable, Optional
+import logging
+
+
+logger = logging.getLogger(__name__)
+
+
+class ReconciliationScheduler:
+    """
+    Scheduler for automated reconciliation tasks
+
+    This class provides cron-like scheduling for reconciliation jobs,
+    allowing periodic execution with configurable intervals.
+    """
+
+    def __init__(self):
+        """Initialize the scheduler"""
+        self.scheduler = BlockingScheduler()
+        self.jobs = []
+
+    def add_interval_job(
+        self,
+        job_func: Callable,
+        interval_seconds: int,
+        job_id: str,
+        **kwargs
+    ) -> None:
+        """
+        Add a job that runs at fixed intervals
+
+        Args:
+            job_func: Function to execute
+            interval_seconds: Interval in seconds
+            job_id: Unique identifier for the job
+            **kwargs: Additional arguments to pass to job_func
+        """
+        trigger = IntervalTrigger(seconds=interval_seconds)
+
+        job = self.scheduler.add_job(
+            job_func,
+            trigger=trigger,
+            id=job_id,
+            kwargs=kwargs,
+            replace_existing=True
+        )
+
+        self.jobs.append(job)
+        logger.info(
+            f"Added interval job '{job_id}' with {interval_seconds}s interval"
+        )
+
+    def add_cron_job(
+        self,
+        job_func: Callable,
+        cron_expression: str,
+        job_id: str,
+        **kwargs
+    ) -> None:
+        """
+        Add a job that runs on a cron schedule
+
+        Args:
+            job_func: Function to execute
+            cron_expression: Cron expression (e.g., "0 */6 * * *" for every 6 hours)
+            job_id: Unique identifier for the job
+            **kwargs: Additional arguments to pass to job_func
+
+        Example cron expressions:
+            "0 */6 * * *"  - Every 6 hours
+            "0 0 * * *"    - Daily at midnight
+            "0 0 * * 0"    - Weekly on Sunday at midnight
+            "*/30 * * * *" - Every 30 minutes
+        """
+        # Parse cron expression (minute hour day month day_of_week)
+        parts = cron_expression.split()
+
+        if len(parts) != 5:
+            raise ValueError(
+                "Cron expression must have 5 parts: minute hour day month day_of_week"
+            )
+
+        minute, hour, day, month, day_of_week = parts
+
+        trigger = CronTrigger(
+            minute=minute,
+            hour=hour,
+            day=day,
+            month=month,
+            day_of_week=day_of_week
+        )
+
+        job = self.scheduler.add_job(
+            job_func,
+            trigger=trigger,
+            id=job_id,
+            kwargs=kwargs,
+            replace_existing=True
+        )
+
+        self.jobs.append(job)
+        logger.info(f"Added cron job '{job_id}' with schedule '{cron_expression}'")
+
+    def remove_job(self, job_id: str) -> None:
+        """
+        Remove a scheduled job
+
+        Args:
+            job_id: Unique identifier of the job to remove
+        """
+        self.scheduler.remove_job(job_id)
+        self.jobs = [job for job in self.jobs if job.id != job_id]
+        logger.info(f"Removed job '{job_id}'")
+
+    def start(self) -> None:
+        """
+        Start the scheduler
+
+        This will block the current thread and run scheduled jobs.
+        Use Ctrl+C to stop.
+        """
+        logger.info("Starting reconciliation scheduler...")
+        logger.info(f"Scheduled {len(self.jobs)} job(s)")
+
+        try:
+            self.scheduler.start()
+        except (KeyboardInterrupt, SystemExit):
+            logger.info("Scheduler stopped by user")
+            self.stop()
+
+    def stop(self) -> None:
+        """Stop the scheduler"""
+        self.scheduler.shutdown()
+        logger.info("Scheduler stopped")
+
+    def list_jobs(self) -> List[Dict[str, Any]]:
+        """
+        List all scheduled jobs
+
+        Returns:
+            List of job information dictionaries
+        """
+        job_list = []
+
+        for job in self.scheduler.get_jobs():
+            job_list.append({
+                "id": job.id,
+                "name": job.name,
+                "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+                "trigger": str(job.trigger)
+            })
+
+        return job_list
+
+
+def reconcile_job_wrapper(
+    source_config: Dict[str, Any],
+    target_config: Dict[str, Any],
+    tables: List[str],
+    output_dir: str,
+    validate_checksums: bool = False
+) -> None:
+    """
+    Wrapper function for scheduled reconciliation jobs
+
+    This function is designed to be called by the scheduler.
+    It performs reconciliation and saves reports to the output directory.
+
+    Args:
+        source_config: Source database connection configuration
+        target_config: Target database connection configuration
+        tables: List of table names to reconcile
+        output_dir: Directory to save reconciliation reports
+        validate_checksums: Whether to validate checksums
+    """
+    import pyodbc
+    import psycopg2
+    from src.reconciliation.compare import reconcile_table
+    from src.reconciliation.report import generate_report, export_report_json
+
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    output_path = Path(output_dir) / f"reconcile_{timestamp}.json"
+
+    # Ensure output directory exists
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
+
+    logger.info(f"Starting scheduled reconciliation at {timestamp}")
+
+    try:
+        # Connect to source database (SQL Server)
+        source_conn = pyodbc.connect(
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+            f"SERVER={source_config['server']};"
+            f"DATABASE={source_config['database']};"
+            f"UID={source_config['username']};"
+            f"PWD={source_config['password']}"
+        )
+        source_cursor = source_conn.cursor()
+
+        # Connect to target database (PostgreSQL)
+        target_conn = psycopg2.connect(
+            host=target_config['host'],
+            port=target_config.get('port', 5432),
+            database=target_config['database'],
+            user=target_config['username'],
+            password=target_config['password']
+        )
+        target_cursor = target_conn.cursor()
+
+        # Reconcile each table
+        comparison_results = []
+
+        for table in tables:
+            logger.info(f"Reconciling table: {table}")
+
+            try:
+                result = reconcile_table(
+                    source_cursor,
+                    target_cursor,
+                    source_table=table,
+                    target_table=table,
+                    validate_checksum=validate_checksums
+                )
+                comparison_results.append(result)
+
+            except Exception as e:
+                logger.error(f"Error reconciling table {table}: {e}")
+                # Continue with other tables
+
+        # Generate and save report
+        report = generate_report(comparison_results)
+        export_report_json(report, str(output_path))
+
+        logger.info(f"Reconciliation complete. Report saved to {output_path}")
+        logger.info(f"Status: {report['status']}")
+
+        # Close connections
+        source_cursor.close()
+        source_conn.close()
+        target_cursor.close()
+        target_conn.close()
+
+    except Exception as e:
+        logger.error(f"Reconciliation job failed: {e}")
+        raise
+
+
+def setup_logging(log_level: str = "INFO") -> None:
+    """
+    Setup logging configuration for scheduler
+
+    Args:
+        log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
+    """
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )

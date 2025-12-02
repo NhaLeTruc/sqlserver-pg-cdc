@@ -160,23 +160,23 @@
 
 ### Tests for User Story 3 (TDD) ⚠️
 
-- [ ] T062 [P] [US3] Integration test for ADD COLUMN detection in tests/integration/test_schema_evolution.py
-- [ ] T063 [P] [US3] Integration test for DROP COLUMN detection in tests/integration/test_schema_evolution.py
-- [ ] T064 [P] [US3] Integration test for ALTER COLUMN type change detection in tests/integration/test_schema_evolution.py
-- [ ] T065 [P] [US3] Integration test for schema mismatch routing to DLQ in tests/integration/test_schema_evolution.py
+- [X] T062 [P] [US3] Integration test for ADD COLUMN detection in tests/integration/test_schema_evolution.py
+- [X] T063 [P] [US3] Integration test for DROP COLUMN detection in tests/integration/test_schema_evolution.py
+- [X] T064 [P] [US3] Integration test for ALTER COLUMN type change detection in tests/integration/test_schema_evolution.py
+- [X] T065 [P] [US3] Integration test for schema mismatch routing to DLQ in tests/integration/test_schema_evolution.py
 
 **Verify all tests FAIL before proceeding**
 
 ### Implementation for User Story 3
 
-- [ ] T066 [US3] Configure Debezium connector to emit schema change events with include.schema.changes=true
-- [ ] T067 [US3] Configure JDBC sink connector with auto.evolve=true for automatic column additions
-- [ ] T068 [US3] Configure errors.deadletterqueue.topic.name for routing incompatible schema changes
-- [ ] T069 [US3] Create Kafka topic for dead letter queue (dlq-postgresql-sink) with 30-day retention
-- [ ] T070 [US3] Add schema evolution monitoring to Grafana dashboard showing detected changes
-- [ ] T071 [US3] Add Prometheus alert rule for schema change detection
-- [ ] T072 [US3] Execute schema evolution integration tests and verify all pass
-- [ ] T073 [US3] Document schema evolution handling procedures in docs/operations.md
+- [X] T066 [US3] Configure Debezium connector to emit schema change events with include.schema.changes=true
+- [X] T067 [US3] Configure JDBC sink connector with auto.evolve=true for automatic column additions
+- [X] T068 [US3] Configure errors.deadletterqueue.topic.name for routing incompatible schema changes
+- [X] T069 [US3] Create Kafka topic for dead letter queue (dlq-postgresql-sink) with 30-day retention
+- [X] T070 [US3] Add schema evolution monitoring to Grafana dashboard showing detected changes
+- [X] T071 [US3] Add Prometheus alert rule for schema change detection
+- [X] T072 [US3] Execute schema evolution integration tests and verify all pass
+- [X] T073 [US3] Document schema evolution handling procedures in docs/operations.md
 
 **Checkpoint**: All three user stories (1, 2, 3) should now be independently functional
 

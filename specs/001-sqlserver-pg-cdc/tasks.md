@@ -235,22 +235,22 @@
 
 ### Tests for User Story 5 (TDD) ⚠️
 
-- [ ] T096 [P] [US5] E2E test for Docker Compose stack startup in tests/e2e/test_docker_environment.py
-- [ ] T097 [P] [US5] E2E test for service health checks in tests/e2e/test_docker_environment.py
-- [ ] T098 [P] [US5] E2E test for test suite execution in local environment in tests/e2e/test_docker_environment.py
-- [ ] T099 [P] [US5] E2E test for failure scenario simulation in tests/e2e/test_docker_environment.py
+- [X] T096 [P] [US5] E2E test for Docker Compose stack startup in tests/e2e/test_docker_environment.py
+- [X] T097 [P] [US5] E2E test for service health checks in tests/e2e/test_docker_environment.py
+- [X] T098 [P] [US5] E2E test for test suite execution in local environment in tests/e2e/test_docker_environment.py
+- [X] T099 [P] [US5] E2E test for failure scenario simulation in tests/e2e/test_docker_environment.py
 
 **Verify all tests FAIL before proceeding**
 
 ### Implementation for User Story 5
 
-- [ ] T100 [US5] Add health check configurations to all services in docker/docker-compose.yml
-- [ ] T101 [US5] Create docker/wait-for-services.sh script to wait for all services to be healthy
-- [ ] T102 [US5] Configure pytest with Testcontainers integration in tests/conftest.py
-- [ ] T103 [US5] Create test fixtures for SQL Server connection in tests/conftest.py
-- [ ] T104 [US5] Create test fixtures for PostgreSQL connection in tests/conftest.py
-- [ ] T105 [US5] Create test fixtures for Kafka Connect API client in tests/conftest.py
-- [ ] T106 [US5] Document local test execution workflow in docs/quickstart.md
+- [X] T100 [US5] Add health check configurations to all services in docker/docker-compose.yml
+- [X] T101 [US5] Create docker/wait-for-services.sh script to wait for all services to be healthy
+- [X] T102 [US5] Configure pytest with Testcontainers integration in tests/conftest.py
+- [X] T103 [US5] Create test fixtures for SQL Server connection in tests/conftest.py
+- [X] T104 [US5] Create test fixtures for PostgreSQL connection in tests/conftest.py
+- [X] T105 [US5] Create test fixtures for Kafka Connect API client in tests/conftest.py
+- [X] T106 [US5] Document local test execution workflow in docs/quickstart.md
 - [ ] T107 [US5] Execute all E2E Docker environment tests and verify they pass
 - [ ] T108 [US5] Verify complete test suite runs successfully in local Docker environment
 

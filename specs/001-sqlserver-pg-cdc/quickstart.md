@@ -670,11 +670,269 @@ docker exec kafka kafka-topics.sh --delete \
 # Recreate connector with snapshot.mode=initial
 ```
 
+## Local Development and Testing
+
+### Running the Test Suite
+
+The project includes comprehensive tests for contract validation, integration testing, and end-to-end scenarios.
+
+#### Prerequisites for Testing
+
+```bash
+# Install Python dependencies
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Install test dependencies
+pip install pytest pytest-cov
+
+# Ensure Docker services are running
+cd docker
+docker compose up -d
+
+# Wait for all services to be healthy
+./wait-for-services.sh 300
+```
+
+#### Run All Tests
+
+```bash
+# Run complete test suite with coverage
+pytest tests/ -v --cov=src --cov-report=html --cov-report=term
+
+# Results will show:
+# - Contract tests: Validate connector configurations
+# - Integration tests: Test replication, monitoring, schema evolution
+# - Unit tests: Test reconciliation tool components
+# - E2E tests: Test full pipeline workflow
+```
+
+#### Run Specific Test Categories
+
+**Contract Tests** (validate connector configs):
+```bash
+pytest tests/contract/ -v
+
+# Tests validate:
+# - Debezium source connector configuration
+# - JDBC sink connector configuration
+# - Schema Registry integration
+```
+
+**Integration Tests** (test with live services):
+```bash
+pytest tests/integration/ -v
+
+# Tests validate:
+# - INSERT/UPDATE/DELETE replication
+# - Monitoring metrics collection
+# - Schema evolution handling
+# - Error recovery and retry logic
+```
+
+**Unit Tests** (test reconciliation tool):
+```bash
+pytest tests/unit/ -v
+
+# Tests validate:
+# - Row count comparison
+# - Checksum validation
+# - Discrepancy reporting
+```
+
+**E2E Tests** (test complete workflows):
+```bash
+pytest tests/e2e/ -v
+
+# Tests validate:
+# - Docker Compose stack startup
+# - Service health checks
+# - Full reconciliation workflow
+# - Failure scenario simulation
+```
+
+#### Running Tests in CI/CD
+
+```bash
+#!/bin/bash
+# ci-test.sh - Example CI/CD test script
+
+set -e
+
+# Start services
+cd docker
+docker compose up -d
+
+# Wait for services
+./wait-for-services.sh 300
+
+# Run tests
+pytest tests/ \
+  -v \
+  --cov=src \
+  --cov-report=xml \
+  --cov-report=term \
+  --junitxml=test-results.xml \
+  --maxfail=5
+
+# Generate coverage report
+coverage html
+
+# Check coverage threshold (80% required)
+coverage report --fail-under=80
+
+# Cleanup
+docker compose down -v
+```
+
+#### Test Fixtures Available
+
+The test suite provides pytest fixtures for common testing scenarios:
+
+**Database Connections:**
+```python
+def test_sql_server_query(sqlserver_connection):
+    cursor = sqlserver_connection.cursor()
+    cursor.execute("SELECT * FROM customers")
+    results = cursor.fetchall()
+    assert len(results) > 0
+
+def test_postgres_query(postgres_connection):
+    cursor = postgres_connection.cursor()
+    cursor.execute("SELECT * FROM customers")
+    results = cursor.fetchall()
+    assert len(results) > 0
+```
+
+**Kafka Connect Client:**
+```python
+def test_deploy_connector(kafka_connect_client):
+    # Deploy a test connector
+    config = {
+        "name": "test-connector",
+        "config": {
+            "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+            "tasks.max": "1",
+            # ... configuration
+        }
+    }
+
+    result = kafka_connect_client.deploy_connector(config)
+    assert result["name"] == "test-connector"
+
+    # Verify connector is running
+    status = kafka_connect_client.get_connector_status("test-connector")
+    assert status["connector"]["state"] == "RUNNING"
+```
+
+**Automatic Cleanup:**
+```python
+def test_with_cleanup(
+    sqlserver_cursor,
+    postgres_cursor,
+    kafka_connect_client,
+    cleanup_test_tables,
+    cleanup_test_connectors
+):
+    # Create test data
+    sqlserver_cursor.execute("CREATE TABLE test_table (id INT PRIMARY KEY, name VARCHAR(50))")
+
+    # Test logic here
+    # ...
+
+    # Cleanup happens automatically after test
+```
+
+#### Test Configuration
+
+Tests use environment variables for configuration:
+
+```bash
+# Default values (can be overridden)
+export SQLSERVER_HOST=localhost
+export SQLSERVER_DATABASE=warehouse_source
+export SQLSERVER_USER=sa
+export SQLSERVER_PASSWORD='YourStrong!Passw0rd'
+
+export POSTGRES_HOST=localhost
+export POSTGRES_PORT=5432
+export POSTGRES_DB=warehouse_target
+export POSTGRES_USER=postgres
+export POSTGRES_PASSWORD=postgres_secure_password
+
+export KAFKA_CONNECT_URL=http://localhost:8083
+export VAULT_ADDR=http://localhost:8200
+export VAULT_TOKEN=dev-root-token
+```
+
+#### Debugging Failed Tests
+
+**View detailed test output:**
+```bash
+pytest tests/ -vv --tb=long
+```
+
+**Run single test:**
+```bash
+pytest tests/integration/test_replication_flow.py::test_insert_replication -v
+```
+
+**Enable debug logging:**
+```bash
+pytest tests/ -v --log-cli-level=DEBUG
+```
+
+**Check service logs during test failure:**
+```bash
+# Kafka Connect logs
+docker logs cdc-kafka-connect --tail 100
+
+# SQL Server logs
+docker logs cdc-sqlserver --tail 100
+
+# PostgreSQL logs
+docker logs cdc-postgres --tail 100
+```
+
+#### Performance Testing
+
+```bash
+# Run performance tests
+pytest tests/integration/test_performance.py -v
+
+# Test throughput (10K rows/sec requirement)
+# Test replication lag (<5 minutes requirement)
+# Test reconciliation speed (<10 minutes for 1M rows)
+```
+
+#### Code Coverage Requirements
+
+Per NFR-008, all custom code must have 80% test coverage:
+
+```bash
+# Generate coverage report
+pytest tests/ --cov=src --cov-report=html
+
+# View report
+open htmlcov/index.html
+
+# Check coverage by module
+coverage report --sort=cover
+```
+
+Expected coverage:
+- `src/reconciliation/`: 90%+ (unit tests)
+- `src/utils/`: 85%+ (integration tests)
+- `scripts/python/`: 70%+ (E2E tests)
+
+---
+
 ## Next Steps
 
 1. **Production Deployment**: See `docs/operations.md` for production best practices
 2. **Advanced Configuration**: Explore Kafka Connect SMTs for custom transformations
-3. **Automated Testing**: Run integration tests with `pytest tests/integration/`
+3. **Automated Testing**: Set up CI/CD pipeline with pytest integration
 4. **CI/CD Integration**: Set up automated connector deployment via GitOps
 5. **Scale Out**: Deploy multiple Kafka Connect workers for horizontal scaling
 

@@ -1,12 +1,25 @@
 """
 Pytest configuration and fixtures for CDC pipeline tests.
 Provides shared fixtures for database connections and test setup.
+
+Fixtures:
+- T102: Pytest with Testcontainers integration
+- T103: SQL Server connection fixture
+- T104: PostgreSQL connection fixture
+- T105: Kafka Connect API client fixture
 """
 
 import os
 from pathlib import Path
+from typing import Generator, Optional
+import time
 
 import pytest
+import pyodbc
+import psycopg2
+import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -63,3 +76,469 @@ def set_test_env_vars() -> None:
     for key, value in defaults.items():
         if key not in os.environ:
             os.environ[key] = value
+
+
+# =============================================================================
+# T102: Testcontainers Integration Configuration
+# =============================================================================
+
+@pytest.fixture(scope="session")
+def use_testcontainers() -> bool:
+    """
+    Determine if tests should use Testcontainers or local Docker services.
+
+    Set USE_TESTCONTAINERS=true to spin up isolated containers for tests.
+    By default, tests use the local docker-compose environment.
+    """
+    return os.environ.get("USE_TESTCONTAINERS", "false").lower() == "true"
+
+
+@pytest.fixture(scope="session")
+def wait_for_services() -> None:
+    """
+    Wait for Docker Compose services to be healthy before running tests.
+
+    This fixture ensures all services are ready before test execution begins.
+    """
+    # Check if services are already running
+    result = os.system("docker ps --filter 'name=cdc-' --format '{{.Names}}' | wc -l")
+
+    if result == 0:
+        # Wait for services to be healthy
+        print("\nWaiting for CDC services to be healthy...")
+        wait_script = Path(__file__).parent.parent / "docker" / "wait-for-services.sh"
+
+        if wait_script.exists():
+            result = os.system(f"{wait_script} 300")
+
+            if result != 0:
+                pytest.fail("Services are not healthy. Please start services with: cd docker && docker-compose up -d")
+
+
+# =============================================================================
+# T103: SQL Server Connection Fixture
+# =============================================================================
+
+@pytest.fixture(scope="session")
+def sqlserver_connection_string() -> str:
+    """Get SQL Server connection string from environment"""
+    return (
+        f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+        f"SERVER={os.environ['SQLSERVER_HOST']},1433;"
+        f"DATABASE={os.environ['SQLSERVER_DATABASE']};"
+        f"UID={os.environ['SQLSERVER_USER']};"
+        f"PWD={os.environ['SQLSERVER_PASSWORD']}"
+    )
+
+
+@pytest.fixture
+def sqlserver_connection(
+    sqlserver_connection_string: str,
+    wait_for_services: None
+) -> Generator[pyodbc.Connection, None, None]:
+    """
+    Provide SQL Server database connection for tests.
+
+    Yields:
+        pyodbc.Connection: Active database connection
+
+    Example:
+        def test_query(sqlserver_connection):
+            cursor = sqlserver_connection.cursor()
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+            assert result[0] == 1
+    """
+    max_retries = 5
+    retry_delay = 2
+
+    conn = None
+    for attempt in range(max_retries):
+        try:
+            conn = pyodbc.connect(sqlserver_connection_string, timeout=10)
+            break
+        except pyodbc.Error as e:
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+            else:
+                pytest.fail(f"Failed to connect to SQL Server after {max_retries} attempts: {e}")
+
+    try:
+        yield conn
+    finally:
+        if conn:
+            conn.close()
+
+
+@pytest.fixture
+def sqlserver_cursor(
+    sqlserver_connection: pyodbc.Connection
+) -> Generator[pyodbc.Cursor, None, None]:
+    """
+    Provide SQL Server cursor for tests.
+
+    Yields:
+        pyodbc.Cursor: Database cursor
+
+    Example:
+        def test_insert(sqlserver_cursor):
+            sqlserver_cursor.execute("INSERT INTO test_table VALUES (1, 'test')")
+            sqlserver_cursor.connection.commit()
+    """
+    cursor = sqlserver_connection.cursor()
+    try:
+        yield cursor
+    finally:
+        cursor.close()
+
+
+# =============================================================================
+# T104: PostgreSQL Connection Fixture
+# =============================================================================
+
+@pytest.fixture(scope="session")
+def postgres_connection_params() -> dict:
+    """Get PostgreSQL connection parameters from environment"""
+    return {
+        "host": os.environ["POSTGRES_HOST"],
+        "port": int(os.environ["POSTGRES_PORT"]),
+        "database": os.environ["POSTGRES_DB"],
+        "user": os.environ["POSTGRES_USER"],
+        "password": os.environ["POSTGRES_PASSWORD"]
+    }
+
+
+@pytest.fixture
+def postgres_connection(
+    postgres_connection_params: dict,
+    wait_for_services: None
+) -> Generator[psycopg2.extensions.connection, None, None]:
+    """
+    Provide PostgreSQL database connection for tests.
+
+    Yields:
+        psycopg2.connection: Active database connection
+
+    Example:
+        def test_query(postgres_connection):
+            cursor = postgres_connection.cursor()
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+            assert result[0] == 1
+    """
+    max_retries = 5
+    retry_delay = 2
+
+    conn = None
+    for attempt in range(max_retries):
+        try:
+            conn = psycopg2.connect(**postgres_connection_params, connect_timeout=10)
+            conn.set_session(autocommit=False)
+            break
+        except psycopg2.Error as e:
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+            else:
+                pytest.fail(f"Failed to connect to PostgreSQL after {max_retries} attempts: {e}")
+
+    try:
+        yield conn
+    finally:
+        if conn:
+            conn.close()
+
+
+@pytest.fixture
+def postgres_cursor(
+    postgres_connection: psycopg2.extensions.connection
+) -> Generator[psycopg2.extensions.cursor, None, None]:
+    """
+    Provide PostgreSQL cursor for tests.
+
+    Yields:
+        psycopg2.cursor: Database cursor
+
+    Example:
+        def test_insert(postgres_cursor):
+            postgres_cursor.execute("INSERT INTO test_table VALUES (1, 'test')")
+            postgres_cursor.connection.commit()
+    """
+    cursor = postgres_connection.cursor()
+    try:
+        yield cursor
+    finally:
+        cursor.close()
+
+
+# =============================================================================
+# T105: Kafka Connect API Client Fixture
+# =============================================================================
+
+class KafkaConnectClient:
+    """
+    Kafka Connect REST API client for tests.
+
+    Provides methods to interact with Kafka Connect REST API:
+    - List connectors
+    - Get connector status
+    - Deploy connector
+    - Delete connector
+    - Restart connector
+    - Get connector config
+    """
+
+    def __init__(self, base_url: str):
+        """
+        Initialize Kafka Connect client.
+
+        Args:
+            base_url: Kafka Connect REST API URL (e.g., http://localhost:8083)
+        """
+        self.base_url = base_url.rstrip("/")
+
+        # Configure session with retries
+        self.session = requests.Session()
+        retry_strategy = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET", "POST", "PUT", "DELETE"]
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("http://", adapter)
+        self.session.mount("https://", adapter)
+
+    def list_connectors(self) -> list:
+        """List all connectors"""
+        response = self.session.get(f"{self.base_url}/connectors", timeout=10)
+        response.raise_for_status()
+        return response.json()
+
+    def get_connector_status(self, connector_name: str) -> dict:
+        """Get connector status"""
+        response = self.session.get(
+            f"{self.base_url}/connectors/{connector_name}/status",
+            timeout=10
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def get_connector_config(self, connector_name: str) -> dict:
+        """Get connector configuration"""
+        response = self.session.get(
+            f"{self.base_url}/connectors/{connector_name}/config",
+            timeout=10
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def deploy_connector(self, connector_config: dict) -> dict:
+        """Deploy or update a connector"""
+        connector_name = connector_config.get("name")
+
+        if not connector_name:
+            raise ValueError("Connector config must have 'name' field")
+
+        # Check if connector exists
+        try:
+            existing = self.get_connector_config(connector_name)
+            # Update existing connector
+            response = self.session.put(
+                f"{self.base_url}/connectors/{connector_name}/config",
+                json=connector_config["config"],
+                timeout=30
+            )
+        except requests.exceptions.HTTPError as e:
+            if e.response.status_code == 404:
+                # Create new connector
+                response = self.session.post(
+                    f"{self.base_url}/connectors",
+                    json=connector_config,
+                    timeout=30
+                )
+            else:
+                raise
+
+        response.raise_for_status()
+        return response.json()
+
+    def delete_connector(self, connector_name: str) -> None:
+        """Delete a connector"""
+        response = self.session.delete(
+            f"{self.base_url}/connectors/{connector_name}",
+            timeout=30
+        )
+        response.raise_for_status()
+
+    def restart_connector(self, connector_name: str) -> None:
+        """Restart a connector"""
+        response = self.session.post(
+            f"{self.base_url}/connectors/{connector_name}/restart",
+            timeout=30
+        )
+        response.raise_for_status()
+
+    def pause_connector(self, connector_name: str) -> None:
+        """Pause a connector"""
+        response = self.session.put(
+            f"{self.base_url}/connectors/{connector_name}/pause",
+            timeout=30
+        )
+        response.raise_for_status()
+
+    def resume_connector(self, connector_name: str) -> None:
+        """Resume a connector"""
+        response = self.session.put(
+            f"{self.base_url}/connectors/{connector_name}/resume",
+            timeout=30
+        )
+        response.raise_for_status()
+
+    def wait_for_connector_state(
+        self,
+        connector_name: str,
+        expected_state: str,
+        timeout: int = 60
+    ) -> bool:
+        """
+        Wait for connector to reach expected state.
+
+        Args:
+            connector_name: Name of connector
+            expected_state: Expected state (RUNNING, PAUSED, FAILED)
+            timeout: Maximum wait time in seconds
+
+        Returns:
+            True if connector reached expected state, False otherwise
+        """
+        start_time = time.time()
+
+        while time.time() - start_time < timeout:
+            try:
+                status = self.get_connector_status(connector_name)
+                current_state = status.get("connector", {}).get("state")
+
+                if current_state == expected_state:
+                    return True
+
+                time.sleep(2)
+            except Exception:
+                time.sleep(2)
+
+        return False
+
+
+@pytest.fixture(scope="session")
+def kafka_connect_url() -> str:
+    """Get Kafka Connect URL from environment"""
+    return os.environ["KAFKA_CONNECT_URL"]
+
+
+@pytest.fixture
+def kafka_connect_client(
+    kafka_connect_url: str,
+    wait_for_services: None
+) -> Generator[KafkaConnectClient, None, None]:
+    """
+    Provide Kafka Connect API client for tests.
+
+    Yields:
+        KafkaConnectClient: API client instance
+
+    Example:
+        def test_list_connectors(kafka_connect_client):
+            connectors = kafka_connect_client.list_connectors()
+            assert isinstance(connectors, list)
+
+        def test_deploy_connector(kafka_connect_client):
+            config = {
+                "name": "test-connector",
+                "config": {
+                    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+                    "tasks.max": "1",
+                    # ... other config
+                }
+            }
+            result = kafka_connect_client.deploy_connector(config)
+            assert result["name"] == "test-connector"
+    """
+    client = KafkaConnectClient(kafka_connect_url)
+
+    # Wait for Kafka Connect to be ready
+    max_retries = 10
+    for attempt in range(max_retries):
+        try:
+            client.list_connectors()
+            break
+        except Exception as e:
+            if attempt < max_retries - 1:
+                time.sleep(3)
+            else:
+                pytest.fail(f"Kafka Connect not ready after {max_retries} attempts: {e}")
+
+    yield client
+
+
+# =============================================================================
+# Test Data Cleanup Fixtures
+# =============================================================================
+
+@pytest.fixture
+def cleanup_test_connectors(kafka_connect_client: KafkaConnectClient):
+    """
+    Cleanup test connectors after test execution.
+
+    Automatically removes any connectors with 'test-' prefix after tests.
+    """
+    yield
+
+    # Cleanup after test
+    try:
+        connectors = kafka_connect_client.list_connectors()
+        for connector in connectors:
+            if connector.startswith("test-"):
+                kafka_connect_client.delete_connector(connector)
+    except Exception:
+        pass  # Best effort cleanup
+
+
+@pytest.fixture
+def cleanup_test_tables(sqlserver_cursor: pyodbc.Cursor, postgres_cursor: psycopg2.extensions.cursor):
+    """
+    Cleanup test tables after test execution.
+
+    Automatically removes any tables with 'test_' prefix after tests.
+    """
+    yield
+
+    # Cleanup SQL Server test tables
+    try:
+        sqlserver_cursor.execute("""
+            SELECT TABLE_NAME
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_NAME LIKE 'test_%'
+        """)
+
+        for row in sqlserver_cursor.fetchall():
+            table_name = row[0]
+            sqlserver_cursor.execute(f"DROP TABLE IF EXISTS dbo.{table_name}")
+
+        sqlserver_cursor.connection.commit()
+    except Exception:
+        pass
+
+    # Cleanup PostgreSQL test tables
+    try:
+        postgres_cursor.execute("""
+            SELECT tablename
+            FROM pg_tables
+            WHERE tablename LIKE 'test_%' AND schemaname = 'public'
+        """)
+
+        for row in postgres_cursor.fetchall():
+            table_name = row[0]
+            postgres_cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+
+        postgres_cursor.connection.commit()
+    except Exception:
+        pass

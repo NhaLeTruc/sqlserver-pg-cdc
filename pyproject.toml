@@ -58,6 +58,14 @@ addopts = [
     "--cov-report=html",
     "--cov-fail-under=80",
 ]
+markers = [
+    "e2e: End-to-end tests requiring real database instances",
+    "vault: Tests requiring HashiCorp Vault",
+    "slow: Tests that take significant time to run",
+]
+# Ignore e2e tests for coverage calculation since they don't execute source code
+# when databases aren't available
+norecursedirs = [".*", "build", "dist", "*.egg"]
 
 [tool.black]
 line-length = 100

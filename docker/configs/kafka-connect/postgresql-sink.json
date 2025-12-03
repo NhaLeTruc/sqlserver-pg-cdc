@@ -16,7 +16,7 @@
 
     "table.name.format": "${topic}",
     "auto.create": "false",
-    "auto.evolve": "false",
+    "auto.evolve": "true",
 
     "batch.size": "3000",
     "connection.pool.size": "10",

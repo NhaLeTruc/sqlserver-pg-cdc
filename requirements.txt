@@ -17,15 +17,18 @@ prometheus-client>=0.19.0       # Prometheus metrics publishing
 # HTTP client
 requests>=2.31.0                # REST API calls to Kafka Connect
 
+# Kafka client
+kafka-python>=2.0.2             # Kafka consumer/producer for DLQ testing
+
 # Data validation
 pydantic>=2.5.0                 # Schema validation for configurations
 jsonschema>=4.20.0              # JSON Schema validation for contract tests
 
 # Development dependencies (install with: pip install -e ".[dev]")
-# pytest>=7.4.3
-# pytest-cov>=4.1.0
-# pytest-asyncio>=0.21.1
-# testcontainers>=3.7.1
+pytest>=7.4.3
+pytest-cov>=4.1.0
+pytest-asyncio>=0.21.1
+testcontainers>=3.7.1
 # black>=23.12.1
 # ruff>=0.1.8
 # mypy>=1.7.1

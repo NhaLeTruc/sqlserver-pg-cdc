@@ -49,8 +49,9 @@ class TestPostgreSQLDowntimeRecovery:
         6. Verify all 150 rows eventually replicate (with retry)
         """
         # Setup: Deploy JDBC sink connector
+        connector_name = "postgresql-sink-recovery-test"
         connector_config = {
-            "name": "postgresql-sink-recovery-test",
+            "name": connector_name,
             "config": {
                 "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
                 "tasks.max": "1",
@@ -67,11 +68,15 @@ class TestPostgreSQLDowntimeRecovery:
             }
         }
 
+        # Delete connector if it already exists
+        requests.delete(f"{kafka_connect_url}/connectors/{connector_name}")
+        time.sleep(1)
+
         response = requests.post(
             f"{kafka_connect_url}/connectors",
             json=connector_config
         )
-        assert response.status_code == 201
+        assert response.status_code == 201, f"Failed to create connector: {response.text}"
 
         # Step 1: Insert 100 rows with PostgreSQL running
         # (Assuming SQL Server test fixture exists)
@@ -162,11 +167,15 @@ class TestPostgreSQLDowntimeRecovery:
             }
         }
 
+        # Delete connector if it already exists
+        requests.delete(f"{kafka_connect_url}/connectors/{connector_name}")
+        time.sleep(1)
+
         response = requests.post(
             f"{kafka_connect_url}/connectors",
             json=connector_config
         )
-        assert response.status_code == 201
+        assert response.status_code == 201, f"Failed to create connector: {response.text}"
 
         # Wait and check connector status
         time.sleep(30)
@@ -230,11 +239,15 @@ class TestNetworkFailureRetry:
             }
         }
 
+        # Delete connector if it already exists
+        requests.delete(f"{kafka_connect_url}/connectors/{connector_name}")
+        time.sleep(1)
+
         response = requests.post(
             f"{kafka_connect_url}/connectors",
             json=connector_config
         )
-        assert response.status_code == 201
+        assert response.status_code == 201, f"Failed to create connector: {response.text}"
 
         # Wait for timeout period
         time.sleep(15)
@@ -257,7 +270,7 @@ class TestDeadLetterQueueRouting:
     def kafka_admin(self):
         """Kafka admin client for topic operations"""
         from kafka import KafkaAdminClient
-        admin = KafkaAdminClient(bootstrap_servers="localhost:9092")
+        admin = KafkaAdminClient(bootstrap_servers="localhost:29092")
         yield admin
         admin.close()
 

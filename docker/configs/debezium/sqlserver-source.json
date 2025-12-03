@@ -4,10 +4,10 @@
     "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector",
     "tasks.max": "1",
 
-    "database.hostname": "${vault:secret/database#sqlserver_host}",
+    "database.hostname": "${vault:secret/database:sqlserver_host}",
     "database.port": "1433",
-    "database.user": "${vault:secret/database#sqlserver_user}",
-    "database.password": "${vault:secret/database#sqlserver_password}",
+    "database.user": "${vault:secret/database:sqlserver_user}",
+    "database.password": "${vault:secret/database:sqlserver_password}",
     "database.names": "warehouse_source",
     "database.encrypt": "false",
     "database.trustServerCertificate": "true",
@@ -18,8 +18,7 @@
     "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",
     "schema.history.internal.kafka.topic": "schema-changes.warehouse_source",
 
-    "snapshot.mode": "initial",
-    "snapshot.isolation.mode": "snapshot",
+    "snapshot.mode": "schema_only",
     "snapshot.locking.mode": "none",
 
     "decimal.handling.mode": "precise",

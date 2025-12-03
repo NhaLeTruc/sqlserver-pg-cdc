@@ -3,6 +3,25 @@
 
 set -euo pipefail
 
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source vault helpers to load secrets
+if [ -f "$SCRIPT_DIR/vault-helpers.sh" ]; then
+    source "$SCRIPT_DIR/vault-helpers.sh"
+
+    # Try to load secrets from Vault, fall back to environment variables
+    if vault_is_ready; then
+        echo "Loading credentials from Vault..."
+        export_database_secrets || {
+            echo "WARNING: Failed to load from Vault, using environment variables"
+        }
+    else
+        echo "WARNING: Vault not available, using environment variables"
+    fi
+fi
+
+# Set defaults if not loaded from Vault
 SQLSERVER_HOST="${SQLSERVER_HOST:-localhost}"
 SQLSERVER_USER="${SQLSERVER_USER:-sa}"
 SQLSERVER_PASSWORD="${SQLSERVER_PASSWORD:-YourStrong!Passw0rd}"
@@ -14,8 +33,8 @@ echo ""
 # Wait for SQL Server to be ready
 echo "Waiting for SQL Server to be ready..."
 for i in {1..30}; do
-    if docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-        -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" \
+    if docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+        -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -C \
         -Q "SELECT 1" > /dev/null 2>&1; then
         echo "SQL Server is ready!"
         break
@@ -27,22 +46,22 @@ done
 # Create database if it doesn't exist
 echo ""
 echo "Creating database $SQLSERVER_DATABASE..."
-docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" \
+docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -C \
     -Q "IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '$SQLSERVER_DATABASE') CREATE DATABASE $SQLSERVER_DATABASE"
 
 # Enable CDC on database
 echo "Enabling CDC on database..."
-docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" \
+docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -C \
     -d "$SQLSERVER_DATABASE" \
     -Q "IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = '$SQLSERVER_DATABASE' AND is_cdc_enabled = 1) EXEC sys.sp_cdc_enable_db"
 
 # Create customers table
 echo ""
 echo "Creating customers table..."
-docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" \
+docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -C \
     -d "$SQLSERVER_DATABASE" \
     -Q "
     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'customers' AND schema_id = SCHEMA_ID('dbo'))
@@ -59,8 +78,8 @@ docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
 
 # Enable CDC on customers table
 echo "Enabling CDC on customers table..."
-docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" \
+docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -C \
     -d "$SQLSERVER_DATABASE" \
     -Q "
     IF NOT EXISTS (
@@ -80,8 +99,8 @@ docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
 # Create orders table
 echo ""
 echo "Creating orders table..."
-docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" \
+docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -C \
     -d "$SQLSERVER_DATABASE" \
     -Q "
     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'orders' AND schema_id = SCHEMA_ID('dbo'))
@@ -99,8 +118,8 @@ docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
 
 # Enable CDC on orders table
 echo "Enabling CDC on orders table..."
-docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" \
+docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -C \
     -d "$SQLSERVER_DATABASE" \
     -Q "
     IF NOT EXISTS (
@@ -120,8 +139,8 @@ docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
 # Create line_items table
 echo ""
 echo "Creating line_items table..."
-docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" \
+docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -C \
     -d "$SQLSERVER_DATABASE" \
     -Q "
     IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'line_items' AND schema_id = SCHEMA_ID('dbo'))
@@ -139,8 +158,8 @@ docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
 
 # Enable CDC on line_items table
 echo "Enabling CDC on line_items table..."
-docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" \
+docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+    -S localhost -U "$SQLSERVER_USER" -P "$SQLSERVER_PASSWORD" -C \
     -d "$SQLSERVER_DATABASE" \
     -Q "
     IF NOT EXISTS (
@@ -166,4 +185,4 @@ echo "  - dbo.orders (CDC enabled)"
 echo "  - dbo.line_items (CDC enabled)"
 echo ""
 echo "Verify CDC status:"
-echo "  docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd -S localhost -U $SQLSERVER_USER -P $SQLSERVER_PASSWORD -d $SQLSERVER_DATABASE -Q \"SELECT name, is_tracked_by_cdc FROM sys.tables WHERE schema_id = SCHEMA_ID('dbo')\""
+echo "  docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U $SQLSERVER_USER -P $SQLSERVER_PASSWORD -C -d $SQLSERVER_DATABASE -Q \"SELECT name, is_tracked_by_cdc FROM sys.tables WHERE schema_id = SCHEMA_ID('dbo')\""

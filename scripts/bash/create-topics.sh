@@ -73,7 +73,7 @@ docker exec cdc-kafka kafka-topics --create \
   --topic schema-changes.warehouse_source \
   --partitions 1 \
   --replication-factor "$REPLICATION_FACTOR" \
-  --config cleanup.policy=compact \
+  --config cleanup.policy=delete \
   --config compression.type=gzip \
   --config min.insync.replicas=1 \
   --if-not-exists

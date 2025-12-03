@@ -17,16 +17,9 @@ services:
       - sqlserver-data:/var/opt/mssql
     networks:
       - cdc-network
-    # Security hardening
+    # Security hardening (SQL Server requires privileged capabilities)
     security_opt:
       - no-new-privileges:true
-    cap_drop:
-      - ALL
-    cap_add:
-      - SETGID
-      - SETUID
-      - CHOWN
-      - DAC_OVERRIDE
     deploy:
       resources:
         limits:
@@ -35,7 +28,7 @@ services:
         reservations:
           memory: 2G
     healthcheck:
-      test: /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P "$${SA_PASSWORD}" -Q "SELECT 1" || exit 1
+      test: /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$${SA_PASSWORD}" -C -Q "SELECT 1" || exit 1
       interval: 10s
       timeout: 5s
       retries: 10
@@ -291,11 +284,11 @@ services:
       KAFKA_JMX_PORT: 9102
       KAFKA_JMX_HOSTNAME: kafka-connect
 
-      # HashiCorp Vault configuration
-      CONNECT_CONFIG_PROVIDERS: vault
-      CONNECT_CONFIG_PROVIDERS_VAULT_CLASS: com.github.jcustenborder.kafka.config.vault.VaultConfigProvider
-      CONNECT_CONFIG_PROVIDERS_VAULT_PARAM_VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
-      CONNECT_CONFIG_PROVIDERS_VAULT_PARAM_VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID:-dev-root-token}
+      # HashiCorp Vault configuration (disabled until plugin installed properly)
+      # CONNECT_CONFIG_PROVIDERS: vault
+      # CONNECT_CONFIG_PROVIDERS_VAULT_CLASS: com.github.jcustenborder.kafka.config.vault.VaultConfigProvider
+      # CONNECT_CONFIG_PROVIDERS_VAULT_PARAM_VAULT_ADDR: ${VAULT_ADDR:-http://vault:8200}
+      # CONNECT_CONFIG_PROVIDERS_VAULT_PARAM_VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID:-dev-root-token}
     ports:
       - "8083:8083"
       - "9102:9102"
@@ -325,16 +318,18 @@ services:
       - bash
       - -c
       - |
-        # Install Debezium SQL Server connector
-        confluent-hub install --no-prompt debezium/debezium-connector-sqlserver:2.5.0
-
         # Install Confluent JDBC Sink connector
+        echo "Installing JDBC connector..."
         confluent-hub install --no-prompt confluentinc/kafka-connect-jdbc:10.7.4
 
-        # Install Vault config provider for secrets
-        confluent-hub install --no-prompt jcustenborder/kafka-connect-vault:0.1.13
+        # Install Debezium SQL Server connector manually
+        echo "Installing Debezium SQL Server connector..."
+        cd /tmp
+        curl -sL https://repo1.maven.org/maven2/io/debezium/debezium-connector-sqlserver/2.4.2.Final/debezium-connector-sqlserver-2.4.2.Final-plugin.tar.gz | tar xz
+        mv debezium-connector-sqlserver /usr/share/confluent-hub-components/
 
         # Start Kafka Connect
+        echo "Starting Kafka Connect..."
         /etc/confluent/docker/run
     healthcheck:
       test: curl -f http://localhost:8083/connectors || exit 1
@@ -354,12 +349,12 @@ services:
       VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID:-dev-root-token}
       VAULT_DEV_LISTEN_ADDRESS: ${VAULT_DEV_LISTEN_ADDRESS:-0.0.0.0:8200}
       VAULT_ADDR: ${VAULT_API_ADDR:-http://0.0.0.0:8200}
+      VAULT_TOKEN: ${VAULT_DEV_ROOT_TOKEN_ID:-dev-root-token}
     ports:
       - "8200:8200"
     volumes:
       - vault-data:/vault/data
       - vault-logs:/vault/logs
-      - ./configs/vault:/vault/config
     networks:
       - cdc-network
     # Security hardening
@@ -371,6 +366,9 @@ services:
       - IPC_LOCK
       - SETGID
       - SETUID
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETFCAP
     deploy:
       resources:
         limits:

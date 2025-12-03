@@ -58,14 +58,42 @@ docker exec -e VAULT_TOKEN="$VAULT_TOKEN" cdc-vault \
 # Create Kafka Connect policy
 echo ""
 echo "Creating Kafka Connect policy..."
-docker exec -e VAULT_TOKEN="$VAULT_TOKEN" cdc-vault \
-  vault policy write kafka-connect /vault/config/policies/kafka-connect-policy.hcl
+docker exec -e VAULT_TOKEN="$VAULT_TOKEN" cdc-vault sh -c 'cat <<EOF | vault policy write kafka-connect -
+# Vault Policy for Kafka Connect
+# Grants read-only access to database credentials
+
+# Allow reading database credentials from KV v2 secrets engine
+path "secret/data/database/*" {
+  capabilities = ["read"]
+}
+
+# Allow listing secrets (for discovery)
+path "secret/metadata/database/*" {
+  capabilities = ["list"]
+}
+
+# Deny all other operations
+path "secret/*" {
+  capabilities = ["deny"]
+}
+
+# Allow token self-renewal (for long-running connectors)
+path "auth/token/renew-self" {
+  capabilities = ["update"]
+}
+
+# Allow token lookup (for validation)
+path "auth/token/lookup-self" {
+  capabilities = ["read"]
+}
+EOF
+'
 
 # Create a token for Kafka Connect (optional, dev-root-token is used in dev mode)
 echo ""
 echo "Creating token for Kafka Connect..."
 CONNECT_TOKEN=$(docker exec -e VAULT_TOKEN="$VAULT_TOKEN" cdc-vault \
-  vault token create -policy=kafka-connect -ttl=720h -format=json | grep -o '"client_token":"[^"]*"' | cut -d'"' -f4)
+  vault token create -policy=kafka-connect -ttl=720h -format=json | jq -r '.auth.client_token')
 
 echo ""
 echo "Kafka Connect token: $CONNECT_TOKEN"

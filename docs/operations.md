@@ -71,10 +71,9 @@ docker exec cdc-vault vault kv get secret/database
 
 ```bash
 # Insert test data into SQL Server
-docker exec cdc-sqlserver /opt/mssql-tools/bin/sqlcmd \
-  -S localhost -U sa -P 'YourStrong!Passw0rd' \
-  -d warehouse_source \
-  -Q "INSERT INTO dbo.customers (name, email) VALUES ('Test User', 'test@example.com')"
+docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U sa -P YourStrong!Passw0rd -C \
+  -Q "INSERT INTO warehouse_source.dbo.customers (name, email) VALUES ('Test User', 'test@example.com')"
 
 # Check data in PostgreSQL (wait 5-10 seconds)
 docker exec cdc-postgres psql -U postgres -d warehouse_target \

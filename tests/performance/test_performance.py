@@ -52,6 +52,20 @@ class TestPerformanceBenchmark:
         """Set up performance test table."""
         # Create test table in SQL Server
         with sqlserver_conn.cursor() as cursor:
+            # Disable CDC first if it exists
+            cursor.execute("""
+                IF EXISTS (
+                    SELECT 1 FROM sys.tables t
+                    JOIN cdc.change_tables ct ON t.object_id = ct.source_object_id
+                    WHERE t.name = 'perf_test' AND SCHEMA_NAME(t.schema_id) = 'dbo'
+                )
+                BEGIN
+                    EXEC sys.sp_cdc_disable_table
+                        @source_schema = N'dbo',
+                        @source_name = N'perf_test',
+                        @capture_instance = 'all'
+                END
+            """)
             cursor.execute("DROP TABLE IF EXISTS dbo.perf_test")
             cursor.execute("""
                 CREATE TABLE dbo.perf_test (

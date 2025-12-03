@@ -17,32 +17,34 @@ make test
 ## Tests
 
 ```bash
-pytest tests/ -v
+python3 -m venv .venv
 
-pytest tests/ -v --cov=src --cov-report=html --cov-report=term
+.venv/bin/pytest tests/ -v
 
-pytest tests/contract/ -v
+.venv/bin/pytest tests/ -v --cov=src --cov-report=html --cov-report=term
 
-pytest tests/integration/ -v
+.venv/bin/pytest tests/contract/ -v
 
-pytest tests/unit/ -v
+.venv/bin/pytest tests/integration/ -v
 
-pytest tests/e2e/ -v
+.venv/bin/pytest tests/unit/ -v
+
+.venv/bin/pytest tests/e2e/ -v
 
 # Integration tests only
-pytest -m integration -v
+.venv/bin/pytest -m integration -v
 
 # Contract tests only
-pytest -m contract -v
+.venv/bin/pytest -m contract -v
 
 # Performance tests only
-pytest -m performance -v
+.venv/bin/pytest -m performance -v
 
 # Slow tests only
-pytest -m slow -v
+.venv/bin/pytest -m slow -v
 
 # Generate JUnit XML (for CI/CD)
-pytest tests/ --junitxml=test-results.xml
+.venv/bin/pytest tests/ --junitxml=test-results.xml
 ```
 
 ## Lintings

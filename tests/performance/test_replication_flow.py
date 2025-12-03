@@ -54,6 +54,20 @@ class TestReplicationFlow:
         """Set up test table before each test."""
         # Create test table in SQL Server
         with sqlserver_conn.cursor() as cursor:
+            # Disable CDC first if it exists
+            cursor.execute("""
+                IF EXISTS (
+                    SELECT 1 FROM sys.tables t
+                    JOIN cdc.change_tables ct ON t.object_id = ct.source_object_id
+                    WHERE t.name = 'test_customers' AND SCHEMA_NAME(t.schema_id) = 'dbo'
+                )
+                BEGIN
+                    EXEC sys.sp_cdc_disable_table
+                        @source_schema = N'dbo',
+                        @source_name = N'test_customers',
+                        @capture_instance = 'all'
+                END
+            """)
             cursor.execute("DROP TABLE IF EXISTS dbo.test_customers")
             cursor.execute("""
                 CREATE TABLE dbo.test_customers (

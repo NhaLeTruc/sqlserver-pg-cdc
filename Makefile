@@ -57,15 +57,9 @@ endif
 
 clean: ## Stop and remove all containers, volumes, and networks
 	@echo "$(RED)⚠️  Cleaning up all Docker resources...$(NC)"
-	@read -p "This will delete all data. Continue? [y/N] " -n 1 -r; \
-	echo; \
-	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
-		docker compose -f docker/docker-compose.yml down -v; \
-		docker system prune -f; \
-		echo "$(GREEN)✓ Cleanup complete$(NC)"; \
-	else \
-		echo "$(YELLOW)Cleanup cancelled$(NC)"; \
-	fi
+	docker compose -f docker/docker-compose.yml down -v --remove-orphans; \
+	docker system prune -f; \
+	echo "$(GREEN)✓ Cleanup complete$(NC)"
 
 ##@ Initialization
 

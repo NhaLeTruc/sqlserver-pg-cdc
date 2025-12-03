@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # =============================================================================
   # Source Database: SQL Server 2019 with CDC enabled

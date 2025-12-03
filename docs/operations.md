@@ -24,11 +24,10 @@ This guide provides step-by-step instructions for deploying, operating, and trou
 
 ```bash
 # Start all services
-cd docker
-docker-compose up -d
+docker compose -f docker/docker-compose.yml up -d
 
 # Wait for all services to be healthy (takes ~2-3 minutes)
-docker-compose ps
+docker compose -f docker/docker-compose.yml ps
 ```
 
 ### 2. Initialize Vault with Credentials

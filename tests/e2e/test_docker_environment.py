@@ -35,7 +35,7 @@ class TestDockerComposeStartup:
     def test_docker_compose_syntax_valid(self, docker_compose_path):
         """Verify docker-compose.yml has valid syntax"""
         result = subprocess.run(
-            ["docker-compose", "-f", str(docker_compose_path), "config"],
+            ["docker", "compose", "-f", str(docker_compose_path), "config"],
             capture_output=True,
             text=True,
             timeout=30
@@ -61,7 +61,7 @@ class TestDockerComposeStartup:
         """
         # Start services in detached mode
         result = subprocess.run(
-            ["docker-compose", "-f", str(docker_compose_path), "up", "-d"],
+            ["docker", "compose", "-f", str(docker_compose_path), "up", "-d"],
             capture_output=True,
             text=True,
             timeout=300  # 5 minutes for all services to start
@@ -74,7 +74,7 @@ class TestDockerComposeStartup:
 
         # Check that all services are running
         result = subprocess.run(
-            ["docker-compose", "-f", str(docker_compose_path), "ps"],
+            ["docker", "compose", "-f", str(docker_compose_path), "ps"],
             capture_output=True,
             text=True
         )
@@ -103,7 +103,7 @@ class TestDockerComposeStartup:
 
         while time.time() - start_time < max_wait:
             result = subprocess.run(
-                ["docker-compose", "-f", str(docker_compose_path), "ps", "--format", "json"],
+                ["docker", "compose", "-f", str(docker_compose_path), "ps", "--format", "json"],
                 capture_output=True,
                 text=True
             )
@@ -484,7 +484,7 @@ def cleanup_docker_environment():
     # Note: Comment out the cleanup if you want to inspect the environment after tests
     # docker_compose_path = Path(__file__).parent.parent.parent / "docker" / "docker-compose.yml"
     # subprocess.run(
-    #     ["docker-compose", "-f", str(docker_compose_path), "down", "-v"],
+    #     ["docker", "compose", "-f", str(docker_compose_path), "down", "-v"],
     #     capture_output=True,
     #     timeout=60
     # )

@@ -248,7 +248,7 @@ main() {
 
     if [ "$started_services" -eq 0 ]; then
         log_error "No services found. Please start services with:"
-        echo "  cd docker && docker-compose up -d"
+        echo "  cd docker && docker compose up -d"
         exit 2
     fi
 
@@ -270,7 +270,7 @@ main() {
         echo ""
         log_info "Troubleshooting:"
         echo "  - Check logs: docker logs <service-name>"
-        echo "  - Restart services: cd docker && docker-compose restart"
+        echo "  - Restart services: cd docker && docker compose restart"
         echo "  - Check resources: docker stats"
         exit 1
     fi

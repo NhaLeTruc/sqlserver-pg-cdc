@@ -275,7 +275,7 @@ schema-registry: ## Show registered schemas
 ##@ Development & Testing
 
 test-lite: test-unit test-contract test-integration test-e2e ## Run lightweight tests
-	@echo "$(BLUE)Running lightweight tests...$(NC)"
+	@echo "$(BLUE) Unit, Contract, Integration, and e2e tests ran$(NC)"
 
 test-unit: ## Run unit tests
 	@echo "$(BLUE)Running unit tests...$(NC)"

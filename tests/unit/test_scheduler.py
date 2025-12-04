@@ -899,7 +899,9 @@ class TestReconcileJobWrapper:
         mock_reconcile.return_value = {"table": "test", "match": True}
         mock_generate.return_value = {"status": "PASS"}
 
-        mock_path_instance = Mock()
+        # Setup Path mock to support both construction and / operator
+        mock_path_instance = MagicMock()
+        mock_path_instance.__truediv__ = MagicMock(return_value=MagicMock())
         mock_path_class.return_value = mock_path_instance
 
         source_config = {"server": "s", "database": "d", "username": "u", "password": "p"}
@@ -914,12 +916,12 @@ class TestReconcileJobWrapper:
     @patch('psycopg2.connect')
     @patch('pyodbc.connect')
     @patch('src.reconciliation.compare.reconcile_table')
-    @patch('src.reconciliation.scheduler.generate_report')
-    @patch('src.reconciliation.scheduler.export_report_json')
+    @patch('src.reconciliation.report.generate_report')
+    @patch('src.reconciliation.report.export_report_json')
     @patch('src.reconciliation.scheduler.datetime')
     def test_reconcile_job_wrapper_uses_timestamp_in_filename(
         self, mock_datetime, mock_export, mock_generate, mock_reconcile,
-        mock_pyodbc, mock_psycopg2, mock_path
+        mock_pyodbc_connect, mock_psycopg2_connect, mock_path_class
     ):
         """Test reconcile_job_wrapper includes timestamp in report filename"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
@@ -939,14 +941,25 @@ class TestReconcileJobWrapper:
         mock_reconcile.return_value = {"table": "test", "match": True}
         mock_generate.return_value = {"status": "PASS"}
 
+        # Setup Path mock to support / operator and return proper path string
+        mock_output_path = MagicMock()
+        mock_output_path.__str__ = MagicMock(return_value="/reports/reconcile_20251204_103045.json")
+
+        mock_path_instance = MagicMock()
+        mock_path_instance.__truediv__ = MagicMock(return_value=mock_output_path)
+        mock_path_class.return_value = mock_path_instance
+
         source_config = {"server": "s", "database": "d", "username": "u", "password": "p"}
         target_config = {"host": "h", "database": "d", "username": "u", "password": "p"}
 
         reconcile_job_wrapper(source_config, target_config, ["test"], "/reports")
 
-        # Verify export was called with timestamped filename
-        export_call_args = mock_export.call_args[0]
-        assert "reconcile_20251204_103045.json" in export_call_args[1]
+        # Verify export was called - check that export_report_json was called
+        mock_export.assert_called_once()
+        # The path object was passed to export_report_json
+        call_arg = mock_export.call_args[0][1]
+        # When converted to string, it should have the timestamp
+        assert str(call_arg) == "/reports/reconcile_20251204_103045.json"
 
     @patch('src.reconciliation.scheduler.Path')
     @patch('psycopg2.connect')

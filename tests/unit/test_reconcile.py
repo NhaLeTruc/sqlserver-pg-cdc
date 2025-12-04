@@ -396,3 +396,816 @@ class TestReconciliationUtilities:
         assert "2025" in formatted
         assert "12" in formatted
         assert "02" in formatted
+
+
+# ============================================================================
+# PHASE 1 ENHANCEMENTS: Additional Coverage for compare.py
+# ============================================================================
+
+class TestCompareEnhanced:
+    """Enhanced tests for compare.py edge cases and error paths"""
+
+    def test_get_row_count_with_empty_table(self):
+        """Test get_row_count returns 0 for empty tables"""
+        from src.reconciliation.compare import get_row_count
+
+        mock_cursor = Mock()
+        mock_cursor.fetchone.return_value = (0,)
+
+        count = get_row_count(mock_cursor, "empty_table")
+
+        assert count == 0
+        mock_cursor.execute.assert_called_once()
+        assert "SELECT COUNT(*)" in mock_cursor.execute.call_args[0][0]
+
+    def test_get_row_count_with_schema_qualified_name(self):
+        """Test get_row_count handles schema.table format"""
+        from src.reconciliation.compare import get_row_count
+
+        mock_cursor = Mock()
+        mock_cursor.fetchone.return_value = (500,)
+
+        count = get_row_count(mock_cursor, "dbo.customers")
+
+        assert count == 500
+        assert "dbo.customers" in mock_cursor.execute.call_args[0][0]
+
+    def test_get_row_count_executes_correct_query(self):
+        """Test get_row_count generates correct SQL query"""
+        from src.reconciliation.compare import get_row_count
+
+        mock_cursor = Mock()
+        mock_cursor.fetchone.return_value = (100,)
+
+        get_row_count(mock_cursor, "test_table")
+
+        expected_query = "SELECT COUNT(*) FROM test_table"
+        mock_cursor.execute.assert_called_once_with(expected_query)
+
+    def test_get_row_count_with_database_exception(self):
+        """Test get_row_count propagates database exceptions"""
+        from src.reconciliation.compare import get_row_count
+
+        mock_cursor = Mock()
+        mock_cursor.execute.side_effect = Exception("Database connection lost")
+
+        with pytest.raises(Exception, match="Database connection lost"):
+            get_row_count(mock_cursor, "test_table")
+
+    def test_calculate_checksum_with_empty_table(self):
+        """Test calculate_checksum for empty table"""
+        from src.reconciliation.compare import calculate_checksum
+
+        mock_cursor = Mock()
+        mock_cursor.description = [("id",), ("name",)]
+        mock_cursor.execute.return_value = None
+        mock_cursor.__iter__ = Mock(return_value=iter([]))
+
+        checksum = calculate_checksum(mock_cursor, "empty_table", columns=["id", "name"])
+
+        # Empty table should still produce a valid MD5 hash
+        assert isinstance(checksum, str)
+        assert len(checksum) == 32
+
+    def test_calculate_checksum_with_null_values(self):
+        """Test calculate_checksum handles NULL values correctly"""
+        from src.reconciliation.compare import calculate_checksum
+
+        mock_cursor = Mock()
+        mock_cursor.description = [("id",), ("value",)]
+        mock_cursor.execute.return_value = None
+        mock_cursor.__iter__ = Mock(return_value=iter([
+            (1, None),
+            (2, "test"),
+            (3, None)
+        ]))
+
+        checksum = calculate_checksum(mock_cursor, "null_table", columns=["id", "value"])
+
+        assert isinstance(checksum, str)
+        assert len(checksum) == 32
+
+    def test_calculate_checksum_with_special_characters(self):
+        """Test calculate_checksum handles special characters and unicode"""
+        from src.reconciliation.compare import calculate_checksum
+
+        mock_cursor = Mock()
+        mock_cursor.description = [("id",), ("text",)]
+        mock_cursor.execute.return_value = None
+        mock_cursor.__iter__ = Mock(return_value=iter([
+            (1, "Test with 'quotes'"),
+            (2, "Test with \"double quotes\""),
+            (3, "Test with | pipe"),
+            (4, "Test with émojis 🚀"),
+            (5, "Test\nwith\nnewlines")
+        ]))
+
+        checksum = calculate_checksum(mock_cursor, "special_table", columns=["id", "text"])
+
+        assert isinstance(checksum, str)
+        assert len(checksum) == 32
+
+    def test_calculate_checksum_deterministic(self):
+        """Test calculate_checksum produces same result for same data"""
+        from src.reconciliation.compare import calculate_checksum
+
+        mock_cursor1 = Mock()
+        mock_cursor1.description = [("id",), ("name",)]
+        mock_cursor1.execute.return_value = None
+        mock_cursor1.__iter__ = Mock(return_value=iter([
+            (1, "Alice"),
+            (2, "Bob")
+        ]))
+
+        mock_cursor2 = Mock()
+        mock_cursor2.description = [("id",), ("name",)]
+        mock_cursor2.execute.return_value = None
+        mock_cursor2.__iter__ = Mock(return_value=iter([
+            (1, "Alice"),
+            (2, "Bob")
+        ]))
+
+        checksum1 = calculate_checksum(mock_cursor1, "table1", columns=["id", "name"])
+        checksum2 = calculate_checksum(mock_cursor2, "table2", columns=["id", "name"])
+
+        assert checksum1 == checksum2
+
+    def test_calculate_checksum_different_order_different_hash(self):
+        """Test calculate_checksum produces different hash for different row order"""
+        from src.reconciliation.compare import calculate_checksum
+
+        mock_cursor1 = Mock()
+        mock_cursor1.description = [("id",), ("name",)]
+        mock_cursor1.execute.return_value = None
+        mock_cursor1.__iter__ = Mock(return_value=iter([
+            (1, "Alice"),
+            (2, "Bob")
+        ]))
+
+        mock_cursor2 = Mock()
+        mock_cursor2.description = [("id",), ("name",)]
+        mock_cursor2.execute.return_value = None
+        mock_cursor2.__iter__ = Mock(return_value=iter([
+            (2, "Bob"),
+            (1, "Alice")
+        ]))
+
+        checksum1 = calculate_checksum(mock_cursor1, "table1", columns=["id", "name"])
+        checksum2 = calculate_checksum(mock_cursor2, "table2", columns=["id", "name"])
+
+        # Different order should produce different checksums
+        assert checksum1 != checksum2
+
+    def test_calculate_checksum_without_explicit_columns(self):
+        """Test calculate_checksum auto-detects columns from cursor description"""
+        from src.reconciliation.compare import calculate_checksum
+
+        mock_cursor = Mock()
+        mock_cursor.description = [("id",), ("name",), ("email",)]
+        mock_cursor.execute.return_value = None
+        mock_cursor.__iter__ = Mock(return_value=iter([
+            (1, "Alice", "alice@example.com")
+        ]))
+
+        checksum = calculate_checksum(mock_cursor, "auto_table")
+
+        assert isinstance(checksum, str)
+        assert len(checksum) == 32
+        # Should have called execute twice: once for LIMIT 0, once for actual query
+        assert mock_cursor.execute.call_count == 2
+
+    def test_calculate_checksum_without_description_attribute(self):
+        """Test calculate_checksum fallback when cursor lacks description"""
+        from src.reconciliation.compare import calculate_checksum
+
+        # Create a cursor-like object without description attribute
+        mock_cursor = Mock(spec=['execute', '__iter__'])
+        mock_cursor.execute.return_value = None
+        mock_cursor.__iter__ = Mock(return_value=iter([
+            (1, "Alice"),
+            (2, "Bob")
+        ]))
+
+        checksum = calculate_checksum(mock_cursor, "no_desc_table")
+
+        assert isinstance(checksum, str)
+        assert len(checksum) == 32
+        # Should use SELECT * FROM ... ORDER BY 1
+        assert "SELECT * FROM no_desc_table ORDER BY 1" in str(mock_cursor.execute.call_args)
+
+    def test_reconcile_table_row_count_only(self):
+        """Test reconcile_table with checksum validation disabled"""
+        from src.reconciliation.compare import reconcile_table
+
+        source_cursor = Mock()
+        source_cursor.fetchone.return_value = (1000,)
+
+        target_cursor = Mock()
+        target_cursor.fetchone.return_value = (1000,)
+
+        result = reconcile_table(
+            source_cursor,
+            target_cursor,
+            "source_table",
+            "target_table",
+            validate_checksum=False
+        )
+
+        assert result["table"] == "target_table"
+        assert result["source_count"] == 1000
+        assert result["target_count"] == 1000
+        assert result["match"] is True
+        assert result["difference"] == 0
+        assert "source_checksum" not in result
+        assert "target_checksum" not in result
+        assert "checksum_match" not in result
+        assert "timestamp" in result
+
+    def test_reconcile_table_with_checksum_validation(self):
+        """Test reconcile_table with checksum validation enabled"""
+        from src.reconciliation.compare import reconcile_table
+
+        source_cursor = Mock()
+        source_cursor.fetchone.return_value = (100,)
+        source_cursor.description = [("id",), ("name",)]
+        source_cursor.execute.return_value = None
+        source_cursor.__iter__ = Mock(return_value=iter([
+            (1, "Alice"),
+            (2, "Bob")
+        ]))
+
+        target_cursor = Mock()
+        target_cursor.fetchone.return_value = (100,)
+        target_cursor.description = [("id",), ("name",)]
+        target_cursor.execute.return_value = None
+        target_cursor.__iter__ = Mock(return_value=iter([
+            (1, "Alice"),
+            (2, "Bob")
+        ]))
+
+        result = reconcile_table(
+            source_cursor,
+            target_cursor,
+            "source_table",
+            "target_table",
+            validate_checksum=True,
+            columns=["id", "name"]
+        )
+
+        assert result["table"] == "target_table"
+        assert result["match"] is True
+        assert "source_checksum" in result
+        assert "target_checksum" in result
+        assert result["checksum_match"] is True
+
+    def test_reconcile_table_row_count_match_checksum_mismatch(self):
+        """Test reconcile_table when counts match but checksums differ"""
+        from src.reconciliation.compare import reconcile_table
+
+        source_cursor = Mock()
+        source_cursor.fetchone.return_value = (2,)
+        source_cursor.description = [("id",), ("name",)]
+        source_cursor.execute.return_value = None
+        source_cursor.__iter__ = Mock(return_value=iter([
+            (1, "Alice"),
+            (2, "Bob")
+        ]))
+
+        target_cursor = Mock()
+        target_cursor.fetchone.return_value = (2,)
+        target_cursor.description = [("id",), ("name",)]
+        target_cursor.execute.return_value = None
+        target_cursor.__iter__ = Mock(return_value=iter([
+            (1, "Alice"),
+            (2, "Charlie")  # Different data
+        ]))
+
+        result = reconcile_table(
+            source_cursor,
+            target_cursor,
+            "source_table",
+            "target_table",
+            validate_checksum=True,
+            columns=["id", "name"]
+        )
+
+        assert result["source_count"] == 2
+        assert result["target_count"] == 2
+        assert result["difference"] == 0
+        assert result["checksum_match"] is False
+        assert result["match"] is False  # Overall match should be False
+
+    def test_reconcile_table_with_empty_tables(self):
+        """Test reconcile_table with both tables empty"""
+        from src.reconciliation.compare import reconcile_table
+
+        source_cursor = Mock()
+        source_cursor.fetchone.return_value = (0,)
+
+        target_cursor = Mock()
+        target_cursor.fetchone.return_value = (0,)
+
+        result = reconcile_table(
+            source_cursor,
+            target_cursor,
+            "empty_source",
+            "empty_target",
+            validate_checksum=False
+        )
+
+        assert result["source_count"] == 0
+        assert result["target_count"] == 0
+        assert result["match"] is True
+        assert result["difference"] == 0
+
+    def test_reconcile_table_propagates_exceptions(self):
+        """Test reconcile_table propagates database exceptions"""
+        from src.reconciliation.compare import reconcile_table
+
+        source_cursor = Mock()
+        source_cursor.execute.side_effect = Exception("Connection timeout")
+
+        target_cursor = Mock()
+
+        with pytest.raises(Exception, match="Connection timeout"):
+            reconcile_table(
+                source_cursor,
+                target_cursor,
+                "source_table",
+                "target_table",
+                validate_checksum=False
+            )
+
+
+# ============================================================================
+# PHASE 1 ENHANCEMENTS: Additional Coverage for report.py
+# ============================================================================
+
+class TestReportEnhanced:
+    """Enhanced tests for report.py edge cases and error paths"""
+
+    def test_calculate_severity_zero_source_count_zero_difference(self):
+        """Test _calculate_severity with zero source and zero difference"""
+        from src.reconciliation.report import _calculate_severity
+
+        severity = _calculate_severity(0, 0)
+        assert severity == "LOW"
+
+    def test_calculate_severity_zero_source_count_with_difference(self):
+        """Test _calculate_severity with zero source and non-zero difference"""
+        from src.reconciliation.report import _calculate_severity
+
+        severity = _calculate_severity(0, 100)
+        assert severity == "CRITICAL"
+
+    def test_calculate_severity_less_than_point_one_percent(self):
+        """Test _calculate_severity for difference < 0.1%"""
+        from src.reconciliation.report import _calculate_severity
+
+        # 0.05% difference
+        severity = _calculate_severity(10000, 5)
+        assert severity == "LOW"
+
+    def test_calculate_severity_less_than_one_percent(self):
+        """Test _calculate_severity for difference < 1%"""
+        from src.reconciliation.report import _calculate_severity
+
+        # 0.5% difference
+        severity = _calculate_severity(10000, 50)
+        assert severity == "MEDIUM"
+
+    def test_calculate_severity_less_than_ten_percent(self):
+        """Test _calculate_severity for difference < 10%"""
+        from src.reconciliation.report import _calculate_severity
+
+        # 5% difference
+        severity = _calculate_severity(10000, 500)
+        assert severity == "HIGH"
+
+    def test_calculate_severity_greater_than_ten_percent(self):
+        """Test _calculate_severity for difference >= 10%"""
+        from src.reconciliation.report import _calculate_severity
+
+        # 50% difference
+        severity = _calculate_severity(10000, 5000)
+        assert severity == "CRITICAL"
+
+    def test_calculate_severity_boundary_values(self):
+        """Test _calculate_severity at exact boundary values"""
+        from src.reconciliation.report import _calculate_severity
+
+        # Exactly 0.1%
+        assert _calculate_severity(1000, 1) in ["LOW", "MEDIUM"]
+
+        # Exactly 1%
+        assert _calculate_severity(1000, 10) in ["MEDIUM", "HIGH"]
+
+        # Exactly 10%
+        assert _calculate_severity(1000, 100) in ["HIGH", "CRITICAL"]
+
+    def test_generate_summary_all_matched(self):
+        """Test _generate_summary when all tables match"""
+        from src.reconciliation.report import _generate_summary
+
+        summary = _generate_summary(10, 10, 0)
+        assert "All 10 tables passed" in summary
+        assert "consistent" in summary.lower()
+
+    def test_generate_summary_with_discrepancies(self):
+        """Test _generate_summary with some mismatched tables"""
+        from src.reconciliation.report import _generate_summary
+
+        summary = _generate_summary(10, 7, 3)
+        assert "3" in summary
+        assert "10" in summary
+        assert "7" in summary
+        assert "discrepancies" in summary.lower()
+
+    def test_generate_recommendations_no_discrepancies(self):
+        """Test _generate_recommendations with no issues"""
+        from src.reconciliation.report import _generate_recommendations
+
+        recommendations = _generate_recommendations([], [])
+        assert len(recommendations) > 0
+        assert any("consistent" in rec.lower() for rec in recommendations)
+
+    def test_generate_recommendations_missing_rows(self):
+        """Test _generate_recommendations for missing rows"""
+        from src.reconciliation.report import _generate_recommendations
+
+        discrepancies = [
+            {
+                "issue_type": "ROW_COUNT_MISMATCH",
+                "details": {"missing_rows": 100, "extra_rows": 0}
+            }
+        ]
+
+        recommendations = _generate_recommendations(discrepancies, [])
+        assert any("missing" in rec.lower() for rec in recommendations)
+        assert any("replication lag" in rec.lower() for rec in recommendations)
+
+    def test_generate_recommendations_extra_rows(self):
+        """Test _generate_recommendations for extra rows"""
+        from src.reconciliation.report import _generate_recommendations
+
+        discrepancies = [
+            {
+                "issue_type": "ROW_COUNT_MISMATCH",
+                "details": {"missing_rows": 0, "extra_rows": 50}
+            }
+        ]
+
+        recommendations = _generate_recommendations(discrepancies, [])
+        assert any("extra" in rec.lower() for rec in recommendations)
+        assert any("duplicate" in rec.lower() or "data quality" in rec.lower() for rec in recommendations)
+
+    def test_generate_recommendations_checksum_mismatch(self):
+        """Test _generate_recommendations for checksum issues"""
+        from src.reconciliation.report import _generate_recommendations
+
+        discrepancies = [
+            {
+                "issue_type": "CHECKSUM_MISMATCH",
+                "details": {}
+            }
+        ]
+
+        recommendations = _generate_recommendations(discrepancies, [])
+        assert any("corruption" in rec.lower() for rec in recommendations)
+        assert any("row-by-row" in rec.lower() for rec in recommendations)
+
+    def test_generate_recommendations_many_discrepancies(self):
+        """Test _generate_recommendations with many affected tables"""
+        from src.reconciliation.report import _generate_recommendations
+
+        discrepancies = [
+            {"issue_type": "ROW_COUNT_MISMATCH", "details": {"missing_rows": 10, "extra_rows": 0}}
+            for _ in range(10)
+        ]
+
+        recommendations = _generate_recommendations(discrepancies, [])
+        assert any("multiple tables" in rec.lower() or "full resync" in rec.lower()
+                   for rec in recommendations)
+
+    def test_generate_recommendations_includes_troubleshooting_reference(self):
+        """Test _generate_recommendations includes documentation reference"""
+        from src.reconciliation.report import _generate_recommendations
+
+        discrepancies = [
+            {"issue_type": "ROW_COUNT_MISMATCH", "details": {"missing_rows": 10, "extra_rows": 0}}
+        ]
+
+        recommendations = _generate_recommendations(discrepancies, [])
+        assert any("troubleshooting" in rec.lower() for rec in recommendations)
+
+    def test_export_report_json_creates_file(self, tmp_path):
+        """Test export_report_json creates valid JSON file"""
+        from src.reconciliation.report import export_report_json
+
+        report = {
+            "status": "PASS",
+            "total_tables": 5,
+            "timestamp": "2025-12-04T10:00:00"
+        }
+
+        output_file = tmp_path / "report.json"
+        export_report_json(report, str(output_file))
+
+        assert output_file.exists()
+
+        # Verify JSON is valid
+        import json
+        with open(output_file) as f:
+            loaded = json.load(f)
+
+        assert loaded["status"] == "PASS"
+        assert loaded["total_tables"] == 5
+
+    def test_export_report_json_with_complex_data(self, tmp_path):
+        """Test export_report_json handles complex nested data"""
+        from src.reconciliation.report import export_report_json, generate_report
+
+        comparison_results = [
+            {
+                "table": "test_table",
+                "source_count": 1000,
+                "target_count": 950,
+                "match": False,
+                "difference": -50,
+                "source_checksum": "abc123",
+                "target_checksum": "abc123",
+                "checksum_match": True,
+                "timestamp": "2025-12-04T10:00:00"
+            }
+        ]
+
+        report = generate_report(comparison_results)
+        output_file = tmp_path / "complex_report.json"
+        export_report_json(report, str(output_file))
+
+        assert output_file.exists()
+
+        import json
+        with open(output_file) as f:
+            loaded = json.load(f)
+
+        assert loaded["status"] == "FAIL"
+        assert len(loaded["discrepancies"]) > 0
+
+    def test_export_report_csv_creates_file(self, tmp_path):
+        """Test export_report_csv creates valid CSV file"""
+        from src.reconciliation.report import export_report_csv, generate_report
+
+        comparison_results = [
+            {
+                "table": "test_table",
+                "source_count": 1000,
+                "target_count": 950,
+                "match": False,
+                "difference": -50,
+                "source_checksum": "abc",
+                "target_checksum": "abc",
+                "checksum_match": True,
+                "timestamp": "2025-12-04T10:00:00"
+            }
+        ]
+
+        report = generate_report(comparison_results)
+        output_file = tmp_path / "report.csv"
+        export_report_csv(report, str(output_file))
+
+        assert output_file.exists()
+
+        # Verify CSV structure
+        import csv
+        with open(output_file) as f:
+            reader = csv.reader(f)
+            headers = next(reader)
+            assert "Table" in headers
+            assert "Status" in headers
+            assert "Severity" in headers
+
+    def test_export_report_csv_with_empty_discrepancies(self, tmp_path):
+        """Test export_report_csv handles reports with no discrepancies"""
+        from src.reconciliation.report import export_report_csv
+
+        report = {
+            "status": "PASS",
+            "discrepancies": []
+        }
+
+        output_file = tmp_path / "empty_report.csv"
+        export_report_csv(report, str(output_file))
+
+        assert output_file.exists()
+
+        # Should have headers only
+        import csv
+        with open(output_file) as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+            assert len(rows) == 1  # Just headers
+
+    def test_export_report_csv_with_special_characters(self, tmp_path):
+        """Test export_report_csv handles special characters in table names"""
+        from src.reconciliation.report import export_report_csv
+
+        report = {
+            "status": "FAIL",
+            "discrepancies": [
+                {
+                    "table": "table_with_'quotes'",
+                    "issue_type": "ROW_COUNT_MISMATCH",
+                    "severity": "HIGH",
+                    "details": {
+                        "source_count": 100,
+                        "target_count": 90,
+                        "missing_rows": 10,
+                        "extra_rows": 0
+                    }
+                }
+            ]
+        }
+
+        output_file = tmp_path / "special_chars.csv"
+        export_report_csv(report, str(output_file))
+
+        assert output_file.exists()
+
+    def test_format_report_console_basic_structure(self):
+        """Test format_report_console produces readable output"""
+        from src.reconciliation.report import format_report_console, generate_report
+
+        comparison_results = [
+            {
+                "table": "test_table",
+                "source_count": 1000,
+                "target_count": 1000,
+                "match": True,
+                "difference": 0,
+                "source_checksum": "abc",
+                "target_checksum": "abc",
+                "checksum_match": True,
+                "timestamp": "2025-12-04T10:00:00"
+            }
+        ]
+
+        report = generate_report(comparison_results)
+        output = format_report_console(report)
+
+        assert "RECONCILIATION REPORT" in output
+        assert "Status: PASS" in output
+        assert "Total Tables: 1" in output
+        assert "SUMMARY" in output
+
+    def test_format_report_console_with_discrepancies(self):
+        """Test format_report_console shows discrepancy details"""
+        from src.reconciliation.report import format_report_console, generate_report
+
+        comparison_results = [
+            {
+                "table": "problem_table",
+                "source_count": 1000,
+                "target_count": 950,
+                "match": False,
+                "difference": -50,
+                "source_checksum": "abc",
+                "target_checksum": "abc",
+                "checksum_match": True,
+                "timestamp": "2025-12-04T10:00:00"
+            }
+        ]
+
+        report = generate_report(comparison_results)
+        output = format_report_console(report)
+
+        assert "DISCREPANCIES" in output
+        assert "problem_table" in output
+        assert "ROW_COUNT_MISMATCH" in output
+
+    def test_format_report_console_with_recommendations(self):
+        """Test format_report_console includes recommendations"""
+        from src.reconciliation.report import format_report_console, generate_report
+
+        comparison_results = [
+            {
+                "table": "test_table",
+                "source_count": 1000,
+                "target_count": 950,
+                "match": False,
+                "difference": -50,
+                "source_checksum": "abc",
+                "target_checksum": "abc",
+                "checksum_match": True,
+                "timestamp": "2025-12-04T10:00:00"
+            }
+        ]
+
+        report = generate_report(comparison_results)
+        output = format_report_console(report)
+
+        assert "RECOMMENDATIONS" in output
+        assert any(char.isdigit() for char in output)  # Numbered list
+
+    def test_format_report_console_with_long_table_names(self):
+        """Test format_report_console handles very long table names"""
+        from src.reconciliation.report import format_report_console, generate_report
+
+        long_table_name = "very_long_table_name_" * 10
+
+        # Create a mismatch so the table name appears in discrepancies
+        comparison_results = [
+            {
+                "table": long_table_name,
+                "source_count": 100,
+                "target_count": 90,
+                "match": False,
+                "difference": -10,
+                "source_checksum": "abc",
+                "target_checksum": "abc",
+                "checksum_match": True,
+                "timestamp": "2025-12-04T10:00:00"
+            }
+        ]
+
+        report = generate_report(comparison_results)
+        output = format_report_console(report)
+
+        # Long table name should appear in discrepancies section
+        assert long_table_name in output
+        assert "DISCREPANCIES" in output
+
+    def test_generate_report_calculates_totals(self):
+        """Test generate_report calculates source and target total rows"""
+        from src.reconciliation.report import generate_report
+
+        comparison_results = [
+            {
+                "table": "table1",
+                "source_count": 1000,
+                "target_count": 1000,
+                "match": True,
+                "difference": 0,
+                "checksum_match": True
+            },
+            {
+                "table": "table2",
+                "source_count": 2000,
+                "target_count": 1950,
+                "match": False,
+                "difference": -50,
+                "checksum_match": True
+            }
+        ]
+
+        report = generate_report(comparison_results)
+
+        assert report["source_total_rows"] == 3000
+        assert report["target_total_rows"] == 2950
+
+    def test_generate_report_handles_missing_checksum_match(self):
+        """Test generate_report defaults checksum_match to True if not present"""
+        from src.reconciliation.report import generate_report
+
+        comparison_results = [
+            {
+                "table": "table1",
+                "source_count": 1000,
+                "target_count": 1000,
+                "match": True,
+                "difference": 0
+                # checksum_match intentionally missing
+            }
+        ]
+
+        report = generate_report(comparison_results)
+
+        # Should still work and consider it matched
+        assert report["status"] == "PASS"
+        assert report["tables_matched"] == 1
+
+    def test_generate_report_multiple_issues_same_table(self):
+        """Test generate_report handles both row count and checksum mismatch"""
+        from src.reconciliation.report import generate_report
+
+        comparison_results = [
+            {
+                "table": "problematic_table",
+                "source_count": 1000,
+                "target_count": 950,
+                "match": False,
+                "difference": -50,
+                "source_checksum": "abc123",
+                "target_checksum": "xyz789",
+                "checksum_match": False,
+                "timestamp": "2025-12-04T10:00:00"
+            }
+        ]
+
+        report = generate_report(comparison_results)
+
+        # Should have both ROW_COUNT_MISMATCH and CHECKSUM_MISMATCH
+        assert len(report["discrepancies"]) == 2
+        issue_types = [d["issue_type"] for d in report["discrepancies"]]
+        assert "ROW_COUNT_MISMATCH" in issue_types
+        assert "CHECKSUM_MISMATCH" in issue_types

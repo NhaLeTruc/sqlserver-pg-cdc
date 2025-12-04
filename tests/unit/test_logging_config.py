@@ -235,6 +235,34 @@ class TestJSONFormatter:
         assert "thread" in data["process"]
         assert "thread_name" in data["process"]
 
+    def test_format_without_extra_context(self):
+        """Test formatting when no extra context is present (besides LogRecord defaults)"""
+        # Arrange
+        formatter = JSONFormatter()
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="/path/to/test.py",
+            lineno=10,
+            msg="Test",
+            args=(),
+            exc_info=None
+        )
+        # Don't add any custom fields (LogRecord adds some defaults like taskName, asctime)
+
+        # Act
+        result = formatter.format(record)
+        data = json.loads(result)
+
+        # Assert
+        # Should have basic structure
+        assert data["message"] == "Test"
+        assert data["level"] == "INFO"
+        # Context may have LogRecord's default fields, but not custom ones
+        if "context" in data:
+            # Should only have LogRecord defaults, not custom fields
+            assert "custom_field" not in data["context"]
+
 
 class TestConsoleFormatter:
     """Test ConsoleFormatter class"""
@@ -350,6 +378,54 @@ class TestConsoleFormatter:
             # Assert
             assert level_name in result
             assert f"{level_name} message" in result
+
+    def test_format_without_custom_extra_items(self):
+        """Test formatting when no custom extra items are present"""
+        # Arrange
+        formatter = ConsoleFormatter(use_colors=False)
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.INFO,
+            pathname="/path/to/test.py",
+            lineno=10,
+            msg="Test message",
+            args=(),
+            exc_info=None
+        )
+        # Don't add any custom fields (LogRecord adds defaults like taskName, asctime)
+
+        # Act
+        result = formatter.format(record)
+
+        # Assert
+        # Should have the message
+        assert "Test message" in result
+        # May have brackets for LogRecord defaults, but not custom fields
+        assert "custom_field" not in result
+
+    @patch('sys.stderr.isatty', return_value=True)
+    def test_format_with_colors_level_not_in_colors(self, mock_isatty):
+        """Test formatting with colors when level is not in COLORS dict"""
+        # Arrange
+        formatter = ConsoleFormatter(use_colors=True)
+        # Create a custom level that's not in COLORS
+        record = logging.LogRecord(
+            name="test_logger",
+            level=99,  # Custom level
+            pathname="/path/to/test.py",
+            lineno=10,
+            msg="Custom level message",
+            args=(),
+            exc_info=None
+        )
+        record.levelname = "CUSTOM"
+
+        # Act
+        result = formatter.format(record)
+
+        # Assert
+        assert "CUSTOM" in result
+        assert "Custom level message" in result
 
 
 class TestSetupLogging:

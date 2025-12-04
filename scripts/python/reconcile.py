@@ -61,22 +61,21 @@ def parse_args():
     )
 
     # Mode selection
-    mode_group = parser.add_mutually_exclusive_group(required=True)
-    mode_group.add_argument(
-        "--source-table",
-        help="Source table name (e.g., dbo.customers) for on-demand reconciliation"
-    )
-    mode_group.add_argument(
-        "--source-tables",
-        help="Comma-separated list of source table names for batch reconciliation"
-    )
-    mode_group.add_argument(
+    parser.add_argument(
         "--schedule",
         action="store_true",
         help="Run in scheduled mode"
     )
 
-    # Target tables
+    # Table selection (for both on-demand and scheduled modes)
+    parser.add_argument(
+        "--source-table",
+        help="Source table name (e.g., dbo.customers)"
+    )
+    parser.add_argument(
+        "--source-tables",
+        help="Comma-separated list of source table names"
+    )
     parser.add_argument(
         "--target-table",
         help="Target table name (e.g., customers)"
@@ -287,12 +286,15 @@ def reconcile_on_demand(args):
         Exit code (0 for success/match, 1 for failure/mismatch)
     """
     # Parse tables
-    if args.source_tables:
+    if args.source_tables and args.target_tables:
         source_tables = [t.strip() for t in args.source_tables.split(",")]
         target_tables = [t.strip() for t in args.target_tables.split(",")]
-    else:
+    elif args.source_table and args.target_table:
         source_tables = [args.source_table]
         target_tables = [args.target_table]
+    else:
+        logger.error("Must provide either --source-table/--target-table or --source-tables/--target-tables")
+        return 1
 
     if len(source_tables) != len(target_tables):
         logger.error("Number of source and target tables must match")
@@ -379,13 +381,16 @@ def reconcile_scheduled(args):
         logger.error("Scheduled mode requires --interval or --cron parameter")
         return 1
 
-    if not args.source_tables or not args.target_tables:
-        logger.error("Scheduled mode requires --source-tables and --target-tables")
+    # Parse tables - support both singular and plural forms
+    if args.source_tables and args.target_tables:
+        source_tables = [t.strip() for t in args.source_tables.split(",")]
+        target_tables = [t.strip() for t in args.target_tables.split(",")]
+    elif args.source_table and args.target_table:
+        source_tables = [args.source_table]
+        target_tables = [args.target_table]
+    else:
+        logger.error("Scheduled mode requires either --source-table/--target-table or --source-tables/--target-tables")
         return 1
-
-    # Parse tables
-    source_tables = [t.strip() for t in args.source_tables.split(",")]
-    target_tables = [t.strip() for t in args.target_tables.split(",")]
 
     # Get credentials
     if args.use_vault:

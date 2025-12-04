@@ -19,8 +19,8 @@ make clean
 ## Tests
 
 ```bash
-# Run Once
-python3 -m venv .venv
+# Run unit, contract, integration, e2e
+make test-lite
 
 .venv/bin/pytest tests/ -v
 

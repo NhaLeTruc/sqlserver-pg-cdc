@@ -1209,3 +1209,27 @@ class TestReportEnhanced:
         issue_types = [d["issue_type"] for d in report["discrepancies"]]
         assert "ROW_COUNT_MISMATCH" in issue_types
         assert "CHECKSUM_MISMATCH" in issue_types
+
+    def test_format_report_console_with_no_recommendations(self):
+        """Test format_report_console when recommendations list is empty"""
+        from src.reconciliation.report import format_report_console
+
+        report = {
+            "status": "PASS",
+            "timestamp": "2025-12-04T10:00:00",
+            "total_tables": 5,
+            "tables_matched": 5,
+            "tables_mismatched": 0,
+            "source_total_rows": 1000,
+            "target_total_rows": 1000,
+            "summary": "All tables passed",
+            "discrepancies": [],
+            "recommendations": []  # Empty recommendations
+        }
+
+        result = format_report_console(report)
+
+        # Should not include RECOMMENDATIONS section when list is empty
+        assert "RECOMMENDATIONS" not in result
+        assert "All tables passed" in result
+        assert "PASS" in result

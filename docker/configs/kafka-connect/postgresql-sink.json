@@ -8,7 +8,7 @@
     "connection.user": "${vault:secret/database:postgres_user}",
     "connection.password": "${vault:secret/database:postgres_password}",
 
-    "topics": "sqlserver.warehouse_source.dbo.customers,sqlserver.warehouse_source.dbo.orders,sqlserver.warehouse_source.dbo.line_items",
+    "topics": "sqlserver.warehouse_source.dbo.customers,sqlserver.warehouse_source.dbo.orders,sqlserver.warehouse_source.dbo.line_items,sqlserver.warehouse_source.dbo.schema_test",
 
     "insert.mode": "upsert",
     "pk.mode": "record_value",

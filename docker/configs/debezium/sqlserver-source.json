@@ -12,7 +12,7 @@
     "database.encrypt": "false",
     "database.trustServerCertificate": "true",
 
-    "table.include.list": "dbo.customers,dbo.orders,dbo.line_items",
+    "table.include.list": "dbo.customers,dbo.orders,dbo.line_items,dbo.schema_test",
 
     "topic.prefix": "sqlserver",
     "schema.history.internal.kafka.bootstrap.servers": "kafka:9092",

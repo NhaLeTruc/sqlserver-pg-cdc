@@ -526,7 +526,7 @@ class TestReconciliationE2E:
         assert "Status" in result.stdout
 
     @pytest.mark.e2e
-    @pytest.mark.xfail(reason="Scheduled mode feature may not be fully implemented")
+    @pytest.mark.xfail(reason="Required 2.5+ min wait makes test impractical for regular runs")
     def test_reconcile_tool_scheduled_mode(self):
         """
         Test reconciliation tool in scheduled mode

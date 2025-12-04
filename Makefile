@@ -3,6 +3,9 @@
 # Default target
 .DEFAULT_GOAL := help
 
+# Virtual environment directory
+TARGET_DIR := .venv
+
 # Colors for output
 BLUE := \033[0;34m
 GREEN := \033[0;32m
@@ -24,6 +27,14 @@ quickstart: ## Complete setup: start services, init databases, deploy connectors
 	@$(MAKE) init
 	@$(MAKE) deploy
 	@$(MAKE) verify
+	@if [ -d "$(TARGET_DIR)" ]; then \
+		echo "Directory $(TARGET_DIR) exists."; \
+	else \
+		echo "Directory $(TARGET_DIR) does not exist. Creating it..."; \
+		python3 -m venv $(TARGET_DIR); \
+		$(TARGET_DIR)/bin/pip install -r requirements.txt; \
+		echo "$(GREEN)✓ Virtual environment created and dependencies installed$(NC)"; \
+	fi
 	@echo "$(GREEN)✅ Quickstart complete! CDC pipeline is running.$(NC)"
 
 ##@ Docker Services
@@ -263,21 +274,28 @@ schema-registry: ## Show registered schemas
 
 ##@ Development & Testing
 
+test-lite: test-unit test-contract test-integration test-e2e ## Run lightweight tests
+	@echo "$(BLUE)Running lightweight tests...$(NC)"
+
 test-unit: ## Run unit tests
 	@echo "$(BLUE)Running unit tests...$(NC)"
-	@cd tests && pytest -v -m unit
+	@.venv/bin/pytest tests/unit/ -v --no-cov
+
+test-contract: ## Run unit tests
+	@echo "$(BLUE)Running contract tests...$(NC)"
+	@.venv/bin/pytest tests/contract/ -v --no-cov
 
 test-integration: ## Run integration tests
 	@echo "$(BLUE)Running integration tests...$(NC)"
-	@cd tests && pytest -v -m integration
+	@.venv/bin/pytest tests/integration/ -v --no-cov
 
 test-e2e: ## Run end-to-end tests
 	@echo "$(BLUE)Running E2E tests...$(NC)"
-	@cd tests && pytest -v -m e2e
+	@.venv/bin/pytest tests/e2e/ -v --no-cov
 
 test-all: ## Run all tests
 	@echo "$(BLUE)Running all tests...$(NC)"
-	@cd tests && pytest -v
+	@.venv/bin/pytest -v
 
 ##@ Code Quality
 

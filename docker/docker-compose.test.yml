@@ -1,5 +1,3 @@
-version: '3.8'
-
 # Test environment override for Testcontainers-based integration testing
 # Usage: docker-compose -f docker-compose.yml -f docker-compose.test.yml up
 

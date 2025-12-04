@@ -5,18 +5,21 @@
 ```bash
 make quickstart
 
-make stop
-
-make clean
+docker ps --format "table {{.Names}}\t{{.Status}}"
 
 # Simple insert and select test
 make test
+
+make stop
+
+make clean
 ```
 
 
 ## Tests
 
 ```bash
+# Run Once
 python3 -m venv .venv
 
 .venv/bin/pytest tests/ -v
@@ -25,11 +28,13 @@ python3 -m venv .venv
 
 .venv/bin/pytest tests/contract/ -v
 
-.venv/bin/pytest tests/integration/ -v
-
 .venv/bin/pytest tests/unit/ -v
 
+.venv/bin/pytest tests/integration/ -v
+
 .venv/bin/pytest tests/e2e/ -v
+
+.venv/bin/pytest tests/performance/ -v
 
 # Integration tests only
 .venv/bin/pytest -m integration -v

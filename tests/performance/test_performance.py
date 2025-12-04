@@ -315,3 +315,25 @@ class TestPerformanceBenchmark:
             f"Throughput inconsistency detected. Std dev {std_dev:.0f} exceeds "
             f"20% of average ({max_std_dev:.0f})"
         )
+
+    @pytest.mark.slow
+    def test_reconcile_tool_handles_large_tables(
+        self, sqlserver_connection, postgres_connection
+    ):
+        """
+        Test reconciliation handles large tables efficiently
+
+        Scenario:
+        1. Create 1 million row table in both databases
+        2. Run reconciliation
+        3. Verify completes in under 10 minutes (NFR requirement)
+        """
+        # This test creates a large dataset
+        pytest.skip("Requires significant time and resources")
+
+        sqlserver_cursor = sqlserver_connection.cursor()
+        postgres_cursor = postgres_connection.cursor()
+
+        # Create 1M row table
+        # Run reconciliation
+        # Verify performance

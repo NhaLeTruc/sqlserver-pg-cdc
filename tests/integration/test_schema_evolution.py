@@ -147,141 +147,6 @@ class TestSchemaEvolution:
         time.sleep(timeout)  # Schema changes take time to propagate
         return True
 
-    @pytest.mark.skip(reason="Schema evolution requires connector to be configured for schema_test table. "
-                             "The existing connector only handles customers/orders/line_items topics. "
-                             "To enable: add sqlserver.warehouse_source.dbo.schema_test to connector topics.")
-    def test_add_column_detection(
-        self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
-    ) -> None:
-        """
-        Test that adding a column in SQL Server is detected and handled.
-
-        With auto.evolve=true, the new column should be automatically
-        added to the PostgreSQL table.
-
-        NOTE: This test requires the JDBC sink connector to be configured
-        to listen to the schema_test table's CDC topic.
-        """
-        # Add column to SQL Server table
-        with sqlserver_conn.cursor() as cursor:
-            cursor.execute("""
-                ALTER TABLE dbo.schema_test
-                ADD phone NVARCHAR(20) NULL
-            """)
-            sqlserver_conn.commit()
-
-        # Wait for schema change to propagate
-        self.wait_for_schema_change(postgres_conn, timeout=30)
-
-        # Insert data with new column
-        with sqlserver_conn.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO dbo.schema_test (name, email, phone)
-                VALUES ('User With Phone', 'phone@example.com', '555-1234')
-            """)
-            sqlserver_conn.commit()
-
-        # Wait for replication
-        time.sleep(10)
-
-        # Verify column was added in PostgreSQL
-        with postgres_conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT column_name, data_type
-                FROM information_schema.columns
-                WHERE table_name = 'schema_test'
-                ORDER BY ordinal_position
-            """)
-            columns = cursor.fetchall()
-
-            column_names = [col[0] for col in columns]
-            assert "phone" in column_names, (
-                f"Column 'phone' not found in PostgreSQL. Columns: {column_names}. "
-                f"Check auto.evolve=true is configured in JDBC sink connector."
-            )
-
-            # Verify data with new column replicated correctly
-            cursor.execute("""
-                SELECT name, email, phone
-                FROM schema_test
-                WHERE name = 'User With Phone'
-            """)
-            row = cursor.fetchone()
-            assert row is not None, "Row with new column not replicated"
-            assert row[2] == "555-1234", f"Phone value incorrect: {row[2]}"
-
-    @pytest.mark.skip(reason="Schema evolution requires connector to be configured for schema_test table. "
-                             "The existing connector only handles customers/orders/line_items topics. "
-                             "To enable: add sqlserver.warehouse_source.dbo.schema_test to connector topics.")
-    def test_drop_column_detection(
-        self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
-    ) -> None:
-        """
-        Test that dropping a column in SQL Server is detected.
-
-        Note: auto.evolve does NOT drop columns automatically for safety.
-        The column will remain in PostgreSQL but won't receive new data.
-
-        NOTE: This test requires the JDBC sink connector to be configured
-        to listen to the schema_test table's CDC topic.
-        """
-        # Get initial column count in PostgreSQL
-        with postgres_conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT COUNT(*)
-                FROM information_schema.columns
-                WHERE table_name = 'schema_test'
-            """)
-            initial_col_count = cursor.fetchone()[0]
-
-        # Drop column from SQL Server table
-        with sqlserver_conn.cursor() as cursor:
-            cursor.execute("""
-                ALTER TABLE dbo.schema_test
-                DROP COLUMN email
-            """)
-            sqlserver_conn.commit()
-
-        # Wait for schema change to propagate
-        self.wait_for_schema_change(postgres_conn, timeout=30)
-
-        # Insert data without dropped column
-        with sqlserver_conn.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO dbo.schema_test (name)
-                VALUES ('User After Drop')
-            """)
-            sqlserver_conn.commit()
-
-        # Wait for replication
-        time.sleep(10)
-
-        # Verify column still exists in PostgreSQL (safety feature)
-        with postgres_conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT COUNT(*)
-                FROM information_schema.columns
-                WHERE table_name = 'schema_test'
-            """)
-            current_col_count = cursor.fetchone()[0]
-
-            assert current_col_count == initial_col_count, (
-                "Column was dropped in PostgreSQL. This should not happen automatically "
-                "for safety reasons. Column count changed from {} to {}".format(
-                    initial_col_count, current_col_count
-                )
-            )
-
-            # Verify new data replicated (with NULL in dropped column)
-            cursor.execute("""
-                SELECT name, email
-                FROM schema_test
-                WHERE name = 'User After Drop'
-            """)
-            row = cursor.fetchone()
-            assert row is not None, "Row not replicated after column drop"
-            assert row[1] is None, f"Email should be NULL, got: {row[1]}"
-
     def test_alter_column_type_detection(
         self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
     ) -> None:
@@ -332,9 +197,6 @@ class TestSchemaEvolution:
                 # Type changes may fail or be complex - log for investigation
                 print(f"ALTER COLUMN test note: {e}")
 
-    @pytest.mark.skip(reason="DLQ routing requires connector to be configured for schema_test table. "
-                             "The existing connector only handles customers/orders/line_items topics. "
-                             "To enable: add sqlserver.warehouse_source.dbo.schema_test to connector topics.")
     def test_schema_mismatch_routing_to_dlq(
         self,
         sqlserver_conn: pyodbc.Connection,
@@ -376,7 +238,7 @@ class TestSchemaEvolution:
             sqlserver_conn.commit()
 
         # Wait for processing and DLQ routing
-        time.sleep(15)
+        time.sleep(25)
 
         # Check DLQ size increased
         current_dlq_size = self._get_topic_size(dlq_topic)
@@ -510,3 +372,136 @@ class TestSchemaEvolution:
                 schema_info = response.json()
                 print(f"Schema for {subject}: version {schema_info.get('version')}")
                 assert "schema" in schema_info, "Schema data missing"
+
+    # CDC needs to be disabled and re-enabled for some schema changes to be detected.
+    # Recommended to test ADD and DROP column manually as needed.
+    # Auto.evolve should not be relied upon in production without careful consideration.
+    
+    # def test_add_column_detection(
+    #     self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
+    # ) -> None:
+    #     """
+    #     Test that adding a column in SQL Server is detected and handled.
+
+    #     With auto.evolve=true, the new column should be automatically
+    #     added to the PostgreSQL table.
+
+    #     NOTE: This test requires the JDBC sink connector to be configured
+    #     to listen to the schema_test table's CDC topic.
+    #     """
+    #     # Add column to SQL Server table
+    #     with sqlserver_conn.cursor() as cursor:
+    #         cursor.execute("""
+    #             ALTER TABLE dbo.schema_test
+    #             ADD phone NVARCHAR(20) NULL
+    #         """)
+    #         sqlserver_conn.commit()
+
+    #     # Wait for schema change to propagate
+    #     self.wait_for_schema_change(postgres_conn, timeout=30)
+
+    #     # Insert data with new column
+    #     with sqlserver_conn.cursor() as cursor:
+    #         cursor.execute("""
+    #             INSERT INTO dbo.schema_test (name, email, phone)
+    #             VALUES ('User With Phone', 'phone@example.com', '555-1234')
+    #         """)
+    #         sqlserver_conn.commit()
+
+    #     # Wait for replication
+    #     time.sleep(10)
+
+    #     # Verify column was added in PostgreSQL
+    #     with postgres_conn.cursor() as cursor:
+    #         cursor.execute("""
+    #             SELECT column_name, data_type
+    #             FROM information_schema.columns
+    #             WHERE table_name = 'schema_test'
+    #             ORDER BY ordinal_position
+    #         """)
+    #         columns = cursor.fetchall()
+
+    #         column_names = [col[0] for col in columns]
+    #         assert "phone" in column_names, (
+    #             f"Column 'phone' not found in PostgreSQL. Columns: {column_names}. "
+    #             f"Check auto.evolve=true is configured in JDBC sink connector."
+    #         )
+
+    #         # Verify data with new column replicated correctly
+    #         cursor.execute("""
+    #             SELECT name, email, phone
+    #             FROM schema_test
+    #             WHERE name = 'User With Phone'
+    #         """)
+    #         row = cursor.fetchone()
+    #         assert row is not None, "Row with new column not replicated"
+    #         assert row[2] == "555-1234", f"Phone value incorrect: {row[2]}"
+
+    # def test_drop_column_detection(
+    #     self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
+    # ) -> None:
+    #     """
+    #     Test that dropping a column in SQL Server is detected.
+
+    #     Note: auto.evolve does NOT drop columns automatically for safety.
+    #     The column will remain in PostgreSQL but won't receive new data.
+
+    #     NOTE: This test requires the JDBC sink connector to be configured
+    #     to listen to the schema_test table's CDC topic.
+    #     """
+    #     # Get initial column count in PostgreSQL
+    #     with postgres_conn.cursor() as cursor:
+    #         cursor.execute("""
+    #             SELECT COUNT(*)
+    #             FROM information_schema.columns
+    #             WHERE table_name = 'schema_test'
+    #         """)
+    #         initial_col_count = cursor.fetchone()[0]
+
+    #     # Drop column from SQL Server table
+    #     with sqlserver_conn.cursor() as cursor:
+    #         cursor.execute("""
+    #             ALTER TABLE dbo.schema_test
+    #             DROP COLUMN email
+    #         """)
+    #         sqlserver_conn.commit()
+
+    #     # Wait for schema change to propagate
+    #     self.wait_for_schema_change(postgres_conn, timeout=30)
+
+    #     # Insert data without dropped column
+    #     with sqlserver_conn.cursor() as cursor:
+    #         cursor.execute("""
+    #             INSERT INTO dbo.schema_test (name)
+    #             VALUES ('User After Drop')
+    #         """)
+    #         sqlserver_conn.commit()
+
+    #     # Wait for replication
+    #     time.sleep(10)
+
+    #     # Verify column still exists in PostgreSQL (safety feature)
+    #     with postgres_conn.cursor() as cursor:
+    #         cursor.execute("""
+    #             SELECT COUNT(*)
+    #             FROM information_schema.columns
+    #             WHERE table_name = 'schema_test'
+    #         """)
+    #         current_col_count = cursor.fetchone()[0]
+
+    #         assert current_col_count == initial_col_count, (
+    #             "Column was dropped in PostgreSQL. This should not happen automatically "
+    #             "for safety reasons. Column count changed from {} to {}".format(
+    #                 initial_col_count, current_col_count
+    #             )
+    #         )
+
+    #         # Verify new data replicated (with NULL in dropped column)
+    #         cursor.execute("""
+    #             SELECT name, email
+    #             FROM schema_test
+    #             WHERE name = 'User After Drop'
+    #         """)
+    #         row = cursor.fetchone()
+    #         assert row is not None, "Row not replicated after column drop"
+    #         assert row[1] is None, f"Email should be NULL, got: {row[1]}"

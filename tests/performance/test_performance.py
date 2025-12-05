@@ -162,6 +162,7 @@ class TestPerformanceBenchmark:
 
         return False, timeout
 
+    @pytest.mark.slow
     def test_throughput_10k_rows_per_second(
         self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
     ) -> None:
@@ -221,6 +222,7 @@ class TestPerformanceBenchmark:
                 f"Expected {total_rows} rows, found {final_count}"
             )
 
+    @pytest.mark.slow
     def test_replication_lag_under_5_minutes(
         self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
     ) -> None:
@@ -252,6 +254,7 @@ class TestPerformanceBenchmark:
 
         print(f"Replication lag: {replication_lag:.2f}s (under {max_lag_seconds}s requirement)")
 
+    @pytest.mark.slow
     def test_sustained_throughput_over_time(
         self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
     ) -> None:

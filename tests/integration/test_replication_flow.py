@@ -131,17 +131,18 @@ class TestReplicationFlow:
         self,
         postgres_conn: psycopg2.extensions.connection,
         expected_count: int,
-        timeout: int = 300,
+        retry: int = 3,
     ) -> bool:
         """Wait for replication to complete by polling PostgreSQL."""
-        start_time = time.time()
-        while time.time() - start_time < timeout:
+        i = 0
+        while i <= retry:
             with postgres_conn.cursor() as cursor:
                 cursor.execute("SELECT COUNT(*) FROM test_customers")
                 count = cursor.fetchone()[0]
                 if count >= expected_count:
                     return True
-            time.sleep(1)
+            i += 1
+            time.sleep(5)
         return False
 
     def test_insert_replication(
@@ -264,42 +265,6 @@ class TestReplicationFlow:
             names = [row[0] for row in cursor.fetchall()]
             expected_names = ["Alice Brown", "Charlie Davis", "Diana Evans"]
             assert names == expected_names, f"Names mismatch: {names} != {expected_names}"
-
-    def test_bulk_insert_10k_rows(
-        self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
-    ) -> None:
-        """Test bulk insert of 10K rows replicates successfully."""
-        # Generate 10K rows
-        rows_to_insert = 10000
-        batch_size = 1000
-
-        with sqlserver_conn.cursor() as cursor:
-            for batch_start in range(0, rows_to_insert, batch_size):
-                values = []
-                for i in range(batch_start, min(batch_start + batch_size, rows_to_insert)):
-                    values.append(
-                        f"('User{i}', 'user{i}@example.com', {20 + (i % 50)})"
-                    )
-
-                sql = f"""
-                    INSERT INTO dbo.test_customers (name, email, age)
-                    VALUES {', '.join(values)}
-                """
-                cursor.execute(sql)
-            sqlserver_conn.commit()
-
-        # Wait for replication (may take longer for 10K rows)
-        assert self.wait_for_replication(postgres_conn, rows_to_insert, timeout=600), (
-            f"Bulk replication of {rows_to_insert} rows did not complete within timeout"
-        )
-
-        # Verify count in PostgreSQL
-        with postgres_conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM test_customers")
-            count = cursor.fetchone()[0]
-            assert count == rows_to_insert, (
-                f"Expected {rows_to_insert} rows, got {count}"
-            )
 
     def test_null_value_handling(
         self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection

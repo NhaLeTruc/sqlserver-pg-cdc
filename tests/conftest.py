@@ -542,3 +542,82 @@ def cleanup_test_tables(sqlserver_cursor: pyodbc.Cursor, postgres_cursor: psycop
         postgres_cursor.connection.commit()
     except Exception:
         pass
+
+
+# =============================================================================
+# Integration Test Environment Reset
+# =============================================================================
+
+@pytest.fixture(scope="session", autouse=True)
+def reset_test_environment(project_root: Path):
+    """
+    Reset test environment before running integration tests.
+
+    - With FULL_RESET=1: Complete Docker environment reset (slow but thorough)
+    - Without FULL_RESET: Uses existing environment (fast but may have stale state)
+
+    This ensures tests run in a clean, predictable state.
+    """
+    import subprocess
+
+    if os.environ.get("FULL_RESET") == "1":
+        print("\n" + "="*70)
+        print("🔄 FULL ENVIRONMENT RESET - This will take ~2 minutes")
+        print("="*70)
+
+        # Stop and clean everything
+        print("📦 Stopping Docker services and clearing volumes...")
+        subprocess.run(
+            ["make", "stop"],
+            cwd=project_root,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        time.sleep(5)
+
+        # Start fresh
+        print("🚀 Starting Docker services...")
+        subprocess.run(
+            ["make", "start"],
+            cwd=project_root,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        print("⏳ Waiting for services to be ready (30s)...")
+        time.sleep(30)
+
+        # Initialize
+        print("🔧 Initializing databases and Vault...")
+        subprocess.run(
+            ["make", "init"],
+            cwd=project_root,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        time.sleep(5)
+
+        # Deploy connectors
+        print("🔌 Deploying Kafka connectors...")
+        subprocess.run(
+            ["make", "deploy"],
+            cwd=project_root,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        print("⏳ Waiting for connectors to be ready (10s)...")
+        time.sleep(10)
+
+        print("="*70)
+        print("✅ Environment reset complete - tests starting")
+        print("="*70 + "\n")
+    else:
+        print("\n" + "="*70)
+        print("⚡ Using existing Docker environment")
+        print("   Set FULL_RESET=1 for complete environment reset")
+        print("="*70 + "\n")
+
+    yield

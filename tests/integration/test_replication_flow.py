@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional
 import psycopg2
 import pyodbc
 import pytest
+import requests
 
 
 class TestReplicationFlow:
@@ -47,11 +48,11 @@ class TestReplicationFlow:
         yield conn
         conn.close()
 
-    @pytest.fixture(autouse=True)
+    @pytest.fixture(scope="class", autouse=True)
     def setup_test_table(
         self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
     ) -> None:
-        """Set up test table before each test."""
+        """Set up test table once for all tests in the class."""
         # Create test table in SQL Server
         with sqlserver_conn.cursor() as cursor:
             # Disable CDC first if it exists
@@ -97,23 +98,27 @@ class TestReplicationFlow:
             """)
             sqlserver_conn.commit()
 
-        # Create corresponding table in PostgreSQL
+        # Truncate PostgreSQL table if it exists (preserve schema for connector)
         with postgres_conn.cursor() as cursor:
-            cursor.execute("DROP TABLE IF EXISTS test_customers")
-            cursor.execute("""
-                CREATE TABLE test_customers (
-                    id INTEGER PRIMARY KEY,
-                    name VARCHAR(100),
-                    email VARCHAR(100),
-                    age INTEGER,
-                    created_at TIMESTAMP,
-                    updated_at TIMESTAMP
-                )
-            """)
+            try:
+                cursor.execute("TRUNCATE TABLE test_customers")
+            except psycopg2.errors.UndefinedTable:
+                # Table doesn't exist yet, connector will create it
+                pass
+
+        # Wait for connector to detect the new SQL Server CDC table
+        time.sleep(10)
 
         yield
 
-        # Cleanup
+        # Cleanup - truncate PostgreSQL table
+        with postgres_conn.cursor() as cursor:
+            try:
+                cursor.execute("TRUNCATE TABLE test_customers")
+            except psycopg2.errors.UndefinedTable:
+                pass
+
+        # Cleanup SQL Server
         with sqlserver_conn.cursor() as cursor:
             cursor.execute("""
                 EXEC sys.sp_cdc_disable_table
@@ -131,16 +136,20 @@ class TestReplicationFlow:
         self,
         postgres_conn: psycopg2.extensions.connection,
         expected_count: int,
-        retry: int = 3,
+        retries: int = 3,
     ) -> bool:
         """Wait for replication to complete by polling PostgreSQL."""
         i = 0
-        while i <= retry:
-            with postgres_conn.cursor() as cursor:
-                cursor.execute("SELECT COUNT(*) FROM test_customers")
-                count = cursor.fetchone()[0]
-                if count >= expected_count:
-                    return True
+        while i <= retries:
+            try:
+                with postgres_conn.cursor() as cursor:
+                    cursor.execute("SELECT COUNT(*) FROM test_customers")
+                    count = cursor.fetchone()[0]
+                    if count >= expected_count:
+                        return True
+            except psycopg2.errors.UndefinedTable:
+                # Table doesn't exist yet, connector will create it
+                pass
             i += 1
             time.sleep(5)
         return False
@@ -183,8 +192,8 @@ class TestReplicationFlow:
             """)
             sqlserver_conn.commit()
 
-        # Wait for initial insert
-        assert self.wait_for_replication(postgres_conn, 1)
+        # Wait for initial insert (cumulative count, previous test inserted 1 row)
+        assert self.wait_for_replication(postgres_conn, 2)
 
         # Update data in SQL Server
         with sqlserver_conn.cursor() as cursor:
@@ -195,8 +204,15 @@ class TestReplicationFlow:
             """)
             sqlserver_conn.commit()
 
-        # Wait for update to propagate
-        time.sleep(5)
+        # Wait for update to propagate with retries
+        max_retries = 6
+        for attempt in range(max_retries):
+            time.sleep(5)
+            with postgres_conn.cursor() as cursor:
+                cursor.execute("SELECT age FROM test_customers WHERE name = 'Jane Smith'")
+                row = cursor.fetchone()
+                if row and row[0] == 26:
+                    break
 
         # Verify updated data in PostgreSQL
         with postgres_conn.cursor() as cursor:
@@ -217,22 +233,32 @@ class TestReplicationFlow:
             """)
             sqlserver_conn.commit()
 
-        # Wait for insert
-        assert self.wait_for_replication(postgres_conn, 1)
+        # Wait for insert (cumulative count, previous tests inserted 2 rows)
+        assert self.wait_for_replication(postgres_conn, 3)
 
         # Delete data in SQL Server
         with sqlserver_conn.cursor() as cursor:
             cursor.execute("DELETE FROM dbo.test_customers WHERE name = 'Bob Johnson'")
             sqlserver_conn.commit()
 
-        # Wait for delete to propagate
-        time.sleep(5)
+        # Wait for delete to propagate with retries
+        max_retries = 6
+        deleted_marked = False
+        for attempt in range(max_retries):
+            time.sleep(5)
+            with postgres_conn.cursor() as cursor:
+                cursor.execute("SELECT __deleted FROM test_customers WHERE name = 'Bob Johnson'")
+                row = cursor.fetchone()
+                if row and row[0] == 'true':
+                    deleted_marked = True
+                    break
 
-        # Verify data deleted in PostgreSQL
+        # Verify data marked as deleted in PostgreSQL (__deleted column)
         with postgres_conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM test_customers WHERE name = 'Bob Johnson'")
-            count = cursor.fetchone()[0]
-            assert count == 0, f"Row should be deleted, found {count} rows"
+            cursor.execute("SELECT __deleted FROM test_customers WHERE name = 'Bob Johnson'")
+            row = cursor.fetchone()
+            assert row is not None, "Row not found in PostgreSQL"
+            assert row[0] == 'true', f"Row should be marked as deleted (__deleted='true'), got __deleted='{row[0]}'"
 
     def test_transactional_consistency(
         self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
@@ -249,19 +275,19 @@ class TestReplicationFlow:
             """)
             sqlserver_conn.commit()
 
-        # Wait for replication
-        assert self.wait_for_replication(postgres_conn, 3), (
+        # Wait for replication (cumulative count: previous tests inserted 3, all still present with soft delete)
+        assert self.wait_for_replication(postgres_conn, 6), (
             "Transaction replication did not complete"
         )
 
-        # Verify all rows are present
+        # Verify these 3 specific rows are present
         with postgres_conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM test_customers")
+            cursor.execute("SELECT COUNT(*) FROM test_customers WHERE name IN ('Alice Brown', 'Charlie Davis', 'Diana Evans')")
             count = cursor.fetchone()[0]
-            assert count == 3, f"Expected 3 rows, got {count}"
+            assert count == 3, f"Expected 3 new rows, got {count}"
 
             # Verify all names are present
-            cursor.execute("SELECT name FROM test_customers ORDER BY name")
+            cursor.execute("SELECT name FROM test_customers WHERE name IN ('Alice Brown', 'Charlie Davis', 'Diana Evans') ORDER BY name")
             names = [row[0] for row in cursor.fetchall()]
             expected_names = ["Alice Brown", "Charlie Davis", "Diana Evans"]
             assert names == expected_names, f"Names mismatch: {names} != {expected_names}"
@@ -278,8 +304,8 @@ class TestReplicationFlow:
             """)
             sqlserver_conn.commit()
 
-        # Wait for replication
-        assert self.wait_for_replication(postgres_conn, 1)
+        # Wait for replication (cumulative count: 6 previous rows + 1 new = 7 total)
+        assert self.wait_for_replication(postgres_conn, 7)
 
         # Verify NULL values in PostgreSQL
         with postgres_conn.cursor() as cursor:

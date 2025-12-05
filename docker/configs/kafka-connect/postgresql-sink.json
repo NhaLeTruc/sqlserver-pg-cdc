@@ -8,14 +8,14 @@
     "connection.user": "${vault:secret/database:postgres_user}",
     "connection.password": "${vault:secret/database:postgres_password}",
 
-    "topics": "sqlserver.warehouse_source.dbo.customers,sqlserver.warehouse_source.dbo.orders,sqlserver.warehouse_source.dbo.line_items,sqlserver.warehouse_source.dbo.schema_test",
+    "topics": "sqlserver.warehouse_source.dbo.customers,sqlserver.warehouse_source.dbo.orders,sqlserver.warehouse_source.dbo.line_items,sqlserver.warehouse_source.dbo.schema_test,sqlserver.warehouse_source.dbo.test_customers",
 
     "insert.mode": "upsert",
     "pk.mode": "record_value",
     "pk.fields": "id",
 
     "table.name.format": "${topic}",
-    "auto.create": "false",
+    "auto.create": "true",
     "auto.evolve": "true",
 
     "batch.size": "3000",
@@ -38,10 +38,12 @@
     "errors.log.enable": "true",
     "errors.log.include.messages": "true",
 
-    "transforms": "unwrap,route",
+    "transforms": "unwrap,addDeleted,route",
     "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
     "transforms.unwrap.drop.tombstones": "false",
     "transforms.unwrap.delete.handling.mode": "rewrite",
+    "transforms.unwrap.add.fields": "op",
+    "transforms.addDeleted.type": "com.example.kafka.connect.transforms.AddDeletedField$Value",
     "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
     "transforms.route.regex": "sqlserver\\.warehouse_source\\.dbo\\.(.*)",
     "transforms.route.replacement": "$1"

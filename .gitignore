@@ -46,6 +46,7 @@ docker/*.local.yml
 *.swp
 *.swo
 *~
+*/target/
 .DS_Store
 Thumbs.db
 

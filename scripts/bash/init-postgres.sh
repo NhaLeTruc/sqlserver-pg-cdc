@@ -94,15 +94,32 @@ CREATE INDEX IF NOT EXISTS idx_line_items_order_id ON line_items(order_id);
 CREATE INDEX IF NOT EXISTS idx_line_items_product_id ON line_items(product_id);
 "
 
+# Create test_customers table for integration tests
+echo "Creating test_customers table..."
+docker exec cdc-postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+CREATE TABLE IF NOT EXISTS test_customers (
+    id INTEGER PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100),
+    age INTEGER,
+    created_at BIGINT,
+    updated_at BIGINT,
+    __deleted VARCHAR(10)
+);
+
+CREATE INDEX IF NOT EXISTS idx_test_customers_email ON test_customers(email);
+CREATE INDEX IF NOT EXISTS idx_test_customers_name ON test_customers(name);
+"
+
 # Verify tables were created
 echo ""
 echo "Verifying tables..."
-TABLES=$(docker exec cdc-postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('customers', 'orders', 'line_items')")
+TABLES=$(docker exec cdc-postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -tAc "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_name IN ('customers', 'orders', 'line_items', 'test_customers')")
 
-if [ "$TABLES" -eq 3 ]; then
-    echo "✓ All 3 tables created successfully"
+if [ "$TABLES" -eq 4 ]; then
+    echo "✓ All 4 tables created successfully"
 else
-    echo "⚠ Warning: Expected 3 tables but found $TABLES"
+    echo "⚠ Warning: Expected 4 tables but found $TABLES"
 fi
 
 echo ""
@@ -112,6 +129,7 @@ echo "Tables created with Debezium CDC schema:"
 echo "  - customers (id, name, email, created_at, updated_at, __deleted)"
 echo "  - orders (id, customer_id, order_date, total_amount, status, __deleted)"
 echo "  - line_items (id, order_id, product_id, quantity, unit_price, __deleted)"
+echo "  - test_customers (id, name, email, age, created_at, updated_at, __deleted)"
 echo ""
 echo "Note: Timestamp columns use BIGINT (microseconds since epoch)"
 echo "      __deleted column tracks soft deletes from Debezium"

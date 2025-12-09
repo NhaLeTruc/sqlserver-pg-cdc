@@ -98,13 +98,9 @@ class TestReplicationFlow:
             """)
             sqlserver_conn.commit()
 
-        # Truncate PostgreSQL table if it exists (preserve schema for connector)
+        # Truncate PostgreSQL table (table should be created by init-postgres.sh)
         with postgres_conn.cursor() as cursor:
-            try:
-                cursor.execute("TRUNCATE TABLE test_customers")
-            except psycopg2.errors.UndefinedTable:
-                # Table doesn't exist yet, connector will create it
-                pass
+            cursor.execute("TRUNCATE TABLE test_customers")
 
         # Wait for connector to detect the new SQL Server CDC table
         time.sleep(10)
@@ -128,9 +124,6 @@ class TestReplicationFlow:
             """)
             cursor.execute("DROP TABLE IF EXISTS dbo.test_customers")
             sqlserver_conn.commit()
-
-        with postgres_conn.cursor() as cursor:
-            cursor.execute("DROP TABLE IF EXISTS test_customers")
 
     def wait_for_replication(
         self,

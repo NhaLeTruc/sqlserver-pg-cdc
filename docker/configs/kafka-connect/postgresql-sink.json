@@ -15,7 +15,7 @@
     "pk.fields": "id",
 
     "table.name.format": "${topic}",
-    "auto.create": "true",
+    "auto.create": "false",
     "auto.evolve": "true",
 
     "batch.size": "3000",
@@ -38,12 +38,11 @@
     "errors.log.enable": "true",
     "errors.log.include.messages": "true",
 
-    "transforms": "unwrap,addDeleted,route",
+    "transforms": "unwrap,route",
     "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
-    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.unwrap.drop.tombstones": "true",
     "transforms.unwrap.delete.handling.mode": "rewrite",
-    "transforms.unwrap.add.fields": "op",
-    "transforms.addDeleted.type": "com.example.kafka.connect.transforms.AddDeletedField$Value",
+    "transforms.unwrap.add.fields": "op,deleted",
     "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
     "transforms.route.regex": "sqlserver\\.warehouse_source\\.dbo\\.(.*)",
     "transforms.route.replacement": "$1"

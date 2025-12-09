@@ -32,6 +32,8 @@ make test-lite
 
 .venv/bin/pytest tests/integration/ -v
 
+.venv/bin/pytest tests/integration/test_replication_flow.py -v --no-cov
+
 .venv/bin/pytest tests/e2e/ -v
 
 .venv/bin/pytest tests/performance/ -v

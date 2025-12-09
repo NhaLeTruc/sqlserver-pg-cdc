@@ -128,9 +128,13 @@ deploy_connector() {
         log_warn "Connector $connector_name already exists. Updating configuration..."
 
         # Update existing connector
+        # Extract just the config object for PUT requests
+        local config_only
+        config_only=$(jq '.config' "$config_file")
+
         if curl -sf -X PUT \
             -H "Content-Type: application/json" \
-            -d "@$config_file" \
+            -d "$config_only" \
             "$KAFKA_CONNECT_URL/connectors/$connector_name/config" | jq .; then
             log_info "Connector $connector_name updated successfully"
         else

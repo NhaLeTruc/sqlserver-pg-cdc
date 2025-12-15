@@ -76,7 +76,7 @@
 ### Foundational Scripts
 
 - [X] T026 Create scripts/bash/vault-init.sh to initialize Vault with database credentials
-- [ ] T027 Verify full Docker Compose stack starts successfully (all services healthy within 2 minutes)
+- [X] T027 Verify full Docker Compose stack starts successfully (all services healthy within 2 minutes)
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -219,8 +219,8 @@
 - [X] T090 [US4] Create scripts/python/reconcile.py CLI tool with argparse for on-demand execution
 - [X] T091 [US4] Create scripts/python/setup.py for Python package installation
 - [X] T092 [US4] Execute all reconciliation unit tests and verify they pass
-- [ ] T093 [US4] Execute error recovery integration tests and verify retries work correctly
-- [ ] T094 [US4] Execute reconciliation E2E test and verify report accuracy
+- [X] T093 [US4] Execute error recovery integration tests and verify retries work correctly
+- [X] T094 [US4] Execute reconciliation E2E test and verify report accuracy
 - [X] T095 [US4] Document reconciliation usage (on-demand and scheduled) in docs/operations.md
 
 **Checkpoint**: All four user stories (1, 2, 3, 4) should now be independently functional
@@ -251,8 +251,8 @@
 - [X] T104 [US5] Create test fixtures for PostgreSQL connection in tests/conftest.py
 - [X] T105 [US5] Create test fixtures for Kafka Connect API client in tests/conftest.py
 - [X] T106 [US5] Document local test execution workflow in docs/quickstart.md
-- [ ] T107 [US5] Execute all E2E Docker environment tests and verify they pass
-- [ ] T108 [US5] Verify complete test suite runs successfully in local Docker environment
+- [X] T107 [US5] Execute all E2E Docker environment tests and verify they pass
+- [X] T108 [US5] Verify complete test suite runs successfully in local Docker environment
 
 **Checkpoint**: All five user stories should now be independently functional and locally testable
 
@@ -262,16 +262,16 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T109 [P] Create scripts/bash/scale-connector.sh for adjusting connector task parallelism
-- [ ] T110 [P] Create scripts/bash/pause-resume.sh for pausing/resuming connectors during maintenance
-- [ ] T111 [P] Create docs/architecture.md with system architecture diagrams (Mermaid format)
-- [ ] T112 [P] Create docs/troubleshooting.md with common issues and resolutions
-- [ ] T113 [P] Add src/utils/metrics.py for custom metrics publishing to Prometheus
+- [X] T109 [P] Create scripts/bash/scale-connector.sh for adjusting connector task parallelism
+- [X] T110 [P] Create scripts/bash/pause-resume.sh for pausing/resuming connectors during maintenance
+- [X] T111 [P] Create docs/architecture.md with system architecture diagrams (Mermaid format)
+- [X] T112 [P] Create docs/troubleshooting.md with common issues and resolutions
+- [X] T113 [P] Add src/utils/metrics.py for custom metrics publishing to Prometheus
 - [ ] T114 Add comprehensive logging configuration for all Python scripts (JSON format, structured)
 - [ ] T115 Add security hardening to docker/docker-compose.yml (non-root users, read-only file systems where applicable)
-- [ ] T116 Run full test suite and verify 80% code coverage threshold is met (per NFR-008)
+- [X] T116 Run full test suite and verify 80% code coverage threshold is met (per NFR-008)
 - [ ] T117 Validate all connector configurations against JSON schemas in contracts/
-- [ ] T118 Perform end-to-end validation following quickstart.md instructions
+- [X] T118 Perform end-to-end validation following quickstart.md instructions
 
 ---
 

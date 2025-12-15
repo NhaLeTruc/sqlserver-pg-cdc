@@ -110,7 +110,7 @@ make lint
 
 ## Project Structure
 
-```
+```bash
 sqlserver-pg-cdc/
 ├── src/                           # Source code for CDC pipeline components
 │   ├── reconciliation/            # Data reconciliation subsystem
@@ -136,11 +136,13 @@ sqlserver-pg-cdc/
 ### Key Components
 
 **Reconciliation Module** (`src/reconciliation/`)
+
 - `compare.py`: Compares row counts and checksums between SQL Server source and PostgreSQL target to verify data integrity
 - `report.py`: Generates reconciliation reports with status summaries, discrepancy details, and actionable recommendations
 - `scheduler.py`: Provides APScheduler-based automation for periodic reconciliation jobs with interval and cron triggers
 
 **Utilities Module** (`src/utils/`)
+
 - `vault_client.py`: Secure credential management using HashiCorp Vault KV v2 secrets engine
 - `logging_config.py`: Structured JSON logging with contextual information for observability and monitoring integration
 - `metrics.py`: Prometheus metrics exporter for tracking pipeline health, reconciliation runs, and data quality metrics
@@ -176,11 +178,10 @@ The project includes comprehensive operational scripts for managing the CDC pipe
 
 ### Custom Kafka Connect Transforms
 
-**kafka-connect-transforms/**
-
-This directory contains custom Single Message Transforms (SMTs) for Kafka Connect that extend Debezium's CDC capabilities:
+**kafka-connect-transforms/** This directory contains custom Single Message Transforms (SMTs) for Kafka Connect that extend Debezium's CDC capabilities:
 
 **`AddDeletedField.java`** - Custom SMT for soft delete support
+
 - Inspects CDC records from Debezium and adds a `__deleted` field to track record deletion state
 - For DELETE operations: sets `__deleted = "true"`
 - For INSERT/UPDATE operations: sets `__deleted = "false"`
@@ -207,6 +208,7 @@ The project includes multiple test layers to ensure reliability and robustness:
   - Container crashes and restarts
   - Resource exhaustion scenarios
 - **Performance Tests**: Benchmark throughput and latency under various load conditions
+
 > **Note**: _Performance and Chaos tests are still under active development and require further work to establish comprehensive baseline metrics and load scenarios_
 
 ## Contributing

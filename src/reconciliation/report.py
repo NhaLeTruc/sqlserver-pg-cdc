@@ -5,7 +5,7 @@ This module provides functions to generate human-readable and machine-readable
 reports from reconciliation comparison results.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Any
 import json
 
@@ -52,7 +52,7 @@ def generate_report(comparison_results: List[Dict[str, Any]]) -> Dict[str, Any]:
             "discrepancies": [],
             "summary": "No comparison data available",
             "recommendations": [],
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "source_total_rows": 0,
             "target_total_rows": 0
         }
@@ -95,7 +95,7 @@ def generate_report(comparison_results: List[Dict[str, Any]]) -> Dict[str, Any]:
                         "missing_rows": abs(difference) if difference < 0 else 0,
                         "extra_rows": difference if difference > 0 else 0
                     },
-                    "timestamp": result.get("timestamp", datetime.utcnow().isoformat())
+                    "timestamp": result.get("timestamp", datetime.now(timezone.utc).isoformat())
                 })
 
             # Add discrepancy for checksum mismatch
@@ -109,7 +109,7 @@ def generate_report(comparison_results: List[Dict[str, Any]]) -> Dict[str, Any]:
                         "target_checksum": result.get("target_checksum", ""),
                         "description": "Data corruption or modification detected"
                     },
-                    "timestamp": result.get("timestamp", datetime.utcnow().isoformat())
+                    "timestamp": result.get("timestamp", datetime.now(timezone.utc).isoformat())
                 })
 
     # Determine overall status
@@ -129,7 +129,7 @@ def generate_report(comparison_results: List[Dict[str, Any]]) -> Dict[str, Any]:
         "discrepancies": discrepancies,
         "summary": summary,
         "recommendations": recommendations,
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
         "source_total_rows": source_total_rows,
         "target_total_rows": target_total_rows
     }

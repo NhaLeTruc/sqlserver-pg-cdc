@@ -7,9 +7,10 @@ This module provides functions to compare data between source and target databas
 - Table-level data integrity checks
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 import hashlib
+import re
 
 
 def compare_row_counts(
@@ -39,7 +40,9 @@ def compare_row_counts(
         ValueError: If row counts are negative
     """
     if source_count < 0 or target_count < 0:
-        raise ValueError("Row counts cannot be negative")
+        raise ValueError(
+            f"Row counts cannot be negative: source={source_count}, target={target_count}"
+        )
 
     difference = target_count - source_count
     match = source_count == target_count
@@ -51,7 +54,7 @@ def compare_row_counts(
         "match": match,
         "difference": difference,
         "status": "MATCH" if match else "MISMATCH",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
     return result
@@ -93,7 +96,7 @@ def compare_checksums(
         "target_checksum": target_checksum,
         "match": match,
         "status": "MATCH" if match else "MISMATCH",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
     return result
@@ -111,9 +114,16 @@ def get_row_count(cursor: Any, table_name: str) -> int:
         Row count as integer
 
     Raises:
+        ValueError: If table_name contains invalid characters
         Exception: If query fails
     """
+    # Validate table name to prevent SQL injection
+    # Allow: letters, numbers, underscore, dot (for schema.table), and brackets (for SQL Server)
+    if not re.match(r'^[\w\.\[\]]+$', table_name):
+        raise ValueError(f"Invalid table name format: {table_name}")
+
     # Handle different table name formats (e.g., schema.table)
+    # Safe to use in query since we validated the format
     query = f"SELECT COUNT(*) FROM {table_name}"
     cursor.execute(query)
     result = cursor.fetchone()
@@ -127,7 +137,7 @@ def calculate_checksum(cursor: Any, table_name: str, columns: Optional[list] = N
     This function generates a checksum by:
     1. Ordering all rows by primary key
     2. Concatenating all column values
-    3. Computing MD5 hash of the concatenated string
+    3. Computing SHA256 hash of the concatenated string
 
     Args:
         cursor: Database cursor (pyodbc or psycopg2)
@@ -135,32 +145,43 @@ def calculate_checksum(cursor: Any, table_name: str, columns: Optional[list] = N
         columns: Optional list of columns to include (default: all columns)
 
     Returns:
-        MD5 checksum as hexadecimal string
+        SHA256 checksum as hexadecimal string
 
     Raises:
+        ValueError: If table_name or column names contain invalid characters
         Exception: If query fails
     """
+    # Validate table name to prevent SQL injection
+    if not re.match(r'^[\w\.\[\]]+$', table_name):
+        raise ValueError(f"Invalid table name format: {table_name}")
+
     # For simplicity, this is a basic implementation
     # In production, you might want to use database-native checksum functions
 
     if columns is None:
         # Get all columns
         if hasattr(cursor, 'description'):
-            # Use introspection to get columns
+            # Use introspection to get columns - safe since we validate table_name
             cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
             columns = [desc[0] for desc in cursor.description]
         else:
             # Fallback: use * for all columns
             columns = ["*"]
 
-    # Build query
+    # Validate column names to prevent SQL injection
+    if columns != ["*"]:
+        for col in columns:
+            if not re.match(r'^[\w\.\[\]]+$', col):
+                raise ValueError(f"Invalid column name format: {col}")
+
+    # Build query - safe since we validated table_name and columns
     column_list = ", ".join(columns) if columns != ["*"] else "*"
     query = f"SELECT {column_list} FROM {table_name} ORDER BY 1"
 
     cursor.execute(query)
 
-    # Calculate checksum
-    hasher = hashlib.md5()
+    # Calculate checksum using SHA256 (more secure than MD5)
+    hasher = hashlib.sha256()
 
     for row in cursor:
         # Convert row to string and update hash
@@ -211,7 +232,7 @@ def reconcile_table(
         "target_count": target_count,
         "match": source_count == target_count,
         "difference": target_count - source_count,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
     # Validate checksums if requested

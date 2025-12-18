@@ -8,7 +8,7 @@ using APScheduler.
 from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Any, Callable, Optional
 import logging
@@ -189,7 +189,7 @@ def reconcile_job_wrapper(
     from src.reconciliation.compare import reconcile_table
     from src.reconciliation.report import generate_report, export_report_json
 
-    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     output_path = Path(output_dir) / f"reconcile_{timestamp}.json"
 
     # Ensure output directory exists

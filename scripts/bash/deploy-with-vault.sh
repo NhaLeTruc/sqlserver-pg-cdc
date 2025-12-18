@@ -73,9 +73,10 @@ echo ""
 # Step 4: Substitute Vault placeholders in runtime configs
 echo -e "${BLUE}Step 4: Substituting Vault secrets into runtime configs...${NC}"
 
-# Escape special characters in passwords for sed
-SQLSERVER_PASSWORD_ESCAPED=$(printf '%s\n' "$SQLSERVER_PASSWORD" | sed 's/[&/\]/\\&/g')
-POSTGRES_PASSWORD_ESCAPED=$(printf '%s\n' "$POSTGRES_PASSWORD" | sed 's/[&/\]/\\&/g')
+# Properly escape passwords for JSON using jq (handles all special characters)
+# Remove surrounding quotes from jq output and keep the escaped content
+SQLSERVER_PASSWORD_ESCAPED=$(printf '%s' "$SQLSERVER_PASSWORD" | jq -Rs . | sed 's/^"//; s/"$//')
+POSTGRES_PASSWORD_ESCAPED=$(printf '%s' "$POSTGRES_PASSWORD" | jq -Rs . | sed 's/^"//; s/"$//')
 
 # Create temporary deployment configs with Vault secrets substituted
 DEBEZIUM_DEPLOY_CONFIG="/tmp/sqlserver-source-deploy-$(date +%s).json"

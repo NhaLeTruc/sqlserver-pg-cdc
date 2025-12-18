@@ -220,6 +220,7 @@ def reconcile_job_wrapper(
 
         # Reconcile each table
         comparison_results = []
+        failed_tables = []
 
         for table in tables:
             logger.info(f"Reconciling table: {table}")
@@ -235,15 +236,24 @@ def reconcile_job_wrapper(
                 comparison_results.append(result)
 
             except Exception as e:
-                logger.error(f"Error reconciling table {table}: {e}")
+                logger.error(f"Error reconciling table {table}: {e}", exc_info=True)
+                # Track failed tables
+                failed_tables.append({"table": table, "error": str(e)})
                 # Continue with other tables
 
         # Generate and save report
         report = generate_report(comparison_results)
+
+        # Add failed tables to report if any
+        if failed_tables:
+            report["failed_tables"] = failed_tables
+            logger.warning(f"Failed to reconcile {len(failed_tables)} table(s): {[ft['table'] for ft in failed_tables]}")
+
         export_report_json(report, str(output_path))
 
         logger.info(f"Reconciliation complete. Report saved to {output_path}")
         logger.info(f"Status: {report['status']}")
+        logger.info(f"Tables reconciled: {len(comparison_results)}, Failed: {len(failed_tables)}")
 
         # Close connections
         source_cursor.close()

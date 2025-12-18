@@ -9,6 +9,7 @@ import os
 import requests
 from typing import Dict, Any, Optional
 import logging
+import re
 
 
 logger = logging.getLogger(__name__)
@@ -79,9 +80,28 @@ class VaultClient:
             Dictionary containing secret data
 
         Raises:
+            ValueError: If secret_path is invalid
             requests.RequestException: If Vault request fails
             KeyError: If secret data is not in expected format
         """
+        # Validate secret_path to prevent path traversal attacks
+        if not secret_path or not isinstance(secret_path, str):
+            raise ValueError("secret_path must be a non-empty string")
+
+        # Disallow path traversal attempts
+        if '..' in secret_path or secret_path.startswith('//'):
+            raise ValueError(
+                f"Invalid secret_path: {secret_path}. "
+                "Path traversal attempts are not allowed."
+            )
+
+        # Allow only safe characters: alphanumeric, slash, underscore, hyphen
+        if not re.match(r'^[a-zA-Z0-9/_-]+$', secret_path):
+            raise ValueError(
+                f"Invalid secret_path: {secret_path}. "
+                "Only alphanumeric characters, slashes, underscores, and hyphens are allowed."
+            )
+
         # KV v2 requires /data/ in the path
         if "/data/" not in secret_path:
             # Insert /data/ after the mount point
@@ -134,9 +154,20 @@ class VaultClient:
         Raises:
             ValueError: If database_type is invalid or credentials not found
         """
-        if database_type not in ["sqlserver", "postgresql"]:
+        # Validate database_type input to prevent path traversal
+        if not database_type or not isinstance(database_type, str):
+            raise ValueError("database_type must be a non-empty string")
+
+        # Allow only alphanumeric characters and underscores
+        if not re.match(r'^[a-zA-Z0-9_]+$', database_type):
             raise ValueError(
                 f"Invalid database_type: {database_type}. "
+                "Only alphanumeric characters and underscores are allowed."
+            )
+
+        if database_type not in ["sqlserver", "postgresql"]:
+            raise ValueError(
+                f"Unsupported database_type: {database_type}. "
                 "Must be 'sqlserver' or 'postgresql'."
             )
 

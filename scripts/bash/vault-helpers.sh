@@ -2,8 +2,6 @@
 # Vault Helper Functions
 # Source this file to get helper functions for fetching secrets from Vault
 
-set -euo pipefail
-
 # Auto-source .env from project root
 # This ensures environment variables are available when vault-helpers is loaded
 source_project_env() {
@@ -15,13 +13,16 @@ source_project_env() {
         # Silently load environment variables
         set -a  # automatically export all variables
         # shellcheck source=/dev/null
-        source "$env_file"
+        source "$env_file" || true  # Don't fail if .env has issues
         set +a
     fi
 }
 
-# Auto-source when this helper is loaded
-source_project_env
+# Auto-source when this helper is loaded (but don't fail)
+source_project_env || true
+
+# Set error handling after sourcing
+set -euo pipefail
 
 # Vault configuration
 VAULT_ADDR="${VAULT_ADDR:-http://localhost:8200}"

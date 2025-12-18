@@ -69,7 +69,14 @@ class MetricsPublisher:
             logger.info(f"Metrics server started on port {self.port}")
         except OSError as e:
             if "Address already in use" in str(e):
-                logger.warning(f"Port {self.port} already in use, metrics server not started")
+                logger.error(
+                    f"CRITICAL: Port {self.port} already in use. Metrics server cannot start. "
+                    f"This will prevent monitoring. Check for conflicting processes or change the port."
+                )
+                raise RuntimeError(
+                    f"Metrics server port {self.port} is already in use. "
+                    f"Cannot start metrics collection. Please stop conflicting process or use a different port."
+                ) from e
             else:
                 raise
 

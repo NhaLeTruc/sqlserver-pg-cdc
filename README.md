@@ -41,8 +41,9 @@ The pipeline consists of the following components:
 
 ## Quickstart
 
-```bash
+### Basic Setup (Default Configuration)
 
+```bash
 # Initialize the environment
 make quickstart
 
@@ -56,6 +57,56 @@ make stop
 
 make clean
 ```
+
+### Customized Setup (Recommended)
+
+For production use or to customize data flow parameters (batch sizes, parallelism, polling intervals):
+
+```bash
+# 1. Copy and customize configuration
+cp .env.example .env
+vi .env  # Edit parameters as needed (see Configuration section below)
+
+# 2. Start services
+make start
+
+# 3. Initialize databases and Vault
+make init
+
+# 4. Generate connector configs and deploy (auto-generates from .env)
+make deploy
+
+# 5. Verify connectors are running
+make verify-connectors
+
+# 6. Test replication
+make test
+```
+
+### Configuration
+
+The pipeline supports parameterized configuration for data flow tuning. Key configurable parameters include:
+
+**Debezium Source Connector:**
+
+- `DEBEZIUM_MAX_BATCH_SIZE` - Batch size for change capture (default: 2048)
+- `DEBEZIUM_MAX_QUEUE_SIZE` - Internal queue size (default: 8192)
+- `DEBEZIUM_POLL_INTERVAL_MS` - Transaction log polling interval (default: 500ms)
+- `DEBEZIUM_TASKS_MAX` - **Must be 1** for SQL Server CDC (see [configuration docs](docs/CONNECTOR_CONFIGURATION.md#why-tasksmax1-is-mandatory))
+
+**PostgreSQL Sink Connector:**
+
+- `SINK_BATCH_SIZE` - Batch size for writes (default: 3000)
+- `SINK_TASKS_MAX` - Number of parallel tasks (default: 3)
+- `SINK_CONNECTION_POOL_SIZE` - JDBC connection pool size (default: 10)
+
+See [**Connector Configuration Guide**](docs/CONNECTOR_CONFIGURATION.md) for:
+
+- Complete parameter reference
+- Performance tuning matrices for different scenarios (low latency, high throughput, bursty workloads)
+- Advanced usage and troubleshooting
+
+### What Happens During Setup
 
 Once the environment is set up, the CDC pipeline will automatically:
 

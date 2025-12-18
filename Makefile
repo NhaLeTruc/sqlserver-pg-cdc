@@ -1,4 +1,4 @@
-.PHONY: help start stop restart status clean init deploy test verify logs check lint format vault-init vault-status
+.PHONY: help start stop restart status clean init deploy test verify logs check lint format vault-init vault-status generate-configs validate-configs show-config clean-configs
 
 # Default target
 .DEFAULT_GOAL := help
@@ -66,7 +66,7 @@ else
 	docker compose -f docker/docker-compose.yml logs -f
 endif
 
-clean: ## Stop and remove all containers, volumes, and networks
+clean: clean-configs ## Stop and remove all containers, volumes, and networks
 	@echo "$(RED)⚠️  Cleaning up all Docker resources...$(NC)"
 	docker compose -f docker/docker-compose.yml down -v --remove-orphans; \
 	docker system prune -f; \
@@ -95,7 +95,7 @@ init-postgres: ## Initialize PostgreSQL (create tables)
 
 ##@ Connectors
 
-deploy: ## Deploy both Debezium and PostgreSQL connectors using Vault
+deploy: ## Deploy both Debezium and PostgreSQL connectors using Vault (auto-generates configs)
 	@echo "$(BLUE)Deploying connectors with Vault credentials...$(NC)"
 	./scripts/bash/deploy-with-vault.sh
 
@@ -133,6 +133,47 @@ connector-restart: ## Restart all connectors
 		curl -X POST http://localhost:8083/connectors/$$connector/restart; \
 	done
 	@echo "$(GREEN)✓ All connectors restarted$(NC)"
+
+##@ Configuration Management
+
+generate-configs: ## Generate connector configs from templates using .env
+	@echo "$(BLUE)Generating connector configurations...$(NC)"
+	./scripts/bash/generate-connector-configs.sh
+
+validate-configs: ## Validate generated connector configurations
+	@echo "$(BLUE)Validating configs...$(NC)"
+	@if [ -f docker/configs/runtime/debezium/sqlserver-source.json ]; then \
+		jq empty docker/configs/runtime/debezium/sqlserver-source.json && \
+		echo "$(GREEN)✓ Debezium config valid$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ Debezium config not found. Run 'make generate-configs'$(NC)"; \
+	fi
+	@if [ -f docker/configs/runtime/kafka-connect/postgresql-sink.json ]; then \
+		jq empty docker/configs/runtime/kafka-connect/postgresql-sink.json && \
+		echo "$(GREEN)✓ PostgreSQL config valid$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ PostgreSQL config not found. Run 'make generate-configs'$(NC)"; \
+	fi
+
+show-config: ## Display generated configurations
+	@echo "$(BLUE)Debezium Source Configuration:$(NC)"
+	@if [ -f docker/configs/runtime/debezium/sqlserver-source.json ]; then \
+		jq . docker/configs/runtime/debezium/sqlserver-source.json; \
+	else \
+		echo "$(YELLOW)⚠ Config not found. Run 'make generate-configs'$(NC)"; \
+	fi
+	@echo ""
+	@echo "$(BLUE)PostgreSQL Sink Configuration:$(NC)"
+	@if [ -f docker/configs/runtime/kafka-connect/postgresql-sink.json ]; then \
+		jq . docker/configs/runtime/kafka-connect/postgresql-sink.json; \
+	else \
+		echo "$(YELLOW)⚠ Config not found. Run 'make generate-configs'$(NC)"; \
+	fi
+
+clean-configs: ## Remove generated runtime configurations
+	@echo "$(YELLOW)Removing generated runtime configurations...$(NC)"
+	@rm -rf docker/configs/runtime/debezium/*.json docker/configs/runtime/kafka-connect/*.json 2>/dev/null || true
+	@echo "$(GREEN)✓ Runtime configs cleaned$(NC)"
 
 ##@ Testing & Verification
 

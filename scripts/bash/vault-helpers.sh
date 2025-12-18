@@ -4,6 +4,25 @@
 
 set -euo pipefail
 
+# Auto-source .env from project root
+# This ensures environment variables are available when vault-helpers is loaded
+source_project_env() {
+    local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local project_root="$(cd "$script_dir/../.." && pwd)"
+    local env_file="$project_root/.env"
+
+    if [ -f "$env_file" ]; then
+        # Silently load environment variables
+        set -a  # automatically export all variables
+        # shellcheck source=/dev/null
+        source "$env_file"
+        set +a
+    fi
+}
+
+# Auto-source when this helper is loaded
+source_project_env
+
 # Vault configuration
 VAULT_ADDR="${VAULT_ADDR:-http://localhost:8200}"
 VAULT_TOKEN="${VAULT_TOKEN:-dev-root-token}"

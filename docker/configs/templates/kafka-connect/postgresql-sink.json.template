@@ -1,0 +1,50 @@
+{
+  "name": "postgresql-jdbc-sink",
+  "config": {
+    "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+    "tasks.max": "${SINK_TASKS_MAX}",
+
+    "connection.url": "jdbc:postgresql://${vault:secret/database:postgres_host}:${POSTGRES_PORT}/${POSTGRES_DB}",
+    "connection.user": "${vault:secret/database:postgres_user}",
+    "connection.password": "${vault:secret/database:postgres_password}",
+
+    "topics": "${SINK_TOPICS}",
+
+    "insert.mode": "upsert",
+    "pk.mode": "record_value",
+    "pk.fields": "id",
+
+    "table.name.format": "${topic}",
+    "auto.create": "false",
+    "auto.evolve": "true",
+
+    "batch.size": "${SINK_BATCH_SIZE}",
+    "connection.pool.size": "${SINK_CONNECTION_POOL_SIZE}",
+    "connection.attempts": "${SINK_CONNECTION_ATTEMPTS}",
+    "connection.backoff.ms": "${SINK_CONNECTION_BACKOFF_MS}",
+
+    "errors.retry.timeout": "${SINK_ERRORS_RETRY_TIMEOUT}",
+    "errors.retry.delay.max.ms": "${SINK_ERRORS_RETRY_DELAY_MAX_MS}",
+
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "key.converter.schema.registry.url": "http://${SCHEMA_REGISTRY_HOST}:${SCHEMA_REGISTRY_PORT}",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://${SCHEMA_REGISTRY_HOST}:${SCHEMA_REGISTRY_PORT}",
+
+    "errors.tolerance": "all",
+    "errors.deadletterqueue.topic.name": "${SINK_DLQ_TOPIC_NAME}",
+    "errors.deadletterqueue.topic.replication.factor": "${SINK_DLQ_REPLICATION_FACTOR}",
+    "errors.deadletterqueue.context.headers.enable": "true",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true",
+
+    "transforms": "unwrap,route",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "true",
+    "transforms.unwrap.delete.handling.mode": "rewrite",
+    "transforms.unwrap.add.fields": "op,deleted",
+    "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+    "transforms.route.regex": "sqlserver\\.warehouse_source\\.dbo\\.(.*)",
+    "transforms.route.replacement": "$1"
+  }
+}

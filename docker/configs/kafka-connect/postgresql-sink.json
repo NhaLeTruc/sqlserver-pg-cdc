@@ -1,4 +1,14 @@
 {
+  "_comment": "========================================================================",
+  "_comment_deprecated": "DEPRECATED: This file is deprecated in favor of template-based configuration",
+  "_comment_migration": "Migration steps:",
+  "_comment_step1": "  1. Copy .env.example to .env at project root",
+  "_comment_step2": "  2. Customize parameters in .env file",
+  "_comment_step3": "  3. Run: make generate-configs",
+  "_comment_step4": "  4. Run: make deploy",
+  "_comment_documentation": "See docs/CONNECTOR_CONFIGURATION.md for details",
+  "_comment_info": "This file is kept for backward compatibility only",
+  "_comment_end": "========================================================================",
   "name": "postgresql-jdbc-sink",
   "config": {
     "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",

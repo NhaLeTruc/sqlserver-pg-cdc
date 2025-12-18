@@ -37,8 +37,16 @@ htmlcov/
 docker/data/
 docker/logs/
 docker/*.local.yml
+
+# Environment files (NEVER commit)
 *.env
+.env
 .env.local
+.env.*.local
+
+# Runtime connector configurations (generated from templates)
+docker/configs/runtime/
+*.json.generated
 
 # IDE
 .vscode/

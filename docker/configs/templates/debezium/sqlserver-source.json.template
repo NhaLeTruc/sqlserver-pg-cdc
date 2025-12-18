@@ -1,0 +1,44 @@
+{
+  "name": "sqlserver-cdc-source",
+  "config": {
+    "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector",
+    "tasks.max": "${DEBEZIUM_TASKS_MAX}",
+
+    "database.hostname": "${vault:secret/database:sqlserver_host}",
+    "database.port": "${SQLSERVER_PORT}",
+    "database.user": "${vault:secret/database:sqlserver_user}",
+    "database.password": "${vault:secret/database:sqlserver_password}",
+    "database.names": "${DEBEZIUM_DATABASE_NAMES}",
+    "database.encrypt": "false",
+    "database.trustServerCertificate": "true",
+
+    "table.include.list": "${DEBEZIUM_TABLE_INCLUDE_LIST}",
+
+    "topic.prefix": "${DEBEZIUM_TOPIC_PREFIX}",
+    "schema.history.internal.kafka.bootstrap.servers": "${KAFKA_BROKER}",
+    "schema.history.internal.kafka.topic": "${DEBEZIUM_SCHEMA_HISTORY_TOPIC}",
+
+    "snapshot.mode": "${DEBEZIUM_SNAPSHOT_MODE}",
+    "snapshot.locking.mode": "${DEBEZIUM_SNAPSHOT_LOCKING_MODE}",
+
+    "decimal.handling.mode": "precise",
+    "time.precision.mode": "adaptive",
+    "tombstones.on.delete": "true",
+
+    "max.batch.size": "${DEBEZIUM_MAX_BATCH_SIZE}",
+    "max.queue.size": "${DEBEZIUM_MAX_QUEUE_SIZE}",
+    "poll.interval.ms": "${DEBEZIUM_POLL_INTERVAL_MS}",
+
+    "include.schema.changes": "true",
+    "provide.transaction.metadata": "true",
+
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
+    "key.converter.schema.registry.url": "http://${SCHEMA_REGISTRY_HOST}:${SCHEMA_REGISTRY_PORT}",
+    "value.converter": "io.confluent.connect.avro.AvroConverter",
+    "value.converter.schema.registry.url": "http://${SCHEMA_REGISTRY_HOST}:${SCHEMA_REGISTRY_PORT}",
+
+    "errors.tolerance": "none",
+    "errors.log.enable": "true",
+    "errors.log.include.messages": "true"
+  }
+}

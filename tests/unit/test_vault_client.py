@@ -503,7 +503,7 @@ class TestGetDatabaseCredentials:
         with pytest.raises(ValueError) as exc_info:
             client.get_database_credentials("mongodb")
 
-        assert "Invalid database_type: mongodb" in str(exc_info.value)
+        assert "Unsupported database_type: mongodb" in str(exc_info.value)
         assert "Must be 'sqlserver' or 'postgresql'" in str(exc_info.value)
 
     @patch('src.utils.vault_client.requests.get')

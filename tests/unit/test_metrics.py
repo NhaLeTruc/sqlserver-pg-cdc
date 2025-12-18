@@ -91,13 +91,13 @@ class TestMetricsPublisher:
         publisher = MetricsPublisher(port=9091)
         mock_start_http_server.side_effect = OSError("Address already in use")
 
-        # Act
-        publisher.start()
+        # Act & Assert
+        with pytest.raises(RuntimeError) as exc_info:
+            publisher.start()
 
-        # Assert
         assert publisher._server_started is False
-        mock_logger.warning.assert_called_once()
-        assert "Port 9091 already in use" in mock_logger.warning.call_args[0][0]
+        assert "Metrics server port 9091 is already in use" in str(exc_info.value)
+        assert "Cannot start metrics collection" in str(exc_info.value)
 
     @patch('src.utils.metrics.start_http_server')
     def test_start_other_os_error_raises(self, mock_start_http_server):

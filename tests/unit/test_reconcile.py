@@ -368,8 +368,8 @@ class TestReconciliationUtilities:
 
         assert isinstance(checksum, str)
         assert len(checksum) > 0
-        # MD5 hash should be 32 characters
-        assert len(checksum) == 32
+        # SHA256 hash should be 64 characters
+        assert len(checksum) == 64
 
     def test_get_row_count_for_table(self):
         """Test row count retrieval for a table"""
@@ -463,9 +463,9 @@ class TestCompareEnhanced:
 
         checksum = calculate_checksum(mock_cursor, "empty_table", columns=["id", "name"])
 
-        # Empty table should still produce a valid MD5 hash
+        # Empty table should still produce a valid SHA256 hash
         assert isinstance(checksum, str)
-        assert len(checksum) == 32
+        assert len(checksum) == 64
 
     def test_calculate_checksum_with_null_values(self):
         """Test calculate_checksum handles NULL values correctly"""
@@ -483,7 +483,7 @@ class TestCompareEnhanced:
         checksum = calculate_checksum(mock_cursor, "null_table", columns=["id", "value"])
 
         assert isinstance(checksum, str)
-        assert len(checksum) == 32
+        assert len(checksum) == 64
 
     def test_calculate_checksum_with_special_characters(self):
         """Test calculate_checksum handles special characters and unicode"""
@@ -503,7 +503,7 @@ class TestCompareEnhanced:
         checksum = calculate_checksum(mock_cursor, "special_table", columns=["id", "text"])
 
         assert isinstance(checksum, str)
-        assert len(checksum) == 32
+        assert len(checksum) == 64
 
     def test_calculate_checksum_deterministic(self):
         """Test calculate_checksum produces same result for same data"""
@@ -570,7 +570,7 @@ class TestCompareEnhanced:
         checksum = calculate_checksum(mock_cursor, "auto_table")
 
         assert isinstance(checksum, str)
-        assert len(checksum) == 32
+        assert len(checksum) == 64
         # Should have called execute twice: once for LIMIT 0, once for actual query
         assert mock_cursor.execute.call_count == 2
 
@@ -589,7 +589,7 @@ class TestCompareEnhanced:
         checksum = calculate_checksum(mock_cursor, "no_desc_table")
 
         assert isinstance(checksum, str)
-        assert len(checksum) == 32
+        assert len(checksum) == 64
         # Should use SELECT * FROM ... ORDER BY 1
         assert "SELECT * FROM no_desc_table ORDER BY 1" in str(mock_cursor.execute.call_args)
 

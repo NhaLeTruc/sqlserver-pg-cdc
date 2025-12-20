@@ -32,6 +32,13 @@ The pipeline consists of the following components:
 - Comprehensive test coverage (unit, integration, contract, E2E, performance)
 - Docker-based development environment
 - Production-ready error handling and retry mechanisms
+- **SQL injection protection** with database-native identifier quoting
+- **Automated retry logic** with exponential backoff for transient failures
+- **Chunked processing** for large tables to prevent memory exhaustion
+- **Automated backup and restore** with S3 support
+- **Disaster recovery procedures** with documented RTO/RPO
+- **Comprehensive monitoring** with Prometheus metrics and Grafana dashboards
+- **Operational runbooks** for troubleshooting and daily operations
 
 ## Prerequisites
 
@@ -197,6 +204,7 @@ sqlserver-pg-cdc/
 - `vault_client.py`: Secure credential management using HashiCorp Vault KV v2 secrets engine
 - `logging_config.py`: Structured JSON logging with contextual information for observability and monitoring integration
 - `metrics.py`: Prometheus metrics exporter for tracking pipeline health, reconciliation runs, and data quality metrics
+- `retry.py`: Exponential backoff retry logic with smart exception filtering for database operations
 
 ### Operational Scripts
 
@@ -217,6 +225,9 @@ The project includes comprehensive operational scripts for managing the CDC pipe
 - `pause-resume.sh`: Pause or resume connectors for maintenance windows, schema changes, or troubleshooting without losing connector state
 - `scale-connector.sh`: Adjust connector task parallelism (scale up/down) to optimize throughput and handle varying workloads
 - `run-integration-tests.sh`: Run integration tests with proper environment setup, service health checks, and cleanup
+- `backup-databases.sh`: Automated backup script with compression, retention policy, and S3 upload support
+- `restore-databases.sh`: Automated restore script with point-in-time recovery and validation
+- `collect-diagnostics.sh`: Collect diagnostic information (logs, metrics, status) for troubleshooting
 
 **Python Scripts** (`scripts/python/`)
 
@@ -274,6 +285,44 @@ When contributing to this project:
 ## License
 
 [Add your license information here]
+
+## Operations & Runbooks
+
+Comprehensive operational documentation is available in the `docs/runbooks/` directory:
+
+- [Disaster Recovery Runbook](docs/runbooks/disaster-recovery.md) - Complete data loss scenarios, restore procedures, and quarterly DR drills
+- [Troubleshooting Guide](docs/runbooks/troubleshooting.md) - Common issues, diagnostic procedures, and solutions
+- [Operations Runbook](docs/runbooks/operations.md) - Daily operations, maintenance windows, and change management
+
+### Quick Operations Commands
+
+```bash
+# Daily backup (with S3 upload)
+./scripts/bash/backup-databases.sh --s3-bucket cdc-backups
+
+# Restore from backup
+./scripts/bash/restore-databases.sh --timestamp 20251220_020000
+
+# Collect diagnostics for troubleshooting
+./scripts/bash/collect-diagnostics.sh
+
+# Run reconciliation check
+python -m src.cli.reconcile \
+    --source-type sqlserver \
+    --source-host sqlserver \
+    --source-port 1433 \
+    --source-database warehouse_source \
+    --source-user sa \
+    --source-password "${SQLSERVER_PASSWORD}" \
+    --target-type postgresql \
+    --target-host postgres \
+    --target-port 5432 \
+    --target-database warehouse_target \
+    --target-user postgres \
+    --target-password "${POSTGRES_PASSWORD}" \
+    --tables customers,products,orders,inventory,shipments \
+    --validate-checksums
+```
 
 ## Support
 

@@ -18,6 +18,8 @@ try:
 except ImportError:
     PSYCOPG2_AVAILABLE = False
 
+from src.utils.retry import retry_database_operation
+
 
 def _quote_postgres_identifier(identifier: str, cursor: Any = None) -> str:
     """
@@ -221,6 +223,20 @@ def compare_checksums(
     return result
 
 
+@retry_database_operation(max_retries=3, base_delay=1.0)
+def _execute_row_count_query(cursor: Any, quoted_table: str) -> int:
+    """
+    Execute row count query with retry logic
+
+    Internal function with database retry logic applied.
+    Retries on transient connection/timeout errors.
+    """
+    query = f"SELECT COUNT(*) FROM {quoted_table}"
+    cursor.execute(query)
+    result = cursor.fetchone()
+    return int(result[0])
+
+
 def get_row_count(cursor: Any, table_name: str) -> int:
     """
     Get row count for a table using database-native identifier quoting
@@ -234,26 +250,13 @@ def get_row_count(cursor: Any, table_name: str) -> int:
 
     Raises:
         ValueError: If table_name contains invalid characters
-        Exception: If query fails
+        Exception: If query fails (after retries)
     """
     # Validate and quote table name using database-native quoting
     quoted_table = _quote_identifier(cursor, table_name)
 
-    # Build query with safely quoted identifier
-    db_type = _get_db_type(cursor)
-
-    if db_type == 'postgresql' and PSYCOPG2_AVAILABLE:
-        # Use psycopg2's safe query composition
-        # Note: quoted_table is already a quoted string from sql.Identifier
-        query = f"SELECT COUNT(*) FROM {quoted_table}"
-        cursor.execute(query)
-    else:
-        # SQL Server with bracket-quoted identifier
-        query = f"SELECT COUNT(*) FROM {quoted_table}"
-        cursor.execute(query)
-
-    result = cursor.fetchone()
-    return int(result[0])
+    # Execute with retry logic
+    return _execute_row_count_query(cursor, quoted_table)
 
 
 def calculate_checksum(cursor: Any, table_name: str, columns: Optional[list] = None) -> str:

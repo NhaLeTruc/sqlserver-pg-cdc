@@ -428,7 +428,8 @@ class TestCompareEnhanced:
         count = get_row_count(mock_cursor, "dbo.customers")
 
         assert count == 500
-        assert "dbo.customers" in mock_cursor.execute.call_args[0][0]
+        # With new SQL injection protection, should use bracketed identifiers
+        assert "[dbo].[customers]" in mock_cursor.execute.call_args[0][0]
 
     def test_get_row_count_executes_correct_query(self):
         """Test get_row_count generates correct SQL query"""
@@ -439,7 +440,8 @@ class TestCompareEnhanced:
 
         get_row_count(mock_cursor, "test_table")
 
-        expected_query = "SELECT COUNT(*) FROM test_table"
+        # With new SQL injection protection, should use bracketed identifiers
+        expected_query = "SELECT COUNT(*) FROM [test_table]"
         mock_cursor.execute.assert_called_once_with(expected_query)
 
     def test_get_row_count_with_database_exception(self):
@@ -590,8 +592,8 @@ class TestCompareEnhanced:
 
         assert isinstance(checksum, str)
         assert len(checksum) == 64
-        # Should use SELECT * FROM ... ORDER BY 1
-        assert "SELECT * FROM no_desc_table ORDER BY 1" in str(mock_cursor.execute.call_args)
+        # Should use SELECT * FROM ... ORDER BY 1 with bracketed identifier
+        assert "SELECT * FROM [no_desc_table] ORDER BY 1" in str(mock_cursor.execute.call_args)
 
     def test_reconcile_table_row_count_only(self):
         """Test reconcile_table with checksum validation disabled"""

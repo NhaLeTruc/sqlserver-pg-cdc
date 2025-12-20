@@ -27,7 +27,7 @@ import logging.handlers
 import json
 import sys
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 import traceback
 
@@ -79,9 +79,9 @@ class JSONFormatter(logging.Formatter):
 
         # Add timestamp
         if self.include_timestamp:
-            log_data["timestamp"] = datetime.utcfromtimestamp(
-                record.created
-            ).isoformat() + "Z"
+            log_data["timestamp"] = datetime.fromtimestamp(
+                record.created, timezone.utc
+            ).isoformat()
 
         # Add hostname
         if self.include_hostname and self.hostname:

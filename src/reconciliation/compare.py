@@ -12,6 +12,125 @@ from typing import Dict, Any, Optional
 import hashlib
 import re
 
+try:
+    from psycopg2 import sql
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
+
+
+def _quote_postgres_identifier(identifier: str, cursor: Any = None) -> str:
+    """
+    Quote PostgreSQL identifier using psycopg2.sql.Identifier for SQL injection protection
+
+    Args:
+        identifier: Table or column name (may include schema, e.g., 'schema.table')
+        cursor: Optional cursor for psycopg2 quoting (if None, uses manual quoting)
+
+    Returns:
+        Safely quoted identifier string
+
+    Raises:
+        ValueError: If identifier format is invalid
+    """
+    # Validate identifier format first
+    if not re.match(r'^[\w\.\[\]]+$', identifier):
+        raise ValueError(f"Invalid identifier format: {identifier}")
+
+    if not PSYCOPG2_AVAILABLE or cursor is None:
+        # Fallback: manual double-quote escaping
+        # This provides basic quoting when psycopg2 is unavailable or no cursor provided
+        if '.' in identifier:
+            parts = identifier.split('.')
+            if len(parts) == 2:
+                return f'"{parts[0]}"."{parts[1]}"'
+            else:
+                raise ValueError(f"Invalid schema.table format: {identifier}")
+        else:
+            return f'"{identifier}"'
+
+    # Use psycopg2's safe identifier quoting with cursor
+    if '.' in identifier:
+        parts = identifier.split('.')
+        if len(parts) == 2:
+            # Quote schema and table separately
+            return sql.Identifier(parts[0], parts[1]).as_string(cursor)
+        else:
+            raise ValueError(f"Invalid schema.table format: {identifier}")
+    else:
+        # Single identifier (table or column name)
+        return sql.Identifier(identifier).as_string(cursor)
+
+
+def _quote_sqlserver_identifier(identifier: str) -> str:
+    """
+    Quote SQL Server identifier using bracket quoting for SQL injection protection
+
+    Args:
+        identifier: Table or column name (may include schema, e.g., 'schema.table' or '[schema].[table]')
+
+    Returns:
+        Safely quoted identifier with brackets
+
+    Raises:
+        ValueError: If identifier format is invalid
+    """
+    # Validate identifier format
+    if not re.match(r'^[\w\.\[\]]+$', identifier):
+        raise ValueError(f"Invalid identifier format: {identifier}")
+
+    # Remove existing brackets if present
+    identifier = identifier.replace('[', '').replace(']', '')
+
+    # Handle schema.table format
+    if '.' in identifier:
+        parts = identifier.split('.')
+        if len(parts) == 2:
+            return f"[{parts[0]}].[{parts[1]}]"
+        else:
+            raise ValueError(f"Invalid schema.table format: {identifier}")
+    else:
+        return f"[{identifier}]"
+
+
+def _get_db_type(cursor: Any) -> str:
+    """
+    Detect database type from cursor
+
+    Args:
+        cursor: Database cursor (pyodbc or psycopg2)
+
+    Returns:
+        'postgresql' or 'sqlserver'
+    """
+    cursor_type = type(cursor).__module__
+    if 'psycopg2' in cursor_type or 'psycopg' in cursor_type:
+        return 'postgresql'
+    elif 'pyodbc' in cursor_type:
+        return 'sqlserver'
+    else:
+        # Default to SQL Server for backward compatibility
+        return 'sqlserver'
+
+
+def _quote_identifier(cursor: Any, identifier: str) -> str:
+    """
+    Quote identifier based on database type
+
+    Args:
+        cursor: Database cursor to detect database type
+        identifier: Table or column name to quote
+
+    Returns:
+        Safely quoted identifier
+    """
+    db_type = _get_db_type(cursor)
+
+    if db_type == 'postgresql':
+        return _quote_postgres_identifier(identifier)
+    else:  # sqlserver
+        return _quote_sqlserver_identifier(identifier)
+
 
 def compare_row_counts(
     table_name: str,
@@ -104,7 +223,7 @@ def compare_checksums(
 
 def get_row_count(cursor: Any, table_name: str) -> int:
     """
-    Get row count for a table
+    Get row count for a table using database-native identifier quoting
 
     Args:
         cursor: Database cursor (pyodbc or psycopg2)
@@ -117,22 +236,29 @@ def get_row_count(cursor: Any, table_name: str) -> int:
         ValueError: If table_name contains invalid characters
         Exception: If query fails
     """
-    # Validate table name to prevent SQL injection
-    # Allow: letters, numbers, underscore, dot (for schema.table), and brackets (for SQL Server)
-    if not re.match(r'^[\w\.\[\]]+$', table_name):
-        raise ValueError(f"Invalid table name format: {table_name}")
+    # Validate and quote table name using database-native quoting
+    quoted_table = _quote_identifier(cursor, table_name)
 
-    # Handle different table name formats (e.g., schema.table)
-    # Safe to use in query since we validated the format
-    query = f"SELECT COUNT(*) FROM {table_name}"
-    cursor.execute(query)
+    # Build query with safely quoted identifier
+    db_type = _get_db_type(cursor)
+
+    if db_type == 'postgresql' and PSYCOPG2_AVAILABLE:
+        # Use psycopg2's safe query composition
+        # Note: quoted_table is already a quoted string from sql.Identifier
+        query = f"SELECT COUNT(*) FROM {quoted_table}"
+        cursor.execute(query)
+    else:
+        # SQL Server with bracket-quoted identifier
+        query = f"SELECT COUNT(*) FROM {quoted_table}"
+        cursor.execute(query)
+
     result = cursor.fetchone()
     return int(result[0])
 
 
 def calculate_checksum(cursor: Any, table_name: str, columns: Optional[list] = None) -> str:
     """
-    Calculate checksum for a table
+    Calculate checksum for a table using database-native identifier quoting
 
     This function generates a checksum by:
     1. Ordering all rows by primary key
@@ -151,33 +277,29 @@ def calculate_checksum(cursor: Any, table_name: str, columns: Optional[list] = N
         ValueError: If table_name or column names contain invalid characters
         Exception: If query fails
     """
-    # Validate table name to prevent SQL injection
-    if not re.match(r'^[\w\.\[\]]+$', table_name):
-        raise ValueError(f"Invalid table name format: {table_name}")
-
-    # For simplicity, this is a basic implementation
-    # In production, you might want to use database-native checksum functions
+    # Validate and quote table name using database-native quoting
+    quoted_table = _quote_identifier(cursor, table_name)
 
     if columns is None:
         # Get all columns
-        if hasattr(cursor, 'description'):
-            # Use introspection to get columns - safe since we validate table_name
-            cursor.execute(f"SELECT * FROM {table_name} LIMIT 0")
+        if hasattr(cursor, 'description') and cursor.description is not None:
+            # Use introspection to get columns
+            query = f"SELECT * FROM {quoted_table} LIMIT 0"
+            cursor.execute(query)
             columns = [desc[0] for desc in cursor.description]
         else:
             # Fallback: use * for all columns
             columns = ["*"]
 
-    # Validate column names to prevent SQL injection
-    if columns != ["*"]:
-        for col in columns:
-            if not re.match(r'^[\w\.\[\]]+$', col):
-                raise ValueError(f"Invalid column name format: {col}")
+    # Build query with safely quoted identifiers
+    if columns == ["*"]:
+        column_list = "*"
+    else:
+        # Quote each column name
+        quoted_columns = [_quote_identifier(cursor, col) for col in columns]
+        column_list = ", ".join(quoted_columns)
 
-    # Build query - safe since we validated table_name and columns
-    column_list = ", ".join(columns) if columns != ["*"] else "*"
-    query = f"SELECT {column_list} FROM {table_name} ORDER BY 1"
-
+    query = f"SELECT {column_list} FROM {quoted_table} ORDER BY 1"
     cursor.execute(query)
 
     # Calculate checksum using SHA256 (more secure than MD5)

@@ -1,0 +1,12 @@
+[tool.mutmut]
+paths_to_mutate = "src/reconciliation/,src/utils/"
+backup = false
+runner = "pytest -x --tb=short tests/unit/ tests/property/"
+tests_dir = "tests/"
+dict_synonyms = "Dict,dict"
+
+[tool.mutmut.exclude]
+patterns = [
+    "__init__.py",
+    "test_*.py",
+]

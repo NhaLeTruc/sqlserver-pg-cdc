@@ -1,0 +1,33 @@
+"""
+Mutation testing configuration for mutmut.
+
+Configures which files to mutate and which tests to run.
+"""
+
+
+def pre_mutation(context):
+    """
+    Hook called before each mutation.
+
+    Can be used to skip certain mutations or modify context.
+    """
+    # Skip mutations in test files
+    if 'tests/' in context.filename:
+        context.skip = True
+
+    # Skip mutations in __init__.py files
+    if context.filename.endswith('__init__.py'):
+        context.skip = True
+
+    # Skip mutations in migration scripts
+    if 'migrations/' in context.filename:
+        context.skip = True
+
+
+def post_mutation(context):
+    """
+    Hook called after each mutation test.
+
+    Can be used for custom reporting or cleanup.
+    """
+    pass

@@ -338,6 +338,46 @@ test-all: ## Run all tests
 	@echo "$(BLUE)Running all tests...$(NC)"
 	@.venv/bin/pytest -v
 
+test-property: ## Run property-based tests with Hypothesis
+	@echo "$(BLUE)Running property-based tests...$(NC)"
+	@.venv/bin/pytest tests/property/ -v --hypothesis-profile=thorough
+
+mutation-test: ## Run mutation tests with mutmut
+	@echo "$(BLUE)Running mutation tests...$(NC)"
+	@.venv/bin/mutmut run --paths-to-mutate=src/reconciliation --runner="pytest -x --tb=short tests/unit/ tests/property/"
+	@echo "$(GREEN)✓ Mutation testing complete$(NC)"
+	@echo "$(BLUE)Generating mutation test report...$(NC)"
+	@.venv/bin/mutmut show
+
+mutation-results: ## Show mutation test results
+	@echo "$(BLUE)Mutation Test Results:$(NC)"
+	@.venv/bin/mutmut results
+
+mutation-html: ## Generate HTML mutation test report
+	@echo "$(BLUE)Generating HTML mutation report...$(NC)"
+	@.venv/bin/mutmut html
+	@echo "$(GREEN)✓ Report generated at html/index.html$(NC)"
+
+mutation-survived: ## Show survived mutations
+	@echo "$(BLUE)Survived Mutations:$(NC)"
+	@.venv/bin/mutmut results | grep "survived"
+
+load-test: ## Run load tests with Locust (headless mode)
+	@echo "$(BLUE)Running load tests...$(NC)"
+	@.venv/bin/locust -f tests/load/locustfile.py \
+		--host=http://localhost:8083 \
+		--users 50 \
+		--spawn-rate 10 \
+		--run-time 2m \
+		--headless \
+		--html=tests/load/report.html
+	@echo "$(GREEN)✓ Load test complete. Report: tests/load/report.html$(NC)"
+
+load-test-ui: ## Run load tests with Locust Web UI
+	@echo "$(BLUE)Starting Locust web UI...$(NC)"
+	@echo "$(GREEN)Open http://localhost:8089 in your browser$(NC)"
+	@.venv/bin/locust -f tests/load/locustfile.py --host=http://localhost:8083
+
 ##@ Code Quality
 
 lint: lint-bash lint-json ## Run all linters

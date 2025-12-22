@@ -38,6 +38,9 @@ dev = [
     "black>=23.12.1",
     "ruff>=0.1.8",
     "mypy>=1.7.1",
+    "hypothesis>=6.92.0",
+    "mutmut>=2.4.4",
+    "locust>=2.20.0",
 ]
 
 [project.scripts]
@@ -57,15 +60,26 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html",
     "--cov-fail-under=80",
+    "--hypothesis-show-statistics",
 ]
 markers = [
     "e2e: End-to-end tests requiring real database instances",
     "vault: Tests requiring HashiCorp Vault",
     "slow: Tests that take significant time to run",
+    "integration: Integration tests",
+    "contract: Contract tests",
+    "performance: Performance tests",
+    "property: Property-based tests using Hypothesis",
+    "load: Load and stress tests",
 ]
 # Ignore e2e tests for coverage calculation since they don't execute source code
 # when databases aren't available
 norecursedirs = [".*", "build", "dist", "*.egg"]
+
+[tool.hypothesis]
+max_examples = 100
+deadline = 1000
+derandomize = false
 
 [tool.black]
 line-length = 100

@@ -404,6 +404,37 @@ format: ## Format code (placeholder for future formatters)
 check: lint verify ## Run all checks (lint + verify)
 	@echo "$(GREEN)✅ All checks passed!$(NC)"
 
+##@ Security
+
+security-scan: ## Run Trivy security scans locally
+	@echo "$(BLUE)Running Trivy security scan...$(NC)"
+	@if command -v trivy > /dev/null; then \
+		trivy fs --severity HIGH,CRITICAL .; \
+		trivy fs --severity HIGH,CRITICAL requirements.txt; \
+		trivy fs --severity HIGH,CRITICAL pyproject.toml; \
+		echo "$(GREEN)✓ Security scan complete$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ Trivy not installed. Install with: brew install trivy (or equivalent)$(NC)"; \
+	fi
+
+security-report: ## Generate detailed security report (JSON)
+	@echo "$(BLUE)Generating security report...$(NC)"
+	@if command -v trivy > /dev/null; then \
+		trivy fs --format json --output security-report.json .; \
+		echo "$(GREEN)✓ Security report saved to security-report.json$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠ Trivy not installed$(NC)"; \
+	fi
+
+security-deps: ## Scan Python dependencies for vulnerabilities
+	@echo "$(BLUE)Scanning Python dependencies...$(NC)"
+	@if command -v trivy > /dev/null; then \
+		trivy fs --severity HIGH,CRITICAL requirements.txt; \
+		trivy fs --severity HIGH,CRITICAL pyproject.toml; \
+	else \
+		echo "$(YELLOW)⚠ Trivy not installed$(NC)"; \
+	fi
+
 ##@ Documentation
 
 docs: ## Generate/view documentation

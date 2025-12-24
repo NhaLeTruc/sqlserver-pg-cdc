@@ -33,7 +33,7 @@ jobs:
           exit-code: '0'  # Don't fail the build, just report
 
       - name: Upload Trivy results to GitHub Security
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-fs-results.sarif'
@@ -67,7 +67,7 @@ jobs:
           exit-code: '0'
 
       - name: Upload Python deps results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-python-results.sarif'
@@ -99,7 +99,7 @@ jobs:
           exit-code: '0'
 
       - name: Upload config scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-config-results.sarif'
@@ -137,7 +137,7 @@ jobs:
           exit-code: '0'
 
       - name: Upload Docker image scan results
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         if: always()
         with:
           sarif_file: 'trivy-image-results.sarif'

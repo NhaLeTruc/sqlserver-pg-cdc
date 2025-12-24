@@ -198,11 +198,11 @@ class TestCalculateFullChecksum:
     def test_calculate_full_checksum(self):
         """Test calculating checksum for all rows."""
         cursor = Mock()
-        cursor.__iter__.return_value = [
+        cursor.__iter__ = Mock(return_value=iter([
             (1, "Alice", 25),
             (2, "Bob", 30),
             (3, "Charlie", 35),
-        ]
+        ]))
 
         checksum, row_count = _calculate_full_checksum(
             cursor, '"users"', '"id"', "postgresql"
@@ -217,7 +217,7 @@ class TestCalculateFullChecksum:
     def test_calculate_full_checksum_empty_table(self):
         """Test checksum for empty table."""
         cursor = Mock()
-        cursor.__iter__.return_value = []
+        cursor.__iter__ = Mock(return_value=iter([]))
 
         checksum, row_count = _calculate_full_checksum(
             cursor, '"users"', '"id"', "postgresql"
@@ -229,11 +229,11 @@ class TestCalculateFullChecksum:
     def test_calculate_full_checksum_with_nulls(self):
         """Test checksum with NULL values."""
         cursor = Mock()
-        cursor.__iter__.return_value = [
+        cursor.__iter__ = Mock(return_value=iter([
             (1, "Alice", None),
             (2, None, 30),
             (3, "Charlie", 35),
-        ]
+        ]))
 
         checksum, row_count = _calculate_full_checksum(
             cursor, '"users"', '"id"', "postgresql"
@@ -249,10 +249,10 @@ class TestCalculateDeltaChecksum:
     def test_calculate_delta_checksum_postgresql(self):
         """Test delta checksum for PostgreSQL."""
         cursor = Mock()
-        cursor.__iter__.return_value = [
+        cursor.__iter__ = Mock(return_value=iter([
             (1, "Alice", 25),
             (2, "Bob", 30),
-        ]
+        ]))
 
         since = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
@@ -272,7 +272,7 @@ class TestCalculateDeltaChecksum:
     def test_calculate_delta_checksum_sqlserver(self):
         """Test delta checksum for SQL Server."""
         cursor = Mock()
-        cursor.__iter__.return_value = [(1, "Alice", 25)]
+        cursor.__iter__ = Mock(return_value=iter([(1, "Alice", 25)]))
 
         since = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
@@ -290,7 +290,7 @@ class TestCalculateDeltaChecksum:
     def test_calculate_delta_checksum_no_changes(self):
         """Test delta checksum when no rows changed."""
         cursor = Mock()
-        cursor.__iter__.return_value = []
+        cursor.__iter__ = Mock(return_value=iter([]))
 
         since = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
@@ -309,10 +309,10 @@ class TestCalculateIncrementalChecksum:
         """Test full checksum when no previous timestamp."""
         cursor = Mock()
         cursor.__class__.__name__ = "PostgreSQLCursor"
-        cursor.__iter__.return_value = [
+        cursor.__iter__ = Mock(return_value=iter([
             (1, "Alice", 25),
             (2, "Bob", 30),
-        ]
+        ]))
 
         checksum, row_count = calculate_incremental_checksum(
             cursor, "users", "id", last_checksum_time=None
@@ -325,7 +325,7 @@ class TestCalculateIncrementalChecksum:
         """Test incremental checksum with previous timestamp."""
         cursor = Mock()
         cursor.__class__.__name__ = "PostgreSQLCursor"
-        cursor.__iter__.return_value = [(3, "Charlie", 35)]
+        cursor.__iter__ = Mock(return_value=iter([(3, "Charlie", 35)]))
 
         last_time = datetime(2025, 1, 1, tzinfo=timezone.utc)
 
@@ -343,7 +343,7 @@ class TestCalculateIncrementalChecksum:
 
         cursor = Mock()
         cursor.__class__.__name__ = "PostgreSQLCursor"
-        cursor.__iter__.return_value = [(1, "Alice", 25)]
+        cursor.__iter__ = Mock(return_value=iter([(1, "Alice", 25)]))
 
         checksum, row_count = calculate_incremental_checksum(
             cursor, "users", "id", tracker=tracker
@@ -430,16 +430,16 @@ class TestDeterministicChecksums:
     def test_same_data_same_checksum(self):
         """Test that same data produces same checksum."""
         cursor1 = Mock()
-        cursor1.__iter__.return_value = [
+        cursor1.__iter__ = Mock(return_value=iter([
             (1, "Alice", 25),
             (2, "Bob", 30),
-        ]
+        ]))
 
         cursor2 = Mock()
-        cursor2.__iter__.return_value = [
+        cursor2.__iter__ = Mock(return_value=iter([
             (1, "Alice", 25),
             (2, "Bob", 30),
-        ]
+        ]))
 
         checksum1, _ = _calculate_full_checksum(cursor1, "users", "id", "postgresql")
         checksum2, _ = _calculate_full_checksum(cursor2, "users", "id", "postgresql")
@@ -449,10 +449,10 @@ class TestDeterministicChecksums:
     def test_different_data_different_checksum(self):
         """Test that different data produces different checksum."""
         cursor1 = Mock()
-        cursor1.__iter__.return_value = [(1, "Alice", 25)]
+        cursor1.__iter__ = Mock(return_value=iter([(1, "Alice", 25)]))
 
         cursor2 = Mock()
-        cursor2.__iter__.return_value = [(1, "Bob", 25)]
+        cursor2.__iter__ = Mock(return_value=iter([(1, "Bob", 25)]))
 
         checksum1, _ = _calculate_full_checksum(cursor1, "users", "id", "postgresql")
         checksum2, _ = _calculate_full_checksum(cursor2, "users", "id", "postgresql")
@@ -462,16 +462,16 @@ class TestDeterministicChecksums:
     def test_order_matters(self):
         """Test that row order affects checksum."""
         cursor1 = Mock()
-        cursor1.__iter__.return_value = [
+        cursor1.__iter__ = Mock(return_value=iter([
             (1, "Alice", 25),
             (2, "Bob", 30),
-        ]
+        ]))
 
         cursor2 = Mock()
-        cursor2.__iter__.return_value = [
+        cursor2.__iter__ = Mock(return_value=iter([
             (2, "Bob", 30),
             (1, "Alice", 25),
-        ]
+        ]))
 
         checksum1, _ = _calculate_full_checksum(cursor1, "users", "id", "postgresql")
         checksum2, _ = _calculate_full_checksum(cursor2, "users", "id", "postgresql")

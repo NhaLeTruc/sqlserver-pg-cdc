@@ -18,12 +18,12 @@ import psycopg2
 import psycopg2.extensions
 import psycopg2.pool
 import pyodbc
+from opentelemetry import trace
 from prometheus_client import Counter, Gauge, Histogram
 
 from utils.tracing import get_tracer, trace_operation
 
 logger = logging.getLogger(__name__)
-tracer = get_tracer(__name__)
 
 
 # Metrics
@@ -382,78 +382,75 @@ class BaseConnectionPool:
 
         with trace_operation(
             "db_pool_acquire",
-            kind=tracer.SpanKind.CLIENT,
+            kind=trace.SpanKind.CLIENT,
             database_type=self._get_db_type(),
             pool_name=self.pool_name,
         ):
             try:
-                # Try to get existing connection
-                try:
-                    pooled_conn = self._pool.get(timeout=0.1)
-                except Empty:
-                    # No idle connection available, try to create new one
-                    with self._lock:
-                        if len(self._all_connections) < self.max_size:
-                            try:
-                                conn = self._create_connection()
-                                pooled_conn = PooledConnection(
-                                    connection=conn,
-                                    created_at=datetime.utcnow(),
-                                    last_used=datetime.utcnow(),
-                                )
-                                self._all_connections.append(pooled_conn)
-                                logger.debug("Created new connection for pool")
-                            except Exception as e:
-                                logger.error(f"Failed to create new connection: {e}")
-                                CONNECTION_POOL_ERRORS.labels(
-                                    database_type=self._get_db_type(),
-                                    pool_name=self.pool_name,
-                                    error_type="creation",
-                                ).inc()
-
-                    # If we didn't create a new connection, wait for one
-                    if pooled_conn is None:
-                        CONNECTION_POOL_WAITS.labels(
-                            database_type=self._get_db_type(),
-                            pool_name=self.pool_name,
-                        ).inc()
-
-                        remaining_timeout = self.acquire_timeout - (
-                            time.time() - start_time
-                        )
-                        if remaining_timeout <= 0:
-                            raise PoolExhaustedError("Connection pool timeout")
-
-                        try:
-                            pooled_conn = self._pool.get(timeout=remaining_timeout)
-                        except Empty:
-                            CONNECTION_POOL_TIMEOUTS.labels(
-                                database_type=self._get_db_type(),
-                                pool_name=self.pool_name,
-                            ).inc()
-                            raise PoolExhaustedError(
-                                f"No connection available within {self.acquire_timeout}s"
-                            )
-
-                # Validate connection health
-                if not self._check_connection_health(pooled_conn):
-                    logger.info("Connection unhealthy, recycling and retrying")
-                    self._recycle_connection(pooled_conn)
-
-                    # Recursively retry (with reduced timeout)
+                # Loop to handle unhealthy connections
+                while True:
+                    # Check timeout
                     elapsed = time.time() - start_time
                     if elapsed >= self.acquire_timeout:
                         raise PoolExhaustedError("Connection pool timeout")
 
-                    # Temporarily reduce timeout for recursive call
-                    original_timeout = self.acquire_timeout
-                    self.acquire_timeout = self.acquire_timeout - elapsed
+                    remaining_timeout = self.acquire_timeout - elapsed
+
+                    # Try to get existing connection
                     try:
-                        with self.acquire() as conn:
-                            yield conn
-                            return
-                    finally:
-                        self.acquire_timeout = original_timeout
+                        pooled_conn = self._pool.get(timeout=0.1)
+                    except Empty:
+                        # No idle connection available, try to create new one
+                        with self._lock:
+                            if len(self._all_connections) < self.max_size:
+                                try:
+                                    conn = self._create_connection()
+                                    pooled_conn = PooledConnection(
+                                        connection=conn,
+                                        created_at=datetime.utcnow(),
+                                        last_used=datetime.utcnow(),
+                                    )
+                                    self._all_connections.append(pooled_conn)
+                                    logger.debug("Created new connection for pool")
+                                except Exception as e:
+                                    logger.error(f"Failed to create new connection: {e}")
+                                    CONNECTION_POOL_ERRORS.labels(
+                                        database_type=self._get_db_type(),
+                                        pool_name=self.pool_name,
+                                        error_type="creation",
+                                    ).inc()
+
+                        # If we didn't create a new connection, wait for one
+                        if pooled_conn is None:
+                            CONNECTION_POOL_WAITS.labels(
+                                database_type=self._get_db_type(),
+                                pool_name=self.pool_name,
+                            ).inc()
+
+                            if remaining_timeout <= 0:
+                                raise PoolExhaustedError("Connection pool timeout")
+
+                            try:
+                                pooled_conn = self._pool.get(timeout=remaining_timeout)
+                            except Empty:
+                                CONNECTION_POOL_TIMEOUTS.labels(
+                                    database_type=self._get_db_type(),
+                                    pool_name=self.pool_name,
+                                ).inc()
+                                raise PoolExhaustedError(
+                                    f"No connection available within {self.acquire_timeout}s"
+                                )
+
+                    # Validate connection health
+                    if not self._check_connection_health(pooled_conn):
+                        logger.info("Connection unhealthy, recycling and retrying")
+                        self._recycle_connection(pooled_conn)
+                        pooled_conn = None
+                        # Continue loop to try another connection
+                        continue
+
+                    # Connection is healthy, break out of loop
+                    break
 
                 # Mark connection as used
                 pooled_conn.mark_used()
@@ -558,7 +555,7 @@ class PostgresConnectionPool(BaseConnectionPool):
         """Create a new PostgreSQL connection."""
         with trace_operation(
             "postgres_connect",
-            kind=tracer.SpanKind.CLIENT,
+            kind=trace.SpanKind.CLIENT,
             db_host=self.host,
             db_name=self.database,
         ):
@@ -635,7 +632,7 @@ class SQLServerConnectionPool(BaseConnectionPool):
         """Create a new SQL Server connection."""
         with trace_operation(
             "sqlserver_connect",
-            kind=tracer.SpanKind.CLIENT,
+            kind=trace.SpanKind.CLIENT,
             db_host=self.host,
             db_name=self.database,
         ):

@@ -637,30 +637,36 @@ class TestReconcileJobWrapper:
     """Test reconcile_job_wrapper function"""
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     @patch('src.reconciliation.report.generate_report')
     @patch('src.reconciliation.report.export_report_json')
     @patch('src.reconciliation.scheduler.datetime')
     def test_reconcile_job_wrapper_successful_execution(
         self, mock_datetime, mock_export, mock_generate, mock_reconcile,
-        mock_pyodbc_connect, mock_psycopg2_connect, mock_path
+        mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
         """Test reconcile_job_wrapper executes successfully"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
         # Setup mocks
         mock_datetime.utcnow.return_value.strftime.return_value = "20251204_100000"
+
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_source_conn), __exit__=Mock(return_value=None)))
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_target_conn), __exit__=Mock(return_value=None)))
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         mock_reconcile.return_value = {
             "table": "customers",
@@ -690,30 +696,35 @@ class TestReconcileJobWrapper:
             "/tmp/reports"
         )
 
-        mock_pyodbc_connect.assert_called_once()
-        mock_psycopg2_connect.assert_called_once()
+        mock_get_sqlserver_pool.assert_called_once()
+        mock_get_postgres_pool.assert_called_once()
         mock_reconcile.assert_called_once()
         mock_generate.assert_called_once()
         mock_export.assert_called_once()
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     def test_reconcile_job_wrapper_creates_sqlserver_connection(
-        self, mock_pyodbc_connect, mock_psycopg2_connect, mock_path
+        self, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
         """Test reconcile_job_wrapper creates SQL Server connection"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_source_conn), __exit__=Mock(return_value=None)))
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_target_conn), __exit__=Mock(return_value=None)))
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         source_config = {
             "server": "sqlserver.local",
@@ -735,32 +746,33 @@ class TestReconcileJobWrapper:
 
             reconcile_job_wrapper(source_config, target_config, ["test_table"], "/tmp")
 
-        # Verify SQL Server connection string format
-        connection_string = mock_pyodbc_connect.call_args[0][0]
-        assert "DRIVER={ODBC Driver 17 for SQL Server}" in connection_string
-        assert "SERVER=sqlserver.local" in connection_string
-        assert "DATABASE=testdb" in connection_string
-        assert "UID=testuser" in connection_string
-        assert "PWD=testpass" in connection_string
+        # Verify pools were retrieved
+        mock_get_sqlserver_pool.assert_called_once()
+        mock_get_postgres_pool.assert_called_once()
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     def test_reconcile_job_wrapper_creates_postgres_connection(
-        self, mock_pyodbc_connect, mock_psycopg2_connect, mock_path
+        self, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
         """Test reconcile_job_wrapper creates PostgreSQL connection"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_source_conn), __exit__=Mock(return_value=None)))
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_target_conn), __exit__=Mock(return_value=None)))
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         source_config = {"server": "sql", "database": "db", "username": "u", "password": "p"}
         target_config = {
@@ -778,33 +790,34 @@ class TestReconcileJobWrapper:
 
             reconcile_job_wrapper(source_config, target_config, ["test_table"], "/tmp")
 
-        mock_psycopg2_connect.assert_called_once_with(
-            host="pg.local",
-            port=5433,
-            database="testdb",
-            user="testuser",
-            password="testpass"
-        )
+        # Verify pools were retrieved
+        mock_get_postgres_pool.assert_called_once()
+        mock_get_sqlserver_pool.assert_called_once()
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     def test_reconcile_job_wrapper_iterates_tables(
-        self, mock_reconcile, mock_pyodbc_connect, mock_psycopg2_connect, mock_path
+        self, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
         """Test reconcile_job_wrapper reconciles each table"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_source_conn), __exit__=Mock(return_value=None)))
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_target_conn), __exit__=Mock(return_value=None)))
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         mock_reconcile.return_value = {"table": "test", "match": True}
 
@@ -825,25 +838,30 @@ class TestReconcileJobWrapper:
         assert mock_reconcile.call_count == 3
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     @patch('src.reconciliation.scheduler.logger')
     def test_reconcile_job_wrapper_continues_on_table_error(
-        self, mock_logger, mock_reconcile, mock_pyodbc_connect, mock_psycopg2_connect, mock_path
+        self, mock_logger, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
         """Test reconcile_job_wrapper continues on per-table errors"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_source_conn), __exit__=Mock(return_value=None)))
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_target_conn), __exit__=Mock(return_value=None)))
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         # First table fails, second succeeds
         mock_reconcile.side_effect = [
@@ -871,30 +889,35 @@ class TestReconcileJobWrapper:
         mock_logger.error.assert_called()
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     @patch('src.reconciliation.report.generate_report')
     @patch('src.reconciliation.report.export_report_json')
     @patch('src.reconciliation.scheduler.datetime')
     def test_reconcile_job_wrapper_creates_output_directory(
         self, mock_datetime, mock_export, mock_generate, mock_reconcile,
-        mock_pyodbc_connect, mock_psycopg2_connect, mock_path_class
+        mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path_class
     ):
         """Test reconcile_job_wrapper creates output directory"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
         mock_datetime.utcnow.return_value.strftime.return_value = "20251204_100000"
 
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_source_conn), __exit__=Mock(return_value=None)))
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_target_conn), __exit__=Mock(return_value=None)))
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         mock_reconcile.return_value = {"table": "test", "match": True}
         mock_generate.return_value = {"status": "PASS"}
@@ -913,30 +936,35 @@ class TestReconcileJobWrapper:
         mock_path_instance.mkdir.assert_called_with(parents=True, exist_ok=True)
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     @patch('src.reconciliation.report.generate_report')
     @patch('src.reconciliation.report.export_report_json')
     @patch('src.reconciliation.scheduler.datetime')
     def test_reconcile_job_wrapper_uses_timestamp_in_filename(
         self, mock_datetime, mock_export, mock_generate, mock_reconcile,
-        mock_pyodbc_connect, mock_psycopg2_connect, mock_path_class
+        mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path_class
     ):
         """Test reconcile_job_wrapper includes timestamp in report filename"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
         mock_datetime.utcnow.return_value.strftime.return_value = "20251204_103045"
 
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_source_conn), __exit__=Mock(return_value=None)))
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_target_conn), __exit__=Mock(return_value=None)))
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         mock_reconcile.return_value = {"table": "test", "match": True}
         mock_generate.return_value = {"status": "PASS"}
@@ -962,24 +990,35 @@ class TestReconcileJobWrapper:
         assert str(call_arg) == "/reports/reconcile_20251204_103045.json"
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     def test_reconcile_job_wrapper_closes_connections(
-        self, mock_reconcile, mock_pyodbc_connect, mock_psycopg2_connect, mock_path
+        self, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
         """Test reconcile_job_wrapper closes database connections"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_source_cm = MagicMock()
+        mock_source_cm.__enter__ = Mock(return_value=mock_source_conn)
+        mock_source_cm.__exit__ = Mock(return_value=None)
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=mock_source_cm)
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_target_cm = MagicMock()
+        mock_target_cm.__enter__ = Mock(return_value=mock_target_conn)
+        mock_target_cm.__exit__ = Mock(return_value=None)
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=mock_target_cm)
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         mock_reconcile.return_value = {"table": "test", "match": True}
 
@@ -992,22 +1031,27 @@ class TestReconcileJobWrapper:
 
             reconcile_job_wrapper(source_config, target_config, ["test"], "/tmp")
 
+        # Verify context managers were properly used (connections returned to pool)
+        mock_source_cm.__enter__.assert_called_once()
+        mock_source_cm.__exit__.assert_called_once()
+        mock_target_cm.__enter__.assert_called_once()
+        mock_target_cm.__exit__.assert_called_once()
+
+        # Verify cursors were closed
         mock_source_cursor.close.assert_called_once()
-        mock_source_conn.close.assert_called_once()
         mock_target_cursor.close.assert_called_once()
-        mock_target_conn.close.assert_called_once()
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.scheduler.logger')
     def test_reconcile_job_wrapper_propagates_fatal_exception(
-        self, mock_logger, mock_pyodbc_connect, mock_psycopg2_connect, mock_path
+        self, mock_logger, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
         """Test reconcile_job_wrapper propagates fatal exceptions"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
-        mock_pyodbc_connect.side_effect = Exception("Connection failed")
+        mock_get_sqlserver_pool.side_effect = Exception("Connection failed")
 
         source_config = {"server": "s", "database": "d", "username": "u", "password": "p"}
         target_config = {"host": "h", "database": "d", "username": "u", "password": "p"}
@@ -1018,24 +1062,29 @@ class TestReconcileJobWrapper:
         mock_logger.error.assert_called()
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     def test_reconcile_job_wrapper_with_checksum_validation(
-        self, mock_reconcile, mock_pyodbc_connect, mock_psycopg2_connect, mock_path
+        self, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
         """Test reconcile_job_wrapper with checksum validation enabled"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_source_conn), __exit__=Mock(return_value=None)))
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_target_conn), __exit__=Mock(return_value=None)))
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         mock_reconcile.return_value = {"table": "test", "match": True}
 
@@ -1059,24 +1108,29 @@ class TestReconcileJobWrapper:
         assert call_args[1]['validate_checksum'] is True
 
     @patch('src.reconciliation.scheduler.Path')
-    @patch('psycopg2.connect')
-    @patch('pyodbc.connect')
+    @patch('utils.db_pool.get_postgres_pool')
+    @patch('utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     def test_reconcile_job_wrapper_without_checksum_validation(
-        self, mock_reconcile, mock_pyodbc_connect, mock_psycopg2_connect, mock_path
+        self, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
         """Test reconcile_job_wrapper with checksum validation disabled (default)"""
         from src.reconciliation.scheduler import reconcile_job_wrapper
 
+        # Mock the pools and their acquire context managers
         mock_source_conn = Mock()
         mock_source_cursor = Mock()
         mock_source_conn.cursor.return_value = mock_source_cursor
-        mock_pyodbc_connect.return_value = mock_source_conn
+        mock_sqlserver_pool = Mock()
+        mock_sqlserver_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_source_conn), __exit__=Mock(return_value=None)))
+        mock_get_sqlserver_pool.return_value = mock_sqlserver_pool
 
         mock_target_conn = Mock()
         mock_target_cursor = Mock()
         mock_target_conn.cursor.return_value = mock_target_cursor
-        mock_psycopg2_connect.return_value = mock_target_conn
+        mock_postgres_pool = Mock()
+        mock_postgres_pool.acquire = Mock(return_value=MagicMock(__enter__=Mock(return_value=mock_target_conn), __exit__=Mock(return_value=None)))
+        mock_get_postgres_pool.return_value = mock_postgres_pool
 
         mock_reconcile.return_value = {"table": "test", "match": True}
 

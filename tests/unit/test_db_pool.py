@@ -141,22 +141,21 @@ class TestBaseConnectionPool:
         pool = MockConnectionPool(min_size=1, max_size=3)
         time.sleep(0.1)
 
+        context_managers = []
         connections = []
         # Acquire all connections without releasing
         for _ in range(3):
-            conn = pool.acquire()
+            cm = pool.acquire()
+            context_managers.append(cm)
+            conn = cm.__enter__()  # Enter context manager
             connections.append(conn)
-            next(conn)  # Enter context manager
 
         # All connections should be created
         assert pool.connections_created == 3
 
         # Release connections
-        for conn in connections:
-            try:
-                conn.send(None)
-            except StopIteration:
-                pass
+        for cm in context_managers:
+            cm.__exit__(None, None, None)
 
         pool.close()
 

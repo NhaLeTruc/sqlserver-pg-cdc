@@ -72,6 +72,9 @@ class TestRowLevelReconciler:
         self.target_cursor = Mock()
         self.source_cursor.__class__.__name__ = "PostgreSQLCursor"
         self.target_cursor.__class__.__name__ = "PostgreSQLCursor"
+        # Initialize description as empty list to avoid iteration errors
+        self.source_cursor.description = []
+        self.target_cursor.description = []
 
     def test_get_db_type_postgresql(self):
         """Test database type detection for PostgreSQL."""
@@ -335,9 +338,20 @@ class TestRowLevelReconciler:
         self.source_cursor.fetchall.return_value = [(1,), (2,), (3,)]
         self.target_cursor.fetchall.return_value = [(1,), (2,)]
 
-        # Row data for missing row
-        self.source_cursor.fetchone.return_value = (3, "Alice", 25)
+        # Row data for missing row and common rows
+        # Order: missing rows first, then common rows (source then target for each)
+        self.source_cursor.fetchone.side_effect = [
+            (3, "Alice", 25),  # PK=3 (missing) - processed first
+            (1, "User1", 20),  # PK=1 (common) - source side
+            (2, "User2", 30),  # PK=2 (common) - source side
+        ]
         self.source_cursor.description = [("id",), ("name",), ("age",)]
+
+        self.target_cursor.fetchone.side_effect = [
+            (1, "User1", 20),  # PK=1 (common) - target side
+            (2, "User2", 30),  # PK=2 (common) - target side
+        ]
+        self.target_cursor.description = [("id",), ("name",), ("age",)]
 
         reconciler = RowLevelReconciler(
             source_cursor=self.source_cursor,
@@ -362,8 +376,19 @@ class TestRowLevelReconciler:
         self.source_cursor.fetchall.return_value = [(1,), (2,)]
         self.target_cursor.fetchall.return_value = [(1,), (2,), (3,)]
 
-        # Row data for extra row
-        self.target_cursor.fetchone.return_value = (3, "Bob", 35)
+        # Row data for extra row and common rows
+        # Order: extra rows first, then common rows (source then target for each)
+        self.source_cursor.fetchone.side_effect = [
+            (1, "User1", 20),  # PK=1 (common) - source side
+            (2, "User2", 30),  # PK=2 (common) - source side
+        ]
+        self.source_cursor.description = [("id",), ("name",), ("age",)]
+
+        self.target_cursor.fetchone.side_effect = [
+            (3, "Bob", 35),    # PK=3 (extra) - processed first
+            (1, "User1", 20),  # PK=1 (common) - target side
+            (2, "User2", 30),  # PK=2 (common) - target side
+        ]
         self.target_cursor.description = [("id",), ("name",), ("age",)]
 
         reconciler = RowLevelReconciler(

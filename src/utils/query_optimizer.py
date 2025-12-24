@@ -13,12 +13,12 @@ from typing import Any, Dict, List, Optional, Tuple
 import psycopg2
 import psycopg2.extensions
 import pyodbc
+from opentelemetry import trace
 from prometheus_client import Histogram
 
 from utils.tracing import get_tracer, trace_operation
 
 logger = logging.getLogger(__name__)
-tracer = get_tracer(__name__)
 
 
 # Metrics
@@ -101,7 +101,7 @@ class QueryOptimizer:
         """
         with trace_operation(
             "analyze_postgres_query",
-            kind=tracer.SpanKind.CLIENT,
+            kind=trace.SpanKind.CLIENT,
             execute=execute,
         ):
             with QUERY_PLAN_ANALYSIS_TIME.labels(database_type="postgresql").time():
@@ -228,7 +228,7 @@ class QueryOptimizer:
         """
         with trace_operation(
             "analyze_sqlserver_query",
-            kind=tracer.SpanKind.CLIENT,
+            kind=trace.SpanKind.CLIENT,
             execute=execute,
         ):
             with QUERY_PLAN_ANALYSIS_TIME.labels(database_type="sqlserver").time():
@@ -290,8 +290,8 @@ class QueryOptimizer:
         # Check for table scans
         if "Table Scan" in plan_text:
             metrics.has_table_scan = True
-            # Extract table name
-            table_match = re.search(r"Table Scan.*?\[(\w+)\]", plan_text)
+            # Extract table name (handles both [table] and [schema].[table] formats)
+            table_match = re.search(r"Table Scan.*?\[(?:\w+\]\.\[)?(\w+)\]", plan_text)
             if table_match:
                 table_name = table_match.group(1)
                 metrics.warnings.append(f"Table scan detected on table '{table_name}'")

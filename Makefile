@@ -362,8 +362,11 @@ mutation-survived: ## Show survived mutations
 	@echo "$(BLUE)Survived Mutations:$(NC)"
 	@.venv/bin/mutmut results | grep "survived"
 
-load-test: ## Run load tests with Locust (headless mode)
-	@echo "$(BLUE)Running load tests...$(NC)"
+load-test: load-api load-reconciliation load-database ## Run load tests with Locust (headless mode)
+	@echo "$(GREEN)✓ Load test complete. Report: tests/load/report.html$(NC)"
+
+load-api:
+	@echo "$(BLUE)Running REST API load tests...$(NC)"
 	@.venv/bin/locust -f tests/load/locustfile.py \
 		--host=http://localhost:8083 \
 		--users 50 \
@@ -371,7 +374,22 @@ load-test: ## Run load tests with Locust (headless mode)
 		--run-time 2m \
 		--headless \
 		--html=tests/load/report.html
-	@echo "$(GREEN)✓ Load test complete. Report: tests/load/report.html$(NC)"
+	@echo "$(GREEN)✓ REST API load test complete. Report: tests/load/report.html$(NC)"
+
+load-reconciliation: ## Run reconciliation-specific load tests with Locust (headless mode)
+	@echo "$(BLUE)Running reconciliation load tests...$(NC)"
+	@.venv/bin/locust -f tests/load/reconciliation_load_test.py \
+		--users 30 \
+		--spawn-rate 5 \
+		--run-time 2m \
+		--headless \
+		--html=tests/load/reconciliation-report.html
+	@echo "$(GREEN)✓ Reconciliation load test complete. Report: tests/load/reconciliation-report.html$(NC)"
+
+load-database: ## Run database-specific load tests (requires database connections)
+	@echo "$(BLUE)Running database load tests...$(NC)"
+	@.venv/bin/python tests/load/database_load_test.py
+	@echo "$(GREEN)✓ Database load test complete$(NC)"
 
 load-test-ui: ## Run load tests with Locust Web UI
 	@echo "$(BLUE)Starting Locust web UI...$(NC)"

@@ -64,6 +64,7 @@ Thumbs.db
 *.backup
 *.pid
 <*>
+*.html
 
 # Secrets (NEVER commit)
 *.key

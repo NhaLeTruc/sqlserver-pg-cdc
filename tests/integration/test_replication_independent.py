@@ -387,21 +387,35 @@ class TestReplicationIndependent:
                 """)
                 sqlserver_conn.commit()
 
-            # Wait for replication
-            assert self.wait_for_replication(postgres_conn, unique_table_name, 1)
+            # Wait for the specific row to replicate (not just any row)
+            timeout = 30
+            elapsed = 0
+            check_interval = 2
+            row = None
 
-            # Verify NULL values are preserved
-            with postgres_conn.cursor() as cursor:
-                cursor.execute(f"""
-                    SELECT email, age, updated_at
-                    FROM {unique_table_name}
-                    WHERE name = 'Null Test'
-                """)
-                row = cursor.fetchone()
-                assert row is not None, "Row not found"
-                assert row[0] is None, f"email should be NULL, got {row[0]}"
-                assert row[1] is None, f"age should be NULL, got {row[1]}"
-                assert row[2] is None, f"updated_at should be NULL, got {row[2]}"
+            while elapsed < timeout:
+                try:
+                    with postgres_conn.cursor() as cursor:
+                        cursor.execute(f"""
+                            SELECT email, age, updated_at
+                            FROM {unique_table_name}
+                            WHERE name = 'Null Test'
+                        """)
+                        row = cursor.fetchone()
+                        if row is not None:
+                            break
+                except psycopg2.errors.UndefinedTable:
+                    # Table doesn't exist yet
+                    pass
+
+                time.sleep(check_interval)
+                elapsed += check_interval
+
+            # Verify the row was found and NULL values are preserved
+            assert row is not None, f"Row with name='Null Test' not found after {timeout}s"
+            assert row[0] is None, f"email should be NULL, got {row[0]}"
+            assert row[1] is None, f"age should be NULL, got {row[1]}"
+            assert row[2] is None, f"updated_at should be NULL, got {row[2]}"
 
         finally:
             # Cleanup

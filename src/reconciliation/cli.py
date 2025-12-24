@@ -19,6 +19,7 @@ from src.reconciliation.report import (
     export_report_csv,
     format_report_console
 )
+from src.reconciliation.row_level import RowLevelReconciler, generate_repair_script
 from src.reconciliation.scheduler import ReconciliationScheduler, reconcile_job_wrapper
 from src.utils.vault_client import VaultClient
 
@@ -155,6 +156,7 @@ def cmd_run(args: argparse.Namespace) -> None:
 
         # Reconcile each table
         comparison_results = []
+        all_row_discrepancies = {}
 
         for table in tables:
             logger.info(f"Reconciling table: {table}")
@@ -170,6 +172,43 @@ def cmd_run(args: argparse.Namespace) -> None:
                 comparison_results.append(result)
                 status = "MATCH" if result["match"] else "MISMATCH"
                 logger.info(f"  {table}: {status}")
+
+                # Perform row-level reconciliation if requested and there's a mismatch
+                if args.row_level and not result["match"]:
+                    logger.info(f"  Performing row-level reconciliation for {table}")
+
+                    # Parse primary key columns
+                    pk_columns = args.pk_columns.split(',') if args.pk_columns else ['id']
+
+                    reconciler = RowLevelReconciler(
+                        source_cursor=source_cursor,
+                        target_cursor=target_cursor,
+                        pk_columns=pk_columns,
+                        compare_columns=None,  # Compare all columns
+                        chunk_size=args.row_level_chunk_size,
+                    )
+
+                    discrepancies = reconciler.reconcile_table(table, table)
+                    all_row_discrepancies[table] = discrepancies
+
+                    logger.info(
+                        f"  Found {len(discrepancies)} row-level discrepancies in {table}"
+                    )
+
+                    # Generate repair script if requested
+                    if args.generate_repair and discrepancies:
+                        repair_output = Path(args.output_dir or ".") / f"repair_{table}.sql"
+                        repair_output.parent.mkdir(parents=True, exist_ok=True)
+
+                        # Detect database type from cursor
+                        db_type = "postgresql"  # Default to target database type
+
+                        script = generate_repair_script(discrepancies, table, db_type)
+
+                        with open(repair_output, 'w') as f:
+                            f.write(script)
+
+                        logger.info(f"  Generated repair script: {repair_output}")
 
             except Exception as e:
                 logger.error(f"Error reconciling table {table}: {e}")
@@ -318,6 +357,12 @@ Examples:
   # Use Vault for credentials
   reconcile run --use-vault --tables customers --validate-checksums
 
+  # Perform row-level reconciliation with repair script generation
+  reconcile run --tables customers --row-level --generate-repair --pk-columns customer_id
+
+  # Row-level reconciliation with composite primary key
+  reconcile run --tables user_orgs --row-level --pk-columns user_id,org_id --generate-repair
+
   # Schedule periodic reconciliation every 6 hours
   reconcile schedule --cron "0 */6 * * *" --tables-file tables.txt
 
@@ -367,6 +412,31 @@ Examples:
         '--continue-on-error',
         action='store_true',
         help='Continue with remaining tables if one fails'
+    )
+    run_parser.add_argument(
+        '--row-level',
+        action='store_true',
+        help='Perform row-level reconciliation (detailed comparison)'
+    )
+    run_parser.add_argument(
+        '--pk-columns',
+        default='id',
+        help='Comma-separated list of primary key columns (default: id)'
+    )
+    run_parser.add_argument(
+        '--row-level-chunk-size',
+        type=int,
+        default=1000,
+        help='Chunk size for row-level reconciliation (default: 1000)'
+    )
+    run_parser.add_argument(
+        '--generate-repair',
+        action='store_true',
+        help='Generate SQL repair scripts for row-level discrepancies'
+    )
+    run_parser.add_argument(
+        '--output-dir',
+        help='Output directory for repair scripts (default: current directory)'
     )
     run_parser.add_argument(
         '--use-vault',

@@ -20,6 +20,7 @@ import psycopg2
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from hypothesis import settings, Phase, Verbosity
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -28,6 +29,21 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "contract: mark test as contract test")
     config.addinivalue_line("markers", "performance: mark test as performance test")
     config.addinivalue_line("markers", "slow: mark test as slow running")
+
+    # Register Hypothesis profiles
+    settings.register_profile(
+        "thorough",
+        max_examples=500,
+        deadline=2000,
+        phases=[Phase.explicit, Phase.reuse, Phase.generate, Phase.target, Phase.shrink],
+        verbosity=Verbosity.verbose,
+    )
+    settings.register_profile(
+        "dev",
+        max_examples=50,
+        deadline=1000,
+        verbosity=Verbosity.normal,
+    )
 
 
 @pytest.fixture(scope="session")

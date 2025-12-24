@@ -239,8 +239,11 @@ def test_schema_table_quoting(schema: str, table: str):
 # Property: Database type detection should be consistent
 def test_db_type_detection_psycopg2():
     """Psycopg2 cursors should be detected as PostgreSQL."""
-    mock_cursor = Mock()
-    mock_cursor.__module__ = 'psycopg2.extensions'
+    # Create a mock class with the right module to simulate psycopg2 cursor
+    class MockPsycopg2Cursor:
+        __module__ = 'psycopg2.extensions'
+
+    mock_cursor = MockPsycopg2Cursor()
 
     db_type = _get_db_type(mock_cursor)
     assert db_type == 'postgresql'
@@ -248,8 +251,11 @@ def test_db_type_detection_psycopg2():
 
 def test_db_type_detection_pyodbc():
     """PyODBC cursors should be detected as SQL Server."""
-    mock_cursor = Mock()
-    mock_cursor.__module__ = 'pyodbc'
+    # Create a mock class with the right module to simulate pyodbc cursor
+    class MockPyodbcCursor:
+        __module__ = 'pyodbc'
+
+    mock_cursor = MockPyodbcCursor()
 
     db_type = _get_db_type(mock_cursor)
     assert db_type == 'sqlserver'

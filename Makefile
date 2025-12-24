@@ -340,7 +340,7 @@ test-all: ## Run all tests
 
 test-property: ## Run property-based tests with Hypothesis
 	@echo "$(BLUE)Running property-based tests...$(NC)"
-	@.venv/bin/pytest tests/property/ -v --hypothesis-profile=thorough
+	@.venv/bin/pytest tests/property/ -v --hypothesis-profile=thorough --no-cov
 
 mutation-test: ## Run mutation tests with mutmut
 	@echo "$(BLUE)Running mutation tests...$(NC)"

@@ -435,6 +435,89 @@ security-deps: ## Scan Python dependencies for vulnerabilities
 		echo "$(YELLOW)⚠ Trivy not installed$(NC)"; \
 	fi
 
+##@ Code Quality & Hooks
+
+setup-hooks: ## Install pre-commit hooks
+	@echo "$(BLUE)Setting up pre-commit hooks...$(NC)"
+	@./scripts/bash/setup-pre-commit.sh
+
+run-hooks: ## Run pre-commit on all files
+	@echo "$(BLUE)Running pre-commit hooks on all files...$(NC)"
+	@pre-commit run --all-files
+
+update-hooks: ## Update pre-commit hook versions
+	@echo "$(BLUE)Updating pre-commit hooks...$(NC)"
+	@pre-commit autoupdate
+
+##@ Query Optimization
+
+analyze-query: ## Analyze query performance (usage: make analyze-query TABLE=users)
+	@echo "$(BLUE)Analyzing query performance...$(NC)"
+ifndef TABLE
+	@echo "$(RED)Error: TABLE is required. Usage: make analyze-query TABLE=users$(NC)"
+	@exit 1
+endif
+	@python3 scripts/python/analyze_query_performance.py \
+		--database postgresql \
+		--table $(TABLE) \
+		--recommend-indexes \
+		--primary-keys id
+
+recommend-indexes: ## Generate index recommendations for reconciliation (usage: make recommend-indexes TABLE=users)
+	@echo "$(BLUE)Generating index recommendations...$(NC)"
+ifndef TABLE
+	@echo "$(RED)Error: TABLE is required. Usage: make recommend-indexes TABLE=users$(NC)"
+	@exit 1
+endif
+	@python3 scripts/python/analyze_query_performance.py \
+		--database postgresql \
+		--table $(TABLE) \
+		--recommend-indexes \
+		--primary-keys id \
+		--timestamp-column updated_at \
+		--status-column status
+
+apply-indexes-postgres: ## Apply indexes to PostgreSQL (usage: make apply-indexes-postgres)
+	@echo "$(BLUE)Applying PostgreSQL indexes...$(NC)"
+	@echo "$(YELLOW)⚠ Review scripts/sql/create_reconciliation_indexes.sql before applying$(NC)"
+	@read -p "Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
+	@docker exec -i cdc-postgres psql -U postgres -d warehouse_target < scripts/sql/create_reconciliation_indexes.sql
+	@echo "$(GREEN)✓ Indexes applied to PostgreSQL$(NC)"
+
+apply-indexes-sqlserver: ## Apply indexes to SQL Server (usage: make apply-indexes-sqlserver)
+	@echo "$(BLUE)Applying SQL Server indexes...$(NC)"
+	@echo "$(YELLOW)⚠ Review scripts/sql/create_reconciliation_indexes.sql before applying$(NC)"
+	@read -p "Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
+	@docker exec -i cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+		-S localhost -U sa -P YourStrong!Passw0rd -C -d warehouse_source \
+		-i /scripts/sql/create_reconciliation_indexes.sql
+	@echo "$(GREEN)✓ Indexes applied to SQL Server$(NC)"
+
+test-row-count: ## Test optimized row count query (usage: make test-row-count TABLE=users)
+	@echo "$(BLUE)Testing row count optimization...$(NC)"
+ifndef TABLE
+	@echo "$(RED)Error: TABLE is required. Usage: make test-row-count TABLE=users$(NC)"
+	@exit 1
+endif
+	@python3 scripts/python/analyze_query_performance.py \
+		--database postgresql \
+		--table $(TABLE) \
+		--test-row-count \
+		--config .env
+
+optimize-stats-postgres: ## Update PostgreSQL statistics for better query planning
+	@echo "$(BLUE)Updating PostgreSQL statistics...$(NC)"
+	@docker exec cdc-postgres psql -U postgres -d warehouse_target \
+		-c "ANALYZE;"
+	@echo "$(GREEN)✓ PostgreSQL statistics updated$(NC)"
+
+optimize-stats-sqlserver: ## Update SQL Server statistics for better query planning
+	@echo "$(BLUE)Updating SQL Server statistics...$(NC)"
+	@docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
+		-S localhost -U sa -P YourStrong!Passw0rd -C -d warehouse_source \
+		-Q "EXEC sp_updatestats"
+	@echo "$(GREEN)✓ SQL Server statistics updated$(NC)"
+
 ##@ Documentation
 
 docs: ## Generate/view documentation

@@ -169,7 +169,8 @@ def reconcile_job_wrapper(
     target_config: Dict[str, Any],
     tables: List[str],
     output_dir: str,
-    validate_checksums: bool = False
+    validate_checksums: bool = False,
+    use_connection_pool: bool = True
 ) -> None:
     """
     Wrapper function for scheduled reconciliation jobs
@@ -183,9 +184,8 @@ def reconcile_job_wrapper(
         tables: List of table names to reconcile
         output_dir: Directory to save reconciliation reports
         validate_checksums: Whether to validate checksums
+        use_connection_pool: Whether to use connection pooling (default: True)
     """
-    import pyodbc
-    import psycopg2
     from src.reconciliation.compare import reconcile_table
     from src.reconciliation.report import generate_report, export_report_json
 
@@ -198,48 +198,66 @@ def reconcile_job_wrapper(
     logger.info(f"Starting scheduled reconciliation at {timestamp}")
 
     try:
-        # Connect to source database (SQL Server)
-        source_conn = pyodbc.connect(
-            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={source_config['server']};"
-            f"DATABASE={source_config['database']};"
-            f"UID={source_config['username']};"
-            f"PWD={source_config['password']}"
-        )
-        source_cursor = source_conn.cursor()
+        if use_connection_pool:
+            # Use connection pooling for better performance
+            from utils.db_pool import get_postgres_pool, get_sqlserver_pool
 
-        # Connect to target database (PostgreSQL)
-        target_conn = psycopg2.connect(
-            host=target_config['host'],
-            port=target_config.get('port', 5432),
-            database=target_config['database'],
-            user=target_config['username'],
-            password=target_config['password']
-        )
-        target_cursor = target_conn.cursor()
+            postgres_pool = get_postgres_pool()
+            sqlserver_pool = get_sqlserver_pool()
 
-        # Reconcile each table
-        comparison_results = []
-        failed_tables = []
+            with sqlserver_pool.acquire() as source_conn, postgres_pool.acquire() as target_conn:
+                source_cursor = source_conn.cursor()
+                target_cursor = target_conn.cursor()
 
-        for table in tables:
-            logger.info(f"Reconciling table: {table}")
-
-            try:
-                result = reconcile_table(
+                # Reconcile tables using pooled connections
+                comparison_results, failed_tables = _reconcile_tables(
                     source_cursor,
                     target_cursor,
-                    source_table=table,
-                    target_table=table,
-                    validate_checksum=validate_checksums
+                    tables,
+                    validate_checksums
                 )
-                comparison_results.append(result)
 
-            except Exception as e:
-                logger.error(f"Error reconciling table {table}: {e}", exc_info=True)
-                # Track failed tables
-                failed_tables.append({"table": table, "error": str(e)})
-                # Continue with other tables
+                source_cursor.close()
+                target_cursor.close()
+        else:
+            # Legacy mode: create new connections for each job
+            import pyodbc
+            import psycopg2
+
+            # Connect to source database (SQL Server)
+            source_conn = pyodbc.connect(
+                f"DRIVER={{ODBC Driver 17 for SQL Server}};"
+                f"SERVER={source_config['server']};"
+                f"DATABASE={source_config['database']};"
+                f"UID={source_config['username']};"
+                f"PWD={source_config['password']}"
+            )
+            source_cursor = source_conn.cursor()
+
+            # Connect to target database (PostgreSQL)
+            target_conn = psycopg2.connect(
+                host=target_config['host'],
+                port=target_config.get('port', 5432),
+                database=target_config['database'],
+                user=target_config['username'],
+                password=target_config['password']
+            )
+            target_cursor = target_conn.cursor()
+
+            try:
+                # Reconcile tables
+                comparison_results, failed_tables = _reconcile_tables(
+                    source_cursor,
+                    target_cursor,
+                    tables,
+                    validate_checksums
+                )
+            finally:
+                # Close connections
+                source_cursor.close()
+                source_conn.close()
+                target_cursor.close()
+                target_conn.close()
 
         # Generate and save report
         report = generate_report(comparison_results)
@@ -255,15 +273,54 @@ def reconcile_job_wrapper(
         logger.info(f"Status: {report['status']}")
         logger.info(f"Tables reconciled: {len(comparison_results)}, Failed: {len(failed_tables)}")
 
-        # Close connections
-        source_cursor.close()
-        source_conn.close()
-        target_cursor.close()
-        target_conn.close()
-
     except Exception as e:
         logger.error(f"Reconciliation job failed: {e}")
         raise
+
+
+def _reconcile_tables(
+    source_cursor: Any,
+    target_cursor: Any,
+    tables: List[str],
+    validate_checksums: bool
+) -> tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
+    """
+    Reconcile a list of tables.
+
+    Args:
+        source_cursor: Source database cursor
+        target_cursor: Target database cursor
+        tables: List of table names to reconcile
+        validate_checksums: Whether to validate checksums
+
+    Returns:
+        Tuple of (comparison_results, failed_tables)
+    """
+    from src.reconciliation.compare import reconcile_table
+
+    comparison_results = []
+    failed_tables = []
+
+    for table in tables:
+        logger.info(f"Reconciling table: {table}")
+
+        try:
+            result = reconcile_table(
+                source_cursor,
+                target_cursor,
+                source_table=table,
+                target_table=table,
+                validate_checksum=validate_checksums
+            )
+            comparison_results.append(result)
+
+        except Exception as e:
+            logger.error(f"Error reconciling table {table}: {e}", exc_info=True)
+            # Track failed tables
+            failed_tables.append({"table": table, "error": str(e)})
+            # Continue with other tables
+
+    return comparison_results, failed_tables
 
 
 def setup_logging(log_level: str = "INFO") -> None:

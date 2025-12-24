@@ -127,17 +127,24 @@ class TestPerformanceBenchmark:
         """Insert a batch of rows and return time taken."""
         start_time = time.time()
 
-        with sqlserver_conn.cursor() as cursor:
-            values = []
-            for i in range(batch_size):
-                row_id = batch_num * batch_size + i
-                values.append(f"('Data row {row_id}', {row_id % 1000})")
+        # SQL Server has a limit of 1000 row values per INSERT statement
+        # Split into smaller chunks if needed
+        max_rows_per_insert = 1000
 
-            sql = f"""
-                INSERT INTO dbo.perf_test (data, value)
-                VALUES {', '.join(values)}
-            """
-            cursor.execute(sql)
+        with sqlserver_conn.cursor() as cursor:
+            for chunk_start in range(0, batch_size, max_rows_per_insert):
+                chunk_end = min(chunk_start + max_rows_per_insert, batch_size)
+                values = []
+                for i in range(chunk_start, chunk_end):
+                    row_id = batch_num * batch_size + i
+                    values.append(f"('Data row {row_id}', {row_id % 1000})")
+
+                sql = f"""
+                    INSERT INTO dbo.perf_test (data, value)
+                    VALUES {', '.join(values)}
+                """
+                cursor.execute(sql)
+
         sqlserver_conn.commit()
 
         return time.time() - start_time
@@ -150,16 +157,37 @@ class TestPerformanceBenchmark:
     ) -> Tuple[bool, float]:
         """Wait for replication to reach expected count, return success and elapsed time."""
         start_time = time.time()
+        last_count = 0
+        last_log_time = start_time
+
+        print(f"Waiting for row count to reach {expected_count} (timeout: {timeout}s)...")
 
         while time.time() - start_time < timeout:
             with postgres_conn.cursor() as cursor:
                 cursor.execute("SELECT COUNT(*) FROM perf_test")
                 count = cursor.fetchone()[0]
+
+                # Log progress every 10 seconds
+                current_time = time.time()
+                if current_time - last_log_time >= 10 or count != last_count:
+                    elapsed = current_time - start_time
+                    print(f"  [{elapsed:.1f}s] Current count: {count}/{expected_count}")
+                    last_log_time = current_time
+                    last_count = count
+
                 if count >= expected_count:
                     elapsed = time.time() - start_time
+                    print(f"  Target count reached! Final count: {count}, elapsed: {elapsed:.2f}s")
                     return True, elapsed
+
             time.sleep(0.5)
 
+        # Timeout - get final count for debugging
+        with postgres_conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM perf_test")
+            final_count = cursor.fetchone()[0]
+
+        print(f"  TIMEOUT after {timeout}s. Final count: {final_count}/{expected_count}")
         return False, timeout
 
     @pytest.mark.slow
@@ -178,6 +206,19 @@ class TestPerformanceBenchmark:
         total_rows = 100000
         batch_size = 5000
         num_batches = total_rows // batch_size
+
+        # Clear any existing data first to ensure clean state
+        # Note: Cannot use TRUNCATE on CDC-enabled tables in SQL Server, use DELETE instead
+        with postgres_conn.cursor() as cursor:
+            cursor.execute("TRUNCATE TABLE perf_test")
+        with sqlserver_conn.cursor() as cursor:
+            cursor.execute("DELETE FROM dbo.perf_test")
+        sqlserver_conn.commit()
+
+        # Wait a moment for delete to complete and CDC to process
+        time.sleep(2)
+
+        print(f"Starting throughput test with {total_rows} rows...")
 
         # Insert rows in batches
         insert_start = time.time()
@@ -234,16 +275,41 @@ class TestPerformanceBenchmark:
         test_rows = 10000
         batch_size = 1000
 
+        # Clear any existing data first to ensure clean state
+        # Note: Cannot use TRUNCATE on CDC-enabled tables in SQL Server, use DELETE instead
+        with postgres_conn.cursor() as cursor:
+            cursor.execute("TRUNCATE TABLE perf_test")
+        with sqlserver_conn.cursor() as cursor:
+            cursor.execute("DELETE FROM dbo.perf_test")
+        sqlserver_conn.commit()
+
+        # Wait a moment for delete to complete and CDC to process
+        time.sleep(2)
+
+        # Get baseline count (should be 0 after delete)
+        with postgres_conn.cursor() as cursor:
+            cursor.execute("SELECT COUNT(*) FROM perf_test")
+            baseline_count = cursor.fetchone()[0]
+
+        print(f"Starting replication lag test. Baseline count: {baseline_count}")
+        expected_final_count = baseline_count + test_rows
+
         # Insert test data
+        insert_start = time.time()
         for batch_num in range(test_rows // batch_size):
             self.insert_batch(sqlserver_conn, batch_size, batch_num)
+        insert_time = time.time() - insert_start
+        print(f"Inserted {test_rows} rows in {insert_time:.2f}s")
 
-        # Measure replication lag (time for last row to appear)
+        # Measure replication lag (time for rows to appear in target)
         replication_success, replication_lag = self.wait_for_replication_count(
-            postgres_conn, test_rows, timeout=600
+            postgres_conn, expected_final_count, timeout=600
         )
 
-        assert replication_success, "Replication did not complete within 10 minutes"
+        assert replication_success, (
+            f"Replication did not complete within 10 minutes. "
+            f"Expected {expected_final_count} rows in target."
+        )
 
         # Verify lag is under 5 minutes (300 seconds)
         max_lag_seconds = 300
@@ -272,9 +338,16 @@ class TestPerformanceBenchmark:
         for iteration in range(num_iterations):
             print(f"Iteration {iteration + 1}/{num_iterations}")
 
-            # Clear previous data
+            # Clear previous data from both databases
+            # Note: Cannot use TRUNCATE on CDC-enabled tables in SQL Server, use DELETE instead
             with postgres_conn.cursor() as cursor:
                 cursor.execute("TRUNCATE TABLE perf_test")
+            with sqlserver_conn.cursor() as cursor:
+                cursor.execute("DELETE FROM dbo.perf_test")
+            sqlserver_conn.commit()
+
+            # Wait for delete to complete and CDC to process
+            time.sleep(2)
 
             # Insert data
             insert_start = time.time()
@@ -320,8 +393,9 @@ class TestPerformanceBenchmark:
         )
 
     @pytest.mark.slow
+    @pytest.mark.skip(reason="Requires significant time and resources - run manually when needed")
     def test_reconcile_tool_handles_large_tables(
-        self, sqlserver_connection, postgres_connection
+        self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
     ):
         """
         Test reconciliation handles large tables efficiently
@@ -331,12 +405,21 @@ class TestPerformanceBenchmark:
         2. Run reconciliation
         3. Verify completes in under 10 minutes (NFR requirement)
         """
-        # This test creates a large dataset
-        pytest.skip("Requires significant time and resources")
+        # This test would create a large dataset and is skipped by default
+        # To run: pytest -m "slow" tests/performance/test_performance.py::TestPerformanceBenchmark::test_reconcile_tool_handles_large_tables -v
 
-        sqlserver_cursor = sqlserver_connection.cursor()
-        postgres_cursor = postgres_connection.cursor()
+        # Clear existing data
+        # Note: Cannot use TRUNCATE on CDC-enabled tables in SQL Server, use DELETE instead
+        with postgres_conn.cursor() as cursor:
+            cursor.execute("TRUNCATE TABLE perf_test")
+        with sqlserver_conn.cursor() as cursor:
+            cursor.execute("DELETE FROM dbo.perf_test")
+        sqlserver_conn.commit()
 
-        # Create 1M row table
-        # Run reconciliation
-        # Verify performance
+        # Implementation would go here:
+        # - Insert 1M rows in batches
+        # - Wait for replication
+        # - Run reconciliation tool
+        # - Verify completes in < 10 minutes
+
+        pytest.skip("Not yet implemented - placeholder for future work")

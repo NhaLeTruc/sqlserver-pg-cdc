@@ -334,6 +334,10 @@ test-e2e: ## Run end-to-end tests
 	@echo "$(BLUE)Running E2E tests...$(NC)"
 	@.venv/bin/pytest tests/e2e/ -v --no-cov
 
+test-perf: ## Run performance tests
+	@echo "$(BLUE)Running performance tests...$(NC)"
+	@.venv/bin/pytest tests/performance/ -v --no-cov
+
 test-all: ## Run all tests
 	@echo "$(BLUE)Running all tests...$(NC)"
 	@.venv/bin/pytest -v
@@ -341,6 +345,10 @@ test-all: ## Run all tests
 test-property: ## Run property-based tests with Hypothesis
 	@echo "$(BLUE)Running property-based tests...$(NC)"
 	@.venv/bin/pytest tests/property/ -v --hypothesis-profile=thorough --no-cov
+
+test-latency: ## Measure CDC pipeline latency for INSERT/UPDATE/DELETE operations
+	@echo "$(BLUE)Measuring CDC pipeline latency...$(NC)"
+	@.venv/bin/python tests/latency/measure_cdc_latency.py
 
 mutation-test: ## Run mutation tests with mutmut
 	@echo "$(BLUE)Running mutation tests...$(NC)"

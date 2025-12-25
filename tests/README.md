@@ -138,7 +138,7 @@ Validate performance and scalability under load.
 **Run with:**
 ```bash
 # Headless mode
-make load-test
+make test-load
 
 # Web UI mode
 make load-test-ui
@@ -191,7 +191,7 @@ make test-all
 make test-unit
 make test-integration
 make test-property
-make load-test
+make test-load
 ```
 
 ### Individual Test Files

@@ -282,7 +282,7 @@ make load-test-ui
 
 ```bash
 # Run predefined load test
-make load-test
+make test-load
 
 # Custom parameters
 locust -f tests/load/locustfile.py \
@@ -376,12 +376,12 @@ GET      /connectors/{name}/status     3145    2        67    23    456   134
 
 ```bash
 # All Phase 4 tests
-make test-property mutation-test load-test
+make test-property mutation-test test-load
 
 # Individual test types
 make test-property      # Property-based tests
 make mutation-test      # Mutation tests
-make load-test          # Load tests (headless)
+make test-load          # Load tests (headless)
 make load-test-ui       # Load tests (interactive)
 
 # Results and reports

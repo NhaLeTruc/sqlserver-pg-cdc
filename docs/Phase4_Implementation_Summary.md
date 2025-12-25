@@ -90,7 +90,7 @@ make mutation-survived   # Show survived mutations
 
 **Makefile Commands:**
 ```bash
-make load-test          # Run headless load test
+make test-load          # Run headless load test
 make load-test-ui       # Start web UI at localhost:8089
 ```
 
@@ -110,7 +110,7 @@ make load-test-ui       # Start web UI at localhost:8089
   - `mutation-results` - Show mutation results
   - `mutation-html` - Generate HTML report
   - `mutation-survived` - Show survived mutations
-  - `load-test` - Run load tests (headless)
+  - `test-load` - Run load tests (headless)
   - `load-test-ui` - Run load tests (web UI)
 
 ### 5. Documentation ✅
@@ -162,12 +162,12 @@ pip install -e ".[dev]"
 # Run all Phase 4 tests
 pytest tests/property/ -v
 make mutation-test
-make load-test
+make test-load
 
 # Individual test types
 make test-property      # Property-based tests
 make mutation-test      # Mutation testing
-make load-test          # Load tests
+make test-load          # Load tests
 ```
 
 ### For CI/CD
@@ -305,7 +305,7 @@ From the implementation plan - all met:
    ```bash
    make test-property
    make mutation-test
-   make load-test
+   make test-load
    ```
 
 3. **Review results and establish baselines**

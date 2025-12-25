@@ -44,7 +44,7 @@ make mutation-test
 
 ```bash
 # Option A: Headless mode (automated)
-make load-test
+make test-load
 
 # Option B: Web UI mode (interactive)
 make load-test-ui
@@ -172,7 +172,7 @@ make start
 make verify-services
 
 # Then retry
-make load-test
+make test-load
 ```
 
 ### Issue: Property tests timing out

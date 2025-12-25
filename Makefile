@@ -380,7 +380,7 @@ mutation-survived: ## Show survived mutations
 	@echo "$(BLUE)Survived Mutations:$(NC)"
 	@.venv/bin/mutmut results | grep "survived"
 
-load-test: load-api load-reconciliation load-database ## Run load tests with Locust (headless mode)
+test-load: load-api load-reconciliation load-database ## Run load tests with Locust (headless mode)
 	@echo "$(GREEN)✓ Load test complete. Report: tests/load/report.html$(NC)"
 
 load-api:

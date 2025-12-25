@@ -368,15 +368,18 @@ class TestReconciliationE2E:
 
     @pytest.mark.e2e
     @pytest.mark.vault
-    def test_reconcile_tool_with_vault_credentials(self):
+    def test_reconcile_tool_with_vault_credentials(
+        self, sqlserver_connection, postgres_connection
+    ):
         """
         Test reconciliation tool fetches credentials from Vault
 
         Scenario:
         1. Store database credentials in Vault
-        2. Run reconciliation without explicit credentials
-        3. Verify tool fetches credentials from Vault
-        4. Verify reconciliation completes successfully
+        2. Create test tables with data
+        3. Run reconciliation without explicit credentials
+        4. Verify tool fetches credentials from Vault
+        5. Verify reconciliation completes successfully
         """
         # Check if vault container is available
         try:
@@ -390,140 +393,258 @@ class TestReconciliationE2E:
         except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.CalledProcessError):
             pytest.skip("Vault container not available or docker not accessible")
 
-        # Setup: Store credentials in Vault using docker exec
-        subprocess.run(
-            [
-                "docker", "exec", "cdc-vault",
-                "vault", "kv", "put",
-                "secret/database/sqlserver",
-                "username=sa",
-                "password=YourStrong!Passw0rd",
-                "server=localhost",
-                "database=warehouse_source"
-            ],
-            check=True,
-            env={**os.environ, "VAULT_TOKEN": "dev-root-token"}
-        )
+        # Setup: Create test tables with matching data
+        sqlserver_cursor = sqlserver_connection.cursor()
+        postgres_cursor = postgres_connection.cursor()
 
-        subprocess.run(
-            [
-                "docker", "exec", "cdc-vault",
-                "vault", "kv", "put",
-                "secret/database/postgresql",
-                "username=postgres",
-                "password=postgres_secure_password",
-                "host=localhost",
-                "database=warehouse_target"
-            ],
-            check=True,
-            env={**os.environ, "VAULT_TOKEN": "dev-root-token"}
-        )
+        test_table = "test_vault_e2e"
 
-        # Run reconciliation without explicit credentials
-        result = subprocess.run(
-            [
-                PYTHON_BIN,
-                "scripts/python/reconcile.py",
-                "--source-table", "dbo.customers",
-                "--target-table", "customers",
-                "--use-vault",
-                "--output", "/tmp/reconcile_vault_report.json"
-            ],
-            capture_output=True,
-            text=True,
-            env={
-                **os.environ,  # Inherit environment
-                "VAULT_ADDR": "http://localhost:8200",
-                "VAULT_TOKEN": "dev-root-token"  # Use correct dev token
-            }
-        )
+        # Create and populate SQL Server table
+        sqlserver_cursor.execute(f"""
+            IF OBJECT_ID('dbo.{test_table}', 'U') IS NOT NULL
+                DROP TABLE dbo.{test_table};
 
-        assert result.returncode == 0, f"Reconciliation failed: {result.stderr}"
+            CREATE TABLE dbo.{test_table} (
+                id INT PRIMARY KEY,
+                value NVARCHAR(100)
+            );
+        """)
 
-        # Verify report was generated
-        report_path = Path("/tmp/reconcile_vault_report.json")
-        assert report_path.exists()
+        for i in range(1, 11):
+            sqlserver_cursor.execute(
+                f"INSERT INTO dbo.{test_table} VALUES (?, ?)",
+                (i, f"Value {i}")
+            )
+
+        sqlserver_connection.commit()
+
+        # Create and populate PostgreSQL table with same data
+        postgres_cursor.execute(f"""
+            DROP TABLE IF EXISTS {test_table};
+
+            CREATE TABLE {test_table} (
+                id INTEGER PRIMARY KEY,
+                value VARCHAR(100)
+            );
+        """)
+
+        for i in range(1, 11):
+            postgres_cursor.execute(
+                f"INSERT INTO {test_table} VALUES (%s, %s)",
+                (i, f"Value {i}")
+            )
+
+        postgres_connection.commit()
+
+        try:
+            # Setup: Store credentials in Vault using docker exec
+            subprocess.run(
+                [
+                    "docker", "exec", "cdc-vault",
+                    "vault", "kv", "put",
+                    "secret/database/sqlserver",
+                    "username=sa",
+                    "password=YourStrong!Passw0rd",
+                    "server=localhost",
+                    "database=warehouse_source"
+                ],
+                check=True,
+                env={**os.environ, "VAULT_TOKEN": "dev-root-token"}
+            )
+
+            subprocess.run(
+                [
+                    "docker", "exec", "cdc-vault",
+                    "vault", "kv", "put",
+                    "secret/database/postgresql",
+                    "username=postgres",
+                    "password=postgres_secure_password",
+                    "host=localhost",
+                    "database=warehouse_target"
+                ],
+                check=True,
+                env={**os.environ, "VAULT_TOKEN": "dev-root-token"}
+            )
+
+            # Run reconciliation without explicit credentials
+            result = subprocess.run(
+                [
+                    PYTHON_BIN,
+                    "scripts/python/reconcile.py",
+                    "--source-table", f"dbo.{test_table}",
+                    "--target-table", test_table,
+                    "--use-vault",
+                    "--output", "/tmp/reconcile_vault_report.json"
+                ],
+                capture_output=True,
+                text=True,
+                env={
+                    **os.environ,  # Inherit environment
+                    "VAULT_ADDR": "http://localhost:8200",
+                    "VAULT_TOKEN": "dev-root-token"  # Use correct dev token
+                }
+            )
+
+            assert result.returncode == 0, f"Reconciliation failed: {result.stderr}"
+
+            # Verify report was generated
+            report_path = Path("/tmp/reconcile_vault_report.json")
+            assert report_path.exists()
+
+        finally:
+            # Cleanup: Drop test tables
+            try:
+                sqlserver_cursor.execute(f"DROP TABLE IF EXISTS dbo.{test_table}")
+                sqlserver_connection.commit()
+            except:
+                pass
+
+            try:
+                postgres_cursor.execute(f"DROP TABLE IF EXISTS {test_table}")
+                postgres_connection.commit()
+            except:
+                pass
 
     @pytest.mark.e2e
-    def test_reconcile_tool_output_formats(self):
+    def test_reconcile_tool_output_formats(
+        self, sqlserver_connection, postgres_connection
+    ):
         """
         Test reconciliation supports multiple output formats
 
         Verify JSON, CSV, and console table formats
         """
-        # JSON format (default)
-        result = subprocess.run(
-            [
-                PYTHON_BIN,
-                "scripts/python/reconcile.py",
-                "--source-server", "localhost",
-                "--source-database", "warehouse_source",
-                "--source-username", "sa",
-                "--source-password", "YourStrong!Passw0rd",
-                "--target-host", "localhost",
-                "--target-database", "warehouse_target",
-                "--target-username", "postgres",
-                "--target-password", "postgres_secure_password",
-                "--source-table", "dbo.customers",
-                "--target-table", "customers",
-                "--output", "/tmp/report.json"
-            ],
-            capture_output=True,
-            text=True
-        )
+        # Setup: Create test tables with matching data
+        sqlserver_cursor = sqlserver_connection.cursor()
+        postgres_cursor = postgres_connection.cursor()
 
-        assert result.returncode == 0, f"JSON format failed: {result.stderr}"
-        assert Path("/tmp/report.json").exists()
+        test_table = "test_formats_e2e"
 
-        # CSV format
-        result = subprocess.run(
-            [
-                PYTHON_BIN,
-                "scripts/python/reconcile.py",
-                "--source-server", "localhost",
-                "--source-database", "warehouse_source",
-                "--source-username", "sa",
-                "--source-password", "YourStrong!Passw0rd",
-                "--target-host", "localhost",
-                "--target-database", "warehouse_target",
-                "--target-username", "postgres",
-                "--target-password", "postgres_secure_password",
-                "--source-table", "dbo.customers",
-                "--target-table", "customers",
-                "--output", "/tmp/report.csv",
-                "--format", "csv"
-            ],
-            capture_output=True,
-            text=True
-        )
+        # Create and populate SQL Server table
+        sqlserver_cursor.execute(f"""
+            IF OBJECT_ID('dbo.{test_table}', 'U') IS NOT NULL
+                DROP TABLE dbo.{test_table};
 
-        assert result.returncode == 0, f"CSV format failed: {result.stderr}"
-        assert Path("/tmp/report.csv").exists()
+            CREATE TABLE dbo.{test_table} (
+                id INT PRIMARY KEY,
+                value NVARCHAR(100)
+            );
+        """)
 
-        # Console format (no file output)
-        result = subprocess.run(
-            [
-                PYTHON_BIN,
-                "scripts/python/reconcile.py",
-                "--source-server", "localhost",
-                "--source-database", "warehouse_source",
-                "--source-username", "sa",
-                "--source-password", "YourStrong!Passw0rd",
-                "--target-host", "localhost",
-                "--target-database", "warehouse_target",
-                "--target-username", "postgres",
-                "--target-password", "postgres_secure_password",
-                "--source-table", "dbo.customers",
-                "--target-table", "customers",
-                "--format", "console"
-            ],
-            capture_output=True,
-            text=True
-        )
+        for i in range(1, 11):
+            sqlserver_cursor.execute(
+                f"INSERT INTO dbo.{test_table} VALUES (?, ?)",
+                (i, f"Value {i}")
+            )
 
-        assert result.returncode == 0
-        assert "Table" in result.stdout
-        assert "Status" in result.stdout
+        sqlserver_connection.commit()
+
+        # Create and populate PostgreSQL table with same data
+        postgres_cursor.execute(f"""
+            DROP TABLE IF EXISTS {test_table};
+
+            CREATE TABLE {test_table} (
+                id INTEGER PRIMARY KEY,
+                value VARCHAR(100)
+            );
+        """)
+
+        for i in range(1, 11):
+            postgres_cursor.execute(
+                f"INSERT INTO {test_table} VALUES (%s, %s)",
+                (i, f"Value {i}")
+            )
+
+        postgres_connection.commit()
+
+        try:
+            # JSON format (default)
+            result = subprocess.run(
+                [
+                    PYTHON_BIN,
+                    "scripts/python/reconcile.py",
+                    "--source-server", "localhost",
+                    "--source-database", "warehouse_source",
+                    "--source-username", "sa",
+                    "--source-password", "YourStrong!Passw0rd",
+                    "--target-host", "localhost",
+                    "--target-database", "warehouse_target",
+                    "--target-username", "postgres",
+                    "--target-password", "postgres_secure_password",
+                    "--source-table", f"dbo.{test_table}",
+                    "--target-table", test_table,
+                    "--output", "/tmp/report.json"
+                ],
+                capture_output=True,
+                text=True
+            )
+
+            assert result.returncode == 0, f"JSON format failed: {result.stderr}"
+            assert Path("/tmp/report.json").exists()
+
+            # CSV format
+            result = subprocess.run(
+                [
+                    PYTHON_BIN,
+                    "scripts/python/reconcile.py",
+                    "--source-server", "localhost",
+                    "--source-database", "warehouse_source",
+                    "--source-username", "sa",
+                    "--source-password", "YourStrong!Passw0rd",
+                    "--target-host", "localhost",
+                    "--target-database", "warehouse_target",
+                    "--target-username", "postgres",
+                    "--target-password", "postgres_secure_password",
+                    "--source-table", f"dbo.{test_table}",
+                    "--target-table", test_table,
+                    "--output", "/tmp/report.csv",
+                    "--format", "csv"
+                ],
+                capture_output=True,
+                text=True
+            )
+
+            assert result.returncode == 0, f"CSV format failed: {result.stderr}"
+            assert Path("/tmp/report.csv").exists()
+
+            # Console format (no file output)
+            result = subprocess.run(
+                [
+                    PYTHON_BIN,
+                    "scripts/python/reconcile.py",
+                    "--source-server", "localhost",
+                    "--source-database", "warehouse_source",
+                    "--source-username", "sa",
+                    "--source-password", "YourStrong!Passw0rd",
+                    "--target-host", "localhost",
+                    "--target-database", "warehouse_target",
+                    "--target-username", "postgres",
+                    "--target-password", "postgres_secure_password",
+                    "--source-table", f"dbo.{test_table}",
+                    "--target-table", test_table,
+                    "--format", "console"
+                ],
+                capture_output=True,
+                text=True
+            )
+
+            assert result.returncode == 0
+            assert "Table" in result.stdout
+            assert "Status" in result.stdout
+
+        finally:
+            # Cleanup: Drop test tables
+            try:
+                sqlserver_cursor.execute(f"DROP TABLE IF EXISTS dbo.{test_table}")
+                sqlserver_connection.commit()
+            except:
+                pass
+
+            try:
+                postgres_cursor.execute(f"DROP TABLE IF EXISTS {test_table}")
+                postgres_connection.commit()
+            except:
+                pass
 
     @pytest.mark.e2e
     @pytest.mark.xfail(reason="Required 2.5+ min wait makes test impractical for regular runs")

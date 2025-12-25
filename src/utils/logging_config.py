@@ -116,6 +116,7 @@ class JSONFormatter(logging.Formatter):
             "levelname", "levelno", "lineno", "module", "msecs",
             "message", "pathname", "process", "processName", "relativeCreated",
             "thread", "threadName", "exc_info", "exc_text", "stack_info",
+            "taskName", "asctime",  # Skip internal fields
         }
 
         extra_data = {}
@@ -184,6 +185,7 @@ class ConsoleFormatter(logging.Formatter):
             "levelname", "levelno", "lineno", "module", "msecs",
             "message", "pathname", "process", "processName", "relativeCreated",
             "thread", "threadName", "exc_info", "exc_text", "stack_info",
+            "taskName", "asctime",  # Skip internal fields
         }
 
         extra_items = []
@@ -213,7 +215,7 @@ def setup_logging(
         level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_file: Path to log file (if None, file logging is disabled)
         console_output: Whether to output to console
-        json_format: Use JSON format for file logs
+        json_format: Use JSON format for both console and file logs
         app_name: Application name for log context
         max_bytes: Maximum log file size before rotation
         backup_count: Number of rotated log files to keep
@@ -232,7 +234,18 @@ def setup_logging(
     if console_output:
         console_handler = logging.StreamHandler(sys.stderr)
         console_handler.setLevel(numeric_level)
-        console_handler.setFormatter(ConsoleFormatter(use_colors=True))
+
+        if json_format:
+            console_handler.setFormatter(
+                JSONFormatter(
+                    include_timestamp=True,
+                    include_hostname=True,
+                    app_name=app_name,
+                )
+            )
+        else:
+            console_handler.setFormatter(ConsoleFormatter(use_colors=True))
+
         root_logger.addHandler(console_handler)
 
     # File handler with rotation

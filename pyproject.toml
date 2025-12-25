@@ -122,5 +122,7 @@ strict_equality = true
 
 [tool.mutmut]
 paths_to_mutate = "src/reconciliation"
-runner = ".venv/bin/pytest -x --tb=short tests/unit/ tests/property/"
+runner = ".venv/bin/pytest -x --tb=line -q --no-cov tests/unit/ tests/property/"
 tests_dir = "tests/"
+use_coverage = true
+test_time_multiplier = 1.5

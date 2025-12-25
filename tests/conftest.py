@@ -10,6 +10,7 @@ Fixtures:
 """
 
 import os
+import subprocess
 from pathlib import Path
 from typing import Generator, Optional
 import time
@@ -561,8 +562,74 @@ def cleanup_test_tables(sqlserver_cursor: pyodbc.Cursor, postgres_cursor: psycop
 
 
 # =============================================================================
-# Integration Test Environment Reset
+# Test Environment Reset Fixtures
 # =============================================================================
+
+@pytest.fixture(scope="session")
+def reset_script_path(project_root: Path) -> Path:
+    """Get path to reset test environment script."""
+    return project_root / "scripts" / "bash" / "reset-test-environment.sh"
+
+
+@pytest.fixture(scope="session")
+def clean_test_environment(project_root: Path, reset_script_path: Path):
+    """
+    Reset test environment to clean state before performance and e2e tests.
+
+    This fixture:
+    - Truncates all tables
+    - Clears Kafka topics
+    - Resets connector offsets (unless QUICK_RESET=1)
+
+    Set SKIP_RESET=1 to skip the reset (faster but may have stale data).
+    Set QUICK_RESET=1 to skip connector restart (faster partial reset).
+    """
+    if os.environ.get("SKIP_RESET") == "1":
+        print("\n" + "="*70)
+        print("⚠️  SKIPPING TEST ENVIRONMENT RESET")
+        print("   Tests may run with stale data!")
+        print("="*70 + "\n")
+        yield
+        return
+
+    print("\n" + "="*70)
+    print("🧹 RESETTING TEST ENVIRONMENT TO CLEAN STATE")
+    print("="*70)
+
+    # Determine reset mode
+    quick_mode = os.environ.get("QUICK_RESET") == "1"
+    cmd = [str(reset_script_path)]
+    if quick_mode:
+        cmd.append("--quick")
+        print("   Using quick mode (skip connector restart)")
+    else:
+        print("   Using full mode (includes connector restart)")
+
+    # Run reset script
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=project_root,
+            capture_output=False,  # Show output to user
+            check=True
+        )
+
+        print("="*70)
+        print("✅ TEST ENVIRONMENT RESET COMPLETE")
+        print("="*70 + "\n")
+
+    except subprocess.CalledProcessError as e:
+        print(f"\n❌ Reset script failed with exit code {e.returncode}")
+        print("   Tests may fail due to stale data!")
+        print("="*70 + "\n")
+        # Don't fail - allow tests to run anyway
+    except Exception as e:
+        print(f"\n❌ Unexpected error during reset: {e}")
+        print("   Tests may fail due to stale data!")
+        print("="*70 + "\n")
+
+    yield
+
 
 @pytest.fixture(scope="session", autouse=True)
 def reset_test_environment(project_root: Path):
@@ -574,8 +641,6 @@ def reset_test_environment(project_root: Path):
 
     This ensures tests run in a clean, predictable state.
     """
-    import subprocess
-
     if os.environ.get("FULL_RESET") == "1":
         print("\n" + "="*70)
         print("🔄 FULL ENVIRONMENT RESET - This will take ~2 minutes")

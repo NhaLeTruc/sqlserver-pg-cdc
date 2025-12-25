@@ -362,10 +362,10 @@ test-latency: ## Measure CDC pipeline latency for INSERT/UPDATE/DELETE operation
 
 mutation-test: ## Run mutation tests with mutmut
 	@echo "$(BLUE)Running mutation tests...$(NC)"
-	@.venv/bin/mutmut run --paths-to-mutate=src/reconciliation --runner="pytest -x --tb=short tests/unit/ tests/property/"
+	@.venv/bin/mutmut run
 	@echo "$(GREEN)✓ Mutation testing complete$(NC)"
-	@echo "$(BLUE)Generating mutation test report...$(NC)"
-	@.venv/bin/mutmut show
+	@echo "$(BLUE)Mutation test summary:$(NC)"
+	@.venv/bin/mutmut results
 
 mutation-results: ## Show mutation test results
 	@echo "$(BLUE)Mutation Test Results:$(NC)"

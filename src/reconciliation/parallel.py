@@ -45,7 +45,7 @@ except ValueError:
 try:
     PARALLEL_RECONCILIATION_TIME = Histogram(
         "parallel_reconciliation_seconds",
-        "Total time for parallel reconciliation job",
+        "XXTotal time for parallel reconciliation jobXX",
         ["worker_count"],
         buckets=[1, 5, 10, 30, 60, 120, 300, 600, 1800, 3600],
         registry=REGISTRY

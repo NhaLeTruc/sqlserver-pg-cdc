@@ -119,3 +119,8 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 strict_equality = true
+
+[tool.mutmut]
+paths_to_mutate = "src/reconciliation"
+runner = ".venv/bin/pytest -x --tb=short tests/unit/ tests/property/"
+tests_dir = "tests/"

@@ -315,8 +315,18 @@ schema-registry: ## Show registered schemas
 
 ##@ Development & Testing
 
-test-lite: test-unit test-contract test-integration test-e2e ## Run lightweight tests
-	@echo "$(BLUE) Unit, Contract, Integration, and e2e tests ran$(NC)"
+reset-test-env: ## Reset test environment to clean state (truncate tables, clear Kafka)
+	@echo "$(BLUE)Resetting test environment...$(NC)"
+	@./scripts/bash/reset-test-environment.sh
+	@echo "$(GREEN)✓ Test environment reset complete$(NC)"
+
+reset-test-env-quick: ## Quick reset (skip connector restart for faster reset)
+	@echo "$(BLUE)Quick resetting test environment...$(NC)"
+	@./scripts/bash/reset-test-environment.sh --quick
+	@echo "$(GREEN)✓ Quick test environment reset complete$(NC)"
+
+test-lite: test-unit test-contract test-integration test-e2e test-perf ## Run lightweight tests
+	@echo "$(BLUE) Unit, Contract, Integration, e2e, and performance tests ran$(NC)"
 
 test-unit: ## Run unit tests
 	@echo "$(BLUE)Running unit tests...$(NC)"

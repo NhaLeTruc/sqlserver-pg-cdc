@@ -159,14 +159,23 @@ class TestPerformanceMeasurement:
         expected_count: int,
         timeout: int = 30,
     ) -> Tuple[bool, float]:
-        """Wait for replication to reach expected count."""
+        """Wait for replication to reach expected count.
+
+        Note: Filters out soft-deleted rows (__deleted='true') to avoid counting
+        tombstone records from previous test runs.
+        """
         start_time = time.time()
         last_count = 0
         last_log_time = start_time
 
         while time.time() - start_time < timeout:
             with postgres_conn.cursor() as cursor:
-                cursor.execute("SELECT COUNT(*) FROM customers WHERE name LIKE 'Perf Test %'")
+                # Only count active rows: __deleted='false' or NULL (legacy rows)
+                cursor.execute("""
+                    SELECT COUNT(*) FROM customers
+                    WHERE name LIKE 'Perf Test %'
+                    AND (__deleted IS NULL OR __deleted = 'false')
+                """)
                 count = cursor.fetchone()[0]
 
                 # Log progress every 5 seconds or when count changes
@@ -185,7 +194,11 @@ class TestPerformanceMeasurement:
 
         # Timeout
         with postgres_conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM customers WHERE name LIKE 'Perf Test %'")
+            cursor.execute("""
+                SELECT COUNT(*) FROM customers
+                WHERE name LIKE 'Perf Test %'
+                AND (__deleted IS NULL OR __deleted = 'false')
+            """)
             final_count = cursor.fetchone()[0]
 
         print(f"  TIMEOUT after {timeout}s. Replicated: {final_count:,}/{expected_count:,}")
@@ -266,9 +279,13 @@ class TestPerformanceMeasurement:
         print(f"Throughput:           {throughput:.0f} rows/second")
         print(f"{'='*70}\n")
 
-        # Verify row count
+        # Verify row count (only count active rows)
         with postgres_conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM customers WHERE name LIKE 'Perf Test %'")
+            cursor.execute("""
+                SELECT COUNT(*) FROM customers
+                WHERE name LIKE 'Perf Test %'
+                AND (__deleted IS NULL OR __deleted = 'false')
+            """)
             final_count = cursor.fetchone()[0]
         assert final_count == total_rows, f"Row count mismatch: {final_count:,} != {total_rows:,}"
 

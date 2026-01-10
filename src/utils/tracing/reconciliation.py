@@ -1,20 +1,15 @@
 """
-Integration helpers for adding tracing to existing code.
+Reconciliation-specific tracing decorators and utilities.
 
-Provides decorators and utility functions to easily add tracing
-to reconciliation operations without major refactoring.
+Provides specialized decorators and context managers for tracing
+reconciliation operations with appropriate attributes.
 """
 
-from src.utils.tracing import (
-    trace_operation,
-    trace_function,
-    trace_database_query,
-    add_span_attributes,
-    add_span_event
-)
-from typing import Any, Dict, Optional
-from functools import wraps
 import logging
+from functools import wraps
+
+from .context import add_span_attributes, add_span_event, trace_operation
+from .database import trace_database_query
 
 logger = logging.getLogger(__name__)
 
@@ -239,74 +234,6 @@ class ReconciliationSpan:
             type=discrepancy_type,
             count=count
         )
-
-
-# Example integration with existing reconciliation code
-def integrate_tracing_example():
-    """
-    Example showing how to integrate tracing into existing code.
-
-    This is a reference implementation, not executed.
-    """
-
-    # Example 1: Using decorator
-    @trace_reconciliation
-    def reconcile_table(source_cursor, target_cursor, source_table, target_table):
-        """Existing reconciliation function with tracing."""
-        # Original implementation unchanged
-        source_count = get_row_count(source_cursor, source_table)
-        target_count = get_row_count(target_cursor, target_table)
-
-        return {
-            'table': target_table,
-            'source_count': source_count,
-            'target_count': target_count,
-            'match': source_count == target_count,
-            'difference': target_count - source_count
-        }
-
-    # Example 2: Manual tracing
-    def reconcile_table_manual(source_cursor, target_cursor, source_table, target_table):
-        """Manual tracing for more control."""
-        with ReconciliationSpan(target_table) as span:
-            # Get counts
-            source_count = get_row_count(source_cursor, source_table)
-            span.add_count("source", source_count)
-
-            target_count = get_row_count(target_cursor, target_table)
-            span.add_count("target", target_count)
-
-            # Check match
-            match = source_count == target_count
-            span.set_match(match)
-
-            if not match:
-                span.mark_discrepancy("count_mismatch", abs(target_count - source_count))
-
-            return {
-                'match': match,
-                'source_count': source_count,
-                'target_count': target_count
-            }
-
-    # Example 3: Nested spans for detailed operations
-    def reconcile_with_checksum(source_cursor, target_cursor, table):
-        """Nested spans for sub-operations."""
-        with trace_operation("reconcile_with_checksum", table=table):
-            # Count check (child span)
-            with trace_database_query("COUNT", table):
-                source_count = get_row_count(source_cursor, table)
-                target_count = get_row_count(target_cursor, table)
-
-            # Checksum check (child span)
-            with trace_operation("checksum_validation", table=table):
-                source_checksum = calculate_checksum(source_cursor, table)
-                target_checksum = calculate_checksum(target_cursor, table)
-
-                return {
-                    'counts_match': source_count == target_count,
-                    'checksums_match': source_checksum == target_checksum
-                }
 
 
 # Utility function to add tracing to existing scheduler

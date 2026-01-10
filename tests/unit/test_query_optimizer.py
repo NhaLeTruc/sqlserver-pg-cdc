@@ -10,7 +10,9 @@ import pytest
 
 from src.utils.query_optimizer import (
     ExecutionPlanMetrics,
+    IndexAdvisor,
     IndexRecommendation,
+    QueryAnalyzer,
     QueryOptimizer,
 )
 
@@ -94,7 +96,7 @@ class TestQueryOptimizer:
             }
         ]
 
-        metrics = QueryOptimizer._parse_postgres_plan(plan_json, executed=False)
+        metrics = QueryAnalyzer._parse_postgres_plan(plan_json, executed=False)
 
         assert metrics.estimated_rows == 1000
         assert metrics.has_table_scan is True
@@ -112,7 +114,7 @@ class TestQueryOptimizer:
             }
         ]
 
-        metrics = QueryOptimizer._parse_postgres_plan(plan_json, executed=False)
+        metrics = QueryAnalyzer._parse_postgres_plan(plan_json, executed=False)
 
         assert metrics.estimated_rows == 100
         assert metrics.has_index_scan is True
@@ -129,7 +131,7 @@ class TestQueryOptimizer:
             }
         ]
 
-        metrics = QueryOptimizer._parse_postgres_plan(plan_json, executed=False)
+        metrics = QueryAnalyzer._parse_postgres_plan(plan_json, executed=False)
 
         assert metrics.has_hash_join is True
 
@@ -144,7 +146,7 @@ class TestQueryOptimizer:
             }
         ]
 
-        metrics = QueryOptimizer._parse_postgres_plan(plan_json, executed=False)
+        metrics = QueryAnalyzer._parse_postgres_plan(plan_json, executed=False)
 
         assert metrics.has_nested_loop is True
 
@@ -161,7 +163,7 @@ class TestQueryOptimizer:
             }
         ]
 
-        metrics = QueryOptimizer._parse_postgres_plan(plan_json, executed=True)
+        metrics = QueryAnalyzer._parse_postgres_plan(plan_json, executed=True)
 
         assert metrics.estimated_rows == 100
         assert metrics.actual_rows == 95
@@ -174,7 +176,7 @@ class TestQueryOptimizer:
            EstimateRows = 1000
         """
 
-        metrics = QueryOptimizer._parse_sqlserver_plan(plan_text)
+        metrics = QueryAnalyzer._parse_sqlserver_plan(plan_text)
 
         assert metrics.has_table_scan is True
         assert metrics.estimated_rows == 1000
@@ -187,7 +189,7 @@ class TestQueryOptimizer:
            EstimateRows = 100
         """
 
-        metrics = QueryOptimizer._parse_sqlserver_plan(plan_text)
+        metrics = QueryAnalyzer._parse_sqlserver_plan(plan_text)
 
         assert metrics.has_index_scan is True
         assert metrics.estimated_rows == 100
@@ -199,7 +201,7 @@ class TestQueryOptimizer:
            EstimateRows = 500
         """
 
-        metrics = QueryOptimizer._parse_sqlserver_plan(plan_text)
+        metrics = QueryAnalyzer._parse_sqlserver_plan(plan_text)
 
         assert metrics.has_hash_join is True
         assert metrics.estimated_rows == 500
@@ -211,7 +213,7 @@ class TestQueryOptimizer:
            EstimateRows = 200
         """
 
-        metrics = QueryOptimizer._parse_sqlserver_plan(plan_text)
+        metrics = QueryAnalyzer._parse_sqlserver_plan(plan_text)
 
         assert metrics.has_nested_loop is True
 
@@ -222,13 +224,13 @@ class TestQueryOptimizer:
            EstimateRows = 1000
         """
 
-        metrics = QueryOptimizer._parse_sqlserver_plan(plan_text)
+        metrics = QueryAnalyzer._parse_sqlserver_plan(plan_text)
 
         assert any("Sort" in warning for warning in metrics.warnings)
 
     def test_recommend_indexes_basic(self):
         """Test basic index recommendations."""
-        recommendations = QueryOptimizer.recommend_indexes_for_reconciliation(
+        recommendations = IndexAdvisor.recommend_indexes_for_reconciliation(
             table_name="users",
             primary_keys=["id"],
         )
@@ -241,7 +243,7 @@ class TestQueryOptimizer:
 
     def test_recommend_indexes_with_timestamp(self):
         """Test recommendations with timestamp column."""
-        recommendations = QueryOptimizer.recommend_indexes_for_reconciliation(
+        recommendations = IndexAdvisor.recommend_indexes_for_reconciliation(
             table_name="users",
             primary_keys=["id"],
             timestamp_column="updated_at",
@@ -253,7 +255,7 @@ class TestQueryOptimizer:
 
     def test_recommend_indexes_with_checksum(self):
         """Test recommendations with checksum column."""
-        recommendations = QueryOptimizer.recommend_indexes_for_reconciliation(
+        recommendations = IndexAdvisor.recommend_indexes_for_reconciliation(
             table_name="users",
             primary_keys=["id"],
             checksum_column="row_checksum",
@@ -265,7 +267,7 @@ class TestQueryOptimizer:
 
     def test_recommend_indexes_with_status(self):
         """Test recommendations with status column."""
-        recommendations = QueryOptimizer.recommend_indexes_for_reconciliation(
+        recommendations = IndexAdvisor.recommend_indexes_for_reconciliation(
             table_name="users",
             primary_keys=["id"],
             status_column="status",
@@ -280,7 +282,7 @@ class TestQueryOptimizer:
 
     def test_recommend_indexes_partial_index(self):
         """Test partial index recommendation."""
-        recommendations = QueryOptimizer.recommend_indexes_for_reconciliation(
+        recommendations = IndexAdvisor.recommend_indexes_for_reconciliation(
             table_name="users",
             primary_keys=["id"],
             status_column="status",
@@ -298,7 +300,7 @@ class TestQueryOptimizer:
             index_type="btree",
         )
 
-        ddl = QueryOptimizer.generate_index_ddl(rec, database_type="postgresql")
+        ddl = IndexAdvisor.generate_index_ddl(rec, database_type="postgresql")
 
         assert "CREATE INDEX CONCURRENTLY" in ddl
         assert "ix_users_id" in ddl
@@ -314,7 +316,7 @@ class TestQueryOptimizer:
             include_columns=["id", "email"],
         )
 
-        ddl = QueryOptimizer.generate_index_ddl(rec, database_type="postgresql")
+        ddl = IndexAdvisor.generate_index_ddl(rec, database_type="postgresql")
 
         assert "INCLUDE (id, email)" in ddl
 
@@ -327,7 +329,7 @@ class TestQueryOptimizer:
             where_clause="status = 'active'",
         )
 
-        ddl = QueryOptimizer.generate_index_ddl(rec, database_type="postgresql")
+        ddl = IndexAdvisor.generate_index_ddl(rec, database_type="postgresql")
 
         assert "WHERE status = 'active'" in ddl
 
@@ -339,7 +341,7 @@ class TestQueryOptimizer:
             index_type="hash",
         )
 
-        ddl = QueryOptimizer.generate_index_ddl(rec, database_type="postgresql")
+        ddl = IndexAdvisor.generate_index_ddl(rec, database_type="postgresql")
 
         assert "USING hash" in ddl
 
@@ -351,7 +353,7 @@ class TestQueryOptimizer:
             index_type="btree",
         )
 
-        ddl = QueryOptimizer.generate_index_ddl(rec, database_type="sqlserver")
+        ddl = IndexAdvisor.generate_index_ddl(rec, database_type="sqlserver")
 
         assert "CREATE NONCLUSTERED INDEX" in ddl
         assert "IX_users_id" in ddl
@@ -368,7 +370,7 @@ class TestQueryOptimizer:
             include_columns=["id", "email"],
         )
 
-        ddl = QueryOptimizer.generate_index_ddl(rec, database_type="sqlserver")
+        ddl = IndexAdvisor.generate_index_ddl(rec, database_type="sqlserver")
 
         assert "INCLUDE (id, email)" in ddl
 
@@ -381,7 +383,7 @@ class TestQueryOptimizer:
             where_clause="status = 'active'",
         )
 
-        ddl = QueryOptimizer.generate_index_ddl(rec, database_type="sqlserver")
+        ddl = IndexAdvisor.generate_index_ddl(rec, database_type="sqlserver")
 
         assert "WHERE status = 'active'" in ddl
 
@@ -394,7 +396,7 @@ class TestQueryOptimizer:
         )
 
         with pytest.raises(ValueError, match="Unsupported database type"):
-            QueryOptimizer.generate_index_ddl(rec, database_type="mysql")
+            IndexAdvisor.generate_index_ddl(rec, database_type="mysql")
 
     def test_optimize_row_count_query_postgres(self):
         """Test row count query optimization for PostgreSQL."""
@@ -471,7 +473,7 @@ class TestQueryOptimizer:
         # Mock EXPLAIN text result
         mock_cursor.fetchall.return_value = [("Index Scan on users",), ("Rows: 100",)]
 
-        metrics, plan_text = QueryOptimizer.analyze_postgres_query(
+        metrics, plan_text = QueryAnalyzer.analyze_postgres_query(
             mock_conn, "SELECT * FROM users WHERE id = 1", execute=False
         )
 
@@ -492,7 +494,7 @@ class TestQueryOptimizer:
             ("   EstimateRows = 100",),
         ]
 
-        metrics, plan_text = QueryOptimizer.analyze_sqlserver_query(
+        metrics, plan_text = QueryAnalyzer.analyze_sqlserver_query(
             mock_conn, "SELECT * FROM users WHERE id = 1", execute=False
         )
 

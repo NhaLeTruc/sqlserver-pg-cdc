@@ -165,11 +165,13 @@ class TestUtilsInit:
         assert hasattr(metrics, "ApplicationInfo")
         assert hasattr(metrics, "initialize_metrics")
 
-    def test_logging_config_module_can_be_imported(self):
-        """Test that logging_config module (not in __all__) can still be imported"""
+    def test_logging_module_can_be_imported(self):
+        """Test that logging module (not in __all__) can still be imported"""
         # Arrange & Act
         try:
-            from src.utils import logging_config
-            assert logging_config is not None
+            from src.utils import logging
+            assert logging is not None
+            assert hasattr(logging, "setup_logging")
+            assert hasattr(logging, "get_logger")
         except ImportError as e:
-            pytest.fail(f"Failed to import src.utils.logging_config: {e}")
+            pytest.fail(f"Failed to import src.utils.logging: {e}")

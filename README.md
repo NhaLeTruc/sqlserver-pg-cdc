@@ -172,20 +172,33 @@ make lint
 sqlserver-pg-cdc/
 ├── src/                           # Source code for CDC pipeline components
 │   ├── reconciliation/            # Data reconciliation subsystem
-│   │   ├── compare.py            # Row count and checksum comparison logic
-│   │   ├── report.py             # Report generation (human and machine-readable)
-│   │   └── scheduler.py          # Cron-like scheduling for automated reconciliation
+│   │   ├── compare/              # Row count and checksum comparison
+│   │   ├── report/               # Report generation modules
+│   │   ├── scheduler/            # Scheduled reconciliation
+│   │   ├── row_level/            # Row-by-row comparison
+│   │   └── parallel/             # Parallel execution
+│   ├── transformation/            # Data transformation framework
+│   │   └── transformers/         # PII masking, hashing, type conversion
 │   └── utils/                     # Shared utilities
-│       ├── vault_client.py       # HashiCorp Vault integration for secrets management
-│       ├── logging_config.py     # Structured JSON logging with correlation IDs
-│       └── metrics.py            # Prometheus metrics publisher for monitoring
+│       ├── db_pool/              # Database connection pooling
+│       ├── metrics/              # Prometheus metrics publisher
+│       ├── query_optimizer/      # Query analysis and recommendations
+│       ├── logging/              # Structured logging framework
+│       ├── tracing/              # Distributed tracing (OpenTelemetry)
+│       └── vault_client.py       # HashiCorp Vault integration
 ├── tests/                         # Comprehensive test suite
 │   ├── unit/                     # Unit tests for individual components
 │   ├── contract/                 # Contract tests for interface validation
 │   ├── integration/              # Integration tests for component interactions
 │   ├── e2e/                      # End-to-end pipeline validation tests
 │   ├── performance/              # Performance benchmarking tests
+│   ├── property/                 # Property-based tests (Hypothesis)
 │   └── chaos/                    # Chaos engineering and recovery tests
+├── docs/                          # Documentation
+│   ├── architecture.md           # System architecture overview
+│   ├── module-structure.md       # Detailed module documentation
+│   ├── monitoring.md             # Monitoring and alerting guide
+│   └── operations.md             # Operational runbooks
 ├── docker-compose.yml            # Docker services configuration
 ├── Makefile                      # Build and task automation
 └── README.md                     # This file
@@ -201,10 +214,14 @@ sqlserver-pg-cdc/
 
 **Utilities Module** (`src/utils/`)
 
+- `db_pool/`: Thread-safe database connection pooling with health checks and automatic recycling for PostgreSQL and SQL Server
+- `metrics/`: Prometheus metrics publisher for reconciliation, connector operations, and Vault health monitoring
+- `query_optimizer/`: Query analysis, optimization, and index recommendations for reconciliation operations
+- `logging/`: Structured JSON logging with console and file formatters, contextual logging support
+- `tracing/`: Distributed tracing with OpenTelemetry and Jaeger integration for end-to-end visibility
 - `vault_client.py`: Secure credential management using HashiCorp Vault KV v2 secrets engine
-- `logging_config.py`: Structured JSON logging with contextual information for observability and monitoring integration
-- `metrics.py`: Prometheus metrics exporter for tracking pipeline health, reconciliation runs, and data quality metrics
-- `retry.py`: Exponential backoff retry logic with smart exception filtering for database operations
+
+**See [docs/module-structure.md](docs/module-structure.md) for detailed module documentation and usage examples.**
 
 ### Operational Scripts
 

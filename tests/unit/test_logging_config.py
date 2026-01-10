@@ -13,7 +13,7 @@ import sys
 import tempfile
 from unittest.mock import Mock, patch, MagicMock, call
 from datetime import datetime
-from src.utils.logging_config import (
+from src.utils.logging import (
     JSONFormatter,
     ConsoleFormatter,
     setup_logging,

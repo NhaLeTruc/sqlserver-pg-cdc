@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from transformation.transform import (
+from transformation.transformers import (
     ConditionalTransformer,
     HashingTransformer,
     PIIMaskingTransformer,

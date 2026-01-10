@@ -4,7 +4,7 @@ Data transformation framework for CDC pipeline.
 Provides PII masking, encryption, hashing, and business rule transformations.
 """
 
-from transformation.transform import (
+from .transformers import (
     ConditionalTransformer,
     HashingTransformer,
     PIIMaskingTransformer,

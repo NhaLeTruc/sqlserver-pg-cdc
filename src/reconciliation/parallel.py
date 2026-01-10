@@ -24,7 +24,7 @@ from typing import Any, Callable, Dict, List, Optional
 from opentelemetry import trace
 from prometheus_client import Counter, Gauge, Histogram, REGISTRY
 
-from utils.tracing import get_tracer, trace_operation
+from src.utils.tracing import get_tracer, trace_operation
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer()
@@ -45,7 +45,7 @@ except ValueError:
 try:
     PARALLEL_RECONCILIATION_TIME = Histogram(
         "parallel_reconciliation_seconds",
-        "XXTotal time for parallel reconciliation jobXX",
+        "Total time for parallel reconciliation job",
         ["worker_count"],
         buckets=[1, 5, 10, 30, 60, 120, 300, 600, 1800, 3600],
         registry=REGISTRY

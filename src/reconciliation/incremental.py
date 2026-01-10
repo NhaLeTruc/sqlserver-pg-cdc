@@ -16,7 +16,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from opentelemetry import trace
 from prometheus_client import Counter, Histogram
 
-from utils.tracing import get_tracer, trace_operation
+from src.utils.tracing import get_tracer, trace_operation
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer()

@@ -21,7 +21,7 @@ import pyodbc
 from opentelemetry import trace
 from prometheus_client import Counter, Gauge, Histogram
 
-from utils.tracing import get_tracer, trace_operation
+from src.utils.tracing import get_tracer, trace_operation
 
 logger = logging.getLogger(__name__)
 

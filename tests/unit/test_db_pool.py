@@ -13,7 +13,7 @@ import psycopg2
 import pytest
 import pyodbc
 
-from utils.db_pool import (
+from src.utils.db_pool import (
     BaseConnectionPool,
     ConnectionPoolError,
     PoolClosedError,

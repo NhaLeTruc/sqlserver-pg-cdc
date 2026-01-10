@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
-from utils.query_optimizer import (
+from src.utils.query_optimizer import (
     ExecutionPlanMetrics,
     IndexRecommendation,
     QueryOptimizer,

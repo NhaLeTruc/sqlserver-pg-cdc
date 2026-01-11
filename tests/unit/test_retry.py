@@ -9,14 +9,11 @@ Tests verify:
 - Database-specific retry logic
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-import time
-from unittest.mock import Mock, patch, call
-from src.utils.retry import (
-    retry_with_backoff,
-    retry_database_operation,
-    is_retryable_db_exception
-)
+
+from src.utils.retry import is_retryable_db_exception, retry_database_operation, retry_with_backoff
 
 
 class TestRetryWithBackoff:

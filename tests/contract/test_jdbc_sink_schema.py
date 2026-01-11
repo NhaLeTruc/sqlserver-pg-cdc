@@ -5,7 +5,7 @@ Validates that connector configs conform to the JSON schema specification.
 
 import json
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import jsonschema
 import pytest
@@ -37,13 +37,13 @@ class TestJdbcSinkConnectorContract:
         )
 
     @pytest.fixture
-    def schema(self, schema_path: Path) -> Dict[str, Any]:
+    def schema(self, schema_path: Path) -> dict[str, Any]:
         """Load JSON schema for JDBC sink connector."""
         with open(schema_path) as f:
             return json.load(f)
 
     @pytest.fixture
-    def config(self, config_path: Path) -> Dict[str, Any]:
+    def config(self, config_path: Path) -> dict[str, Any]:
         """Load actual JDBC sink connector configuration."""
         with open(config_path) as f:
             return json.load(f)
@@ -57,7 +57,7 @@ class TestJdbcSinkConnectorContract:
         assert config_path.exists(), f"Config file not found: {config_path}"
 
     def test_config_validates_against_schema(
-        self, config: Dict[str, Any], schema: Dict[str, Any]
+        self, config: dict[str, Any], schema: dict[str, Any]
     ) -> None:
         """Verify connector config validates against JSON schema."""
         try:
@@ -65,7 +65,7 @@ class TestJdbcSinkConnectorContract:
         except jsonschema.exceptions.ValidationError as e:
             pytest.fail(f"Configuration validation failed: {e.message}")
 
-    def test_required_fields_present(self, config: Dict[str, Any]) -> None:
+    def test_required_fields_present(self, config: dict[str, Any]) -> None:
         """Verify all required fields are present in config."""
         assert "name" in config, "Missing 'name' field"
         assert "config" in config, "Missing 'config' field"
@@ -83,21 +83,21 @@ class TestJdbcSinkConnectorContract:
         for field in required_fields:
             assert field in config_section, f"Missing required field: {field}"
 
-    def test_connector_class_is_jdbc_sink(self, config: Dict[str, Any]) -> None:
+    def test_connector_class_is_jdbc_sink(self, config: dict[str, Any]) -> None:
         """Verify connector class is Confluent JDBC Sink connector."""
         connector_class = config["config"]["connector.class"]
         assert (
             connector_class == "io.confluent.connect.jdbc.JdbcSinkConnector"
         ), f"Invalid connector class: {connector_class}"
 
-    def test_insert_mode_is_upsert(self, config: Dict[str, Any]) -> None:
+    def test_insert_mode_is_upsert(self, config: dict[str, Any]) -> None:
         """Verify insert mode is upsert for idempotency."""
         insert_mode = config["config"]["insert.mode"]
         assert insert_mode == "upsert", (
             f"Insert mode should be 'upsert' for idempotency, got '{insert_mode}'"
         )
 
-    def test_upsert_mode_requires_pk_fields(self, config: Dict[str, Any]) -> None:
+    def test_upsert_mode_requires_pk_fields(self, config: dict[str, Any]) -> None:
         """Verify pk.mode and pk.fields are configured for upsert mode."""
         config_section = config["config"]
 
@@ -114,7 +114,7 @@ class TestJdbcSinkConnectorContract:
                 f"Expected pk.mode='record_value', got '{pk_mode}'"
             )
 
-    def test_vault_references_in_credentials(self, config: Dict[str, Any]) -> None:
+    def test_vault_references_in_credentials(self, config: dict[str, Any]) -> None:
         """Verify credentials use Vault references (no plaintext passwords)."""
         config_section = config["config"]
 
@@ -127,21 +127,21 @@ class TestJdbcSinkConnectorContract:
             "Credentials should use Vault references for security"
         )
 
-    def test_auto_create_disabled(self, config: Dict[str, Any]) -> None:
+    def test_auto_create_disabled(self, config: dict[str, Any]) -> None:
         """Verify auto.create is disabled for production safety."""
         auto_create = config["config"].get("auto.create", "true")
         assert auto_create == "false", (
             "auto.create should be false in production to prevent accidental table creation"
         )
 
-    def test_auto_evolve_enabled(self, config: Dict[str, Any]) -> None:
+    def test_auto_evolve_enabled(self, config: dict[str, Any]) -> None:
         """Verify auto.evolve is enabled for schema evolution."""
         auto_evolve = config["config"].get("auto.evolve", "false")
         assert auto_evolve == "true", (
             "auto.evolve should be true to handle schema changes automatically"
         )
 
-    def test_batch_size_configured(self, config: Dict[str, Any]) -> None:
+    def test_batch_size_configured(self, config: dict[str, Any]) -> None:
         """Verify batch size is configured for performance."""
         batch_size = config["config"].get("batch.size", "0")
         batch_size_int = int(batch_size)
@@ -150,13 +150,13 @@ class TestJdbcSinkConnectorContract:
             f"Batch size should be <= 5000 for safety, got {batch_size}"
         )
 
-    def test_connection_pool_configured(self, config: Dict[str, Any]) -> None:
+    def test_connection_pool_configured(self, config: dict[str, Any]) -> None:
         """Verify connection pool is configured."""
         pool_size = config["config"].get("connection.pool.size", "0")
         pool_size_int = int(pool_size)
         assert pool_size_int > 0, f"Connection pool size should be > 0, got {pool_size}"
 
-    def test_retry_configuration(self, config: Dict[str, Any]) -> None:
+    def test_retry_configuration(self, config: dict[str, Any]) -> None:
         """Verify retry configuration is set for resilience."""
         config_section = config["config"]
 
@@ -168,7 +168,7 @@ class TestJdbcSinkConnectorContract:
         backoff_ms = int(config_section.get("connection.backoff.ms", "0"))
         assert backoff_ms > 0, f"connection.backoff.ms should be > 0, got {backoff_ms}"
 
-    def test_dead_letter_queue_configured(self, config: Dict[str, Any]) -> None:
+    def test_dead_letter_queue_configured(self, config: dict[str, Any]) -> None:
         """Verify Dead Letter Queue is configured for error handling."""
         config_section = config["config"]
 
@@ -190,7 +190,7 @@ class TestJdbcSinkConnectorContract:
             "DLQ context headers should be enabled for debugging"
         )
 
-    def test_converters_use_avro(self, config: Dict[str, Any]) -> None:
+    def test_converters_use_avro(self, config: dict[str, Any]) -> None:
         """Verify converters are configured to use Avro with Schema Registry."""
         config_section = config["config"]
 
@@ -210,7 +210,7 @@ class TestJdbcSinkConnectorContract:
             "Missing Schema Registry URL for value converter"
         )
 
-    def test_tasks_max_configured(self, config: Dict[str, Any]) -> None:
+    def test_tasks_max_configured(self, config: dict[str, Any]) -> None:
         """Verify tasks.max is configured for parallelism."""
         tasks_max = int(config["config"].get("tasks.max", "0"))
         assert tasks_max > 0, f"tasks.max should be > 0, got {tasks_max}"
@@ -218,7 +218,7 @@ class TestJdbcSinkConnectorContract:
             f"tasks.max should be reasonable (<= 10), got {tasks_max}"
         )
 
-    def test_error_logging_enabled(self, config: Dict[str, Any]) -> None:
+    def test_error_logging_enabled(self, config: dict[str, Any]) -> None:
         """Verify error logging is enabled."""
         config_section = config["config"]
 

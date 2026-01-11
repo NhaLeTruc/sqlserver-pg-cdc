@@ -4,9 +4,8 @@ Validates that connector configs conform to the JSON schema specification.
 """
 
 import json
-import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import jsonschema
 import pytest
@@ -38,13 +37,13 @@ class TestDebeziumSourceConnectorContract:
         )
 
     @pytest.fixture
-    def schema(self, schema_path: Path) -> Dict[str, Any]:
+    def schema(self, schema_path: Path) -> dict[str, Any]:
         """Load JSON schema for Debezium connector."""
         with open(schema_path) as f:
             return json.load(f)
 
     @pytest.fixture
-    def config(self, config_path: Path) -> Dict[str, Any]:
+    def config(self, config_path: Path) -> dict[str, Any]:
         """Load actual Debezium connector configuration."""
         with open(config_path) as f:
             return json.load(f)
@@ -58,7 +57,7 @@ class TestDebeziumSourceConnectorContract:
         assert config_path.exists(), f"Config file not found: {config_path}"
 
     def test_config_validates_against_schema(
-        self, config: Dict[str, Any], schema: Dict[str, Any]
+        self, config: dict[str, Any], schema: dict[str, Any]
     ) -> None:
         """Verify connector config validates against JSON schema."""
         try:
@@ -66,7 +65,7 @@ class TestDebeziumSourceConnectorContract:
         except jsonschema.exceptions.ValidationError as e:
             pytest.fail(f"Configuration validation failed: {e.message}")
 
-    def test_required_fields_present(self, config: Dict[str, Any]) -> None:
+    def test_required_fields_present(self, config: dict[str, Any]) -> None:
         """Verify all required fields are present in config."""
         assert "name" in config, "Missing 'name' field"
         assert "config" in config, "Missing 'config' field"
@@ -86,7 +85,7 @@ class TestDebeziumSourceConnectorContract:
             assert field in config_section, f"Missing required field: {field}"
 
     def test_connector_class_is_debezium_sqlserver(
-        self, config: Dict[str, Any]
+        self, config: dict[str, Any]
     ) -> None:
         """Verify connector class is Debezium SQL Server connector."""
         connector_class = config["config"]["connector.class"]
@@ -94,14 +93,14 @@ class TestDebeziumSourceConnectorContract:
             connector_class == "io.debezium.connector.sqlserver.SqlServerConnector"
         ), f"Invalid connector class: {connector_class}"
 
-    def test_tasks_max_is_one(self, config: Dict[str, Any]) -> None:
+    def test_tasks_max_is_one(self, config: dict[str, Any]) -> None:
         """Verify tasks.max is set to 1 for SQL Server CDC (single-threaded)."""
         tasks_max = config["config"]["tasks.max"]
         assert (
             tasks_max == "1"
         ), f"SQL Server CDC requires tasks.max=1, got {tasks_max}"
 
-    def test_vault_references_in_credentials(self, config: Dict[str, Any]) -> None:
+    def test_vault_references_in_credentials(self, config: dict[str, Any]) -> None:
         """Verify credentials use Vault references (no plaintext passwords)."""
         config_section = config["config"]
 
@@ -115,7 +114,7 @@ class TestDebeziumSourceConnectorContract:
             "Credentials should use Vault references for security"
         )
 
-    def test_decimal_handling_mode(self, config: Dict[str, Any]) -> None:
+    def test_decimal_handling_mode(self, config: dict[str, Any]) -> None:
         """Verify decimal handling mode is set for precision."""
         decimal_mode = config["config"].get("decimal.handling.mode", "")
         assert decimal_mode in [
@@ -124,7 +123,7 @@ class TestDebeziumSourceConnectorContract:
             "string",
         ], f"Invalid decimal handling mode: {decimal_mode}"
 
-    def test_time_precision_mode(self, config: Dict[str, Any]) -> None:
+    def test_time_precision_mode(self, config: dict[str, Any]) -> None:
         """Verify time precision mode is configured."""
         time_mode = config["config"].get("time.precision.mode", "")
         assert time_mode in [
@@ -132,7 +131,7 @@ class TestDebeziumSourceConnectorContract:
             "connect",
         ], f"Invalid time precision mode: {time_mode}"
 
-    def test_snapshot_mode_configured(self, config: Dict[str, Any]) -> None:
+    def test_snapshot_mode_configured(self, config: dict[str, Any]) -> None:
         """Verify snapshot mode is configured."""
         snapshot_mode = config["config"].get("snapshot.mode", "")
         assert snapshot_mode in [
@@ -141,14 +140,14 @@ class TestDebeziumSourceConnectorContract:
             "no_snapshot",
         ], f"Invalid snapshot mode: {snapshot_mode}"
 
-    def test_schema_changes_tracking_enabled(self, config: Dict[str, Any]) -> None:
+    def test_schema_changes_tracking_enabled(self, config: dict[str, Any]) -> None:
         """Verify schema change tracking is enabled."""
         include_schema_changes = config["config"].get("include.schema.changes", "false")
         assert include_schema_changes == "true", (
             "Schema change tracking should be enabled for schema evolution"
         )
 
-    def test_converters_use_avro(self, config: Dict[str, Any]) -> None:
+    def test_converters_use_avro(self, config: dict[str, Any]) -> None:
         """Verify converters are configured to use Avro with Schema Registry."""
         config_section = config["config"]
 
@@ -168,7 +167,7 @@ class TestDebeziumSourceConnectorContract:
             "Missing Schema Registry URL for value converter"
         )
 
-    def test_error_handling_configured(self, config: Dict[str, Any]) -> None:
+    def test_error_handling_configured(self, config: dict[str, Any]) -> None:
         """Verify error handling and logging are configured."""
         config_section = config["config"]
 

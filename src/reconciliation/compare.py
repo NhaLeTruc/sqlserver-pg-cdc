@@ -7,10 +7,10 @@ This module provides functions to compare data between source and target databas
 - Table-level data integrity checks
 """
 
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional
 import hashlib
 import re
+from datetime import UTC, datetime
+from typing import Any
 
 try:
     from psycopg2 import sql
@@ -138,7 +138,7 @@ def compare_row_counts(
     table_name: str,
     source_count: int,
     target_count: int
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Compare row counts between source and target tables
 
@@ -175,7 +175,7 @@ def compare_row_counts(
         "match": match,
         "difference": difference,
         "status": "MATCH" if match else "MISMATCH",
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat()
     }
 
     return result
@@ -183,9 +183,9 @@ def compare_row_counts(
 
 def compare_checksums(
     table_name: str,
-    source_checksum: Optional[str],
-    target_checksum: Optional[str]
-) -> Dict[str, Any]:
+    source_checksum: str | None,
+    target_checksum: str | None
+) -> dict[str, Any]:
     """
     Compare checksums between source and target tables
 
@@ -217,7 +217,7 @@ def compare_checksums(
         "target_checksum": target_checksum,
         "match": match,
         "status": "MATCH" if match else "MISMATCH",
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat()
     }
 
     return result
@@ -259,7 +259,7 @@ def get_row_count(cursor: Any, table_name: str) -> int:
     return _execute_row_count_query(cursor, quoted_table)
 
 
-def calculate_checksum(cursor: Any, table_name: str, columns: Optional[list] = None) -> str:
+def calculate_checksum(cursor: Any, table_name: str, columns: list | None = None) -> str:
     """
     Calculate checksum for a table using database-native identifier quoting
 
@@ -316,7 +316,7 @@ def calculate_checksum(cursor: Any, table_name: str, columns: Optional[list] = N
     return hasher.hexdigest()
 
 
-def _get_primary_key_column(cursor: Any, table_name: str) -> Optional[str]:
+def _get_primary_key_column(cursor: Any, table_name: str) -> str | None:
     """
     Get the primary key column for a table
 
@@ -415,7 +415,7 @@ def _execute_chunked_checksum_query(
 def calculate_checksum_chunked(
     cursor: Any,
     table_name: str,
-    columns: Optional[list] = None,
+    columns: list | None = None,
     chunk_size: int = 10000
 ) -> str:
     """
@@ -497,8 +497,8 @@ def reconcile_table(
     source_table: str,
     target_table: str,
     validate_checksum: bool = False,
-    columns: Optional[list] = None
-) -> Dict[str, Any]:
+    columns: list | None = None
+) -> dict[str, Any]:
     """
     Perform full reconciliation for a single table
 
@@ -532,7 +532,7 @@ def reconcile_table(
         "target_count": target_count,
         "match": source_count == target_count,
         "difference": target_count - source_count,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat()
     }
 
     # Validate checksums if requested

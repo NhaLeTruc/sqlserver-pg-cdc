@@ -22,13 +22,13 @@ logger = logging.getLogger(__name__)
 
 
 # Global pool instances (initialized by application)
-_postgres_pool: Optional[PostgresConnectionPool] = None
-_sqlserver_pool: Optional[SQLServerConnectionPool] = None
+_postgres_pool: PostgresConnectionPool | None = None
+_sqlserver_pool: SQLServerConnectionPool | None = None
 
 
 def initialize_pools(
-    postgres_config: Optional[Dict[str, Any]] = None,
-    sqlserver_config: Optional[Dict[str, Any]] = None,
+    postgres_config: dict[str, Any] | None = None,
+    sqlserver_config: dict[str, Any] | None = None,
 ) -> None:
     """
     Initialize global connection pools.

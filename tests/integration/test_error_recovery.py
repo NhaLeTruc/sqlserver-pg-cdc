@@ -10,10 +10,9 @@ These tests validate configuration rather than simulating actual failures,
 as failure simulation would require complex infrastructure setup.
 """
 
+
 import pytest
-import time
 import requests
-from typing import Dict, Any
 
 
 class TestErrorRecoveryConfiguration:
@@ -79,7 +78,7 @@ class TestErrorRecoveryConfiguration:
             f"Backoff too short: {backoff_ms}ms (should be >= 1000ms)"
         )
 
-        print(f"✓ Retry configuration validated:")
+        print("✓ Retry configuration validated:")
         print(f"  - errors.retry.timeout: {retry_timeout_ms}ms")
         print(f"  - connection.attempts: {connection_attempts}")
         print(f"  - connection.backoff.ms: {backoff_ms}ms")
@@ -185,10 +184,10 @@ class TestErrorRecoveryConfiguration:
             "DLQ context headers should be enabled"
         )
 
-        print(f"✓ DLQ configuration validated:")
+        print("✓ DLQ configuration validated:")
         print(f"  - errors.tolerance: {config['errors.tolerance']}")
         print(f"  - DLQ topic: {dlq_topic}")
-        print(f"  - Context headers enabled: true")
+        print("  - Context headers enabled: true")
 
     def test_dlq_topic_exists(
         self, kafka_connect_url, connector_name
@@ -284,5 +283,5 @@ class TestErrorRecoveryConfiguration:
             f"No running tasks. Tasks: {[t['state'] for t in status['tasks']]}"
         )
 
-        print(f"✓ Connector status: RUNNING")
+        print("✓ Connector status: RUNNING")
         print(f"✓ Running tasks: {len(running_tasks)}/{len(status['tasks'])}")

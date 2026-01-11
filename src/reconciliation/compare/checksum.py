@@ -6,13 +6,14 @@ using SHA256 hashing, with support for both full and chunked processing.
 """
 
 import hashlib
-from typing import Any, Optional, List
+from typing import Any
 
 from src.utils.retry import retry_database_operation
-from .quoting import _quote_identifier, _get_db_type
+
+from .quoting import _get_db_type, _quote_identifier
 
 
-def calculate_checksum(cursor: Any, table_name: str, columns: Optional[List] = None) -> str:
+def calculate_checksum(cursor: Any, table_name: str, columns: list | None = None) -> str:
     """
     Calculate checksum for a table using database-native identifier quoting
 
@@ -69,7 +70,7 @@ def calculate_checksum(cursor: Any, table_name: str, columns: Optional[List] = N
     return hasher.hexdigest()
 
 
-def _get_primary_key_column(cursor: Any, table_name: str) -> Optional[str]:
+def _get_primary_key_column(cursor: Any, table_name: str) -> str | None:
     """
     Get the primary key column for a table
 
@@ -168,7 +169,7 @@ def _execute_chunked_checksum_query(
 def calculate_checksum_chunked(
     cursor: Any,
     table_name: str,
-    columns: Optional[List] = None,
+    columns: list | None = None,
     chunk_size: int = 10000
 ) -> str:
     """

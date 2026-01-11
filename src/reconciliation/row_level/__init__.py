@@ -10,13 +10,13 @@ Identifies:
 Performance optimized for tables up to 10M rows using batching and streaming.
 """
 
-from .reconciler import RowLevelReconciler, RowDiscrepancy
+from .reconciler import RowDiscrepancy, RowLevelReconciler
 from .repair import (
-    generate_repair_script,
     _format_value,
     _generate_delete_sql,
     _generate_insert_sql,
     _generate_update_sql,
+    generate_repair_script,
 )
 
 __all__ = [

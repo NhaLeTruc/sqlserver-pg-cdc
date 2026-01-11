@@ -20,9 +20,10 @@ Usage:
         --headless
 """
 
-from locust import HttpUser, task, between, events, constant
-import random
 import logging
+import random
+
+from locust import HttpUser, between, constant, events, task
 
 logger = logging.getLogger(__name__)
 

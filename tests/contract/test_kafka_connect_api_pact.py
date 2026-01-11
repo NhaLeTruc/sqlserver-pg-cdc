@@ -7,14 +7,14 @@ These tests define the expectations that the reconciliation service (consumer)
 has for the Kafka Connect API (provider).
 """
 
+from pathlib import Path
+
 import pytest
 import requests
-import os
-from pathlib import Path
 
 # Import only if pact-python is available
 try:
-    from pact import Consumer, Provider, Like, EachLike, Term
+    from pact import Consumer, EachLike, Like, Provider, Term
     PACT_AVAILABLE = True
 except ImportError:
     PACT_AVAILABLE = False

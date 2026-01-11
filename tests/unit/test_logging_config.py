@@ -5,21 +5,20 @@ This module provides comprehensive tests for structured logging configuration,
 including JSON formatting, console formatting, context logging, and environment-based configuration.
 """
 
-import pytest
-import logging
 import json
+import logging
 import os
 import sys
 import tempfile
-from unittest.mock import Mock, patch, MagicMock, call
-from datetime import datetime
+from unittest.mock import patch
+
 from src.utils.logging import (
-    JSONFormatter,
     ConsoleFormatter,
-    setup_logging,
-    get_logger,
     ContextLogger,
+    JSONFormatter,
     configure_from_env,
+    get_logger,
+    setup_logging,
 )
 
 

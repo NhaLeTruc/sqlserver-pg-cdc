@@ -9,10 +9,10 @@ Tests verify:
 These tests follow TDD - they should FAIL until implementation is complete.
 """
 
-import pytest
-from unittest.mock import Mock, MagicMock
 from datetime import datetime
-from typing import Dict, List, Any
+from unittest.mock import Mock
+
+import pytest
 
 
 # T074: Unit test for row count comparison
@@ -261,6 +261,7 @@ class TestDiscrepancyReporting:
     def test_report_json_serializable(self):
         """Test that generated report is JSON serializable"""
         import json
+
         from src.reconciliation.report import generate_report
 
         comparison_results = [

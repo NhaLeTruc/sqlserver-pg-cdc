@@ -6,15 +6,17 @@ Tests database-native identifier quoting mechanisms to prevent SQL injection:
 - SQL Server: Bracket quoting [schema].[table]
 """
 
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock
+
 from src.reconciliation.compare import (
-    _quote_postgres_identifier,
-    _quote_sqlserver_identifier,
     _get_db_type,
     _quote_identifier,
+    _quote_postgres_identifier,
+    _quote_sqlserver_identifier,
+    calculate_checksum,
     get_row_count,
-    calculate_checksum
 )
 
 

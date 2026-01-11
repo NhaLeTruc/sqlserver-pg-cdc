@@ -10,12 +10,11 @@ from threading import Thread
 from unittest.mock import MagicMock, Mock, patch
 
 import psycopg2
-import pytest
 import pyodbc
+import pytest
 
 from src.utils.db_pool import (
     BaseConnectionPool,
-    ConnectionPoolError,
     PoolClosedError,
     PooledConnection,
     PoolExhaustedError,

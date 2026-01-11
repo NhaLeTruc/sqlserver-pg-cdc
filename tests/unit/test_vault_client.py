@@ -5,9 +5,11 @@ This module provides comprehensive tests for HashiCorp Vault client functionalit
 including initialization, secret retrieval, database credential fetching, and health checks.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import Mock, patch, MagicMock
 import requests
+
 from src.utils.vault_client import VaultClient, get_credentials_from_vault
 
 

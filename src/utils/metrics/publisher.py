@@ -7,14 +7,13 @@ metrics HTTP server that exposes metrics on the /metrics endpoint.
 
 import logging
 import time
-from typing import Optional
 
 from prometheus_client import (
-    start_http_server,
+    REGISTRY,
+    CollectorRegistry,
     Gauge,
     Info,
-    CollectorRegistry,
-    REGISTRY,
+    start_http_server,
 )
 
 logger = logging.getLogger(__name__)
@@ -30,7 +29,7 @@ class MetricsPublisher:
     def __init__(
         self,
         port: int = 9091,
-        registry: Optional[CollectorRegistry] = None,
+        registry: CollectorRegistry | None = None,
     ):
         """
         Initialize metrics publisher
@@ -82,7 +81,7 @@ class ApplicationInfo:
         self,
         app_name: str = "sqlserver-pg-cdc",
         version: str = "1.0.0",
-        registry: Optional[CollectorRegistry] = None,
+        registry: CollectorRegistry | None = None,
     ):
         """
         Initialize application info metrics

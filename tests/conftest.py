@@ -11,17 +11,17 @@ Fixtures:
 
 import os
 import subprocess
-from pathlib import Path
-from typing import Generator, Optional
 import time
+from collections.abc import Generator
+from pathlib import Path
 
-import pytest
-import pyodbc
 import psycopg2
+import pyodbc
+import pytest
 import requests
+from hypothesis import Phase, Verbosity, settings
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from hypothesis import settings, Phase, Verbosity
 
 
 def pytest_configure(config: pytest.Config) -> None:

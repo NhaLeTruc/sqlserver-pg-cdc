@@ -7,7 +7,7 @@ for tracking transformation operations.
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 from prometheus_client import Counter, Histogram
 
@@ -39,7 +39,7 @@ class Transformer(ABC):
     """Base class for data transformers."""
 
     @abstractmethod
-    def transform(self, value: Any, context: Dict[str, Any]) -> Any:
+    def transform(self, value: Any, context: dict[str, Any]) -> Any:
         """
         Transform a single value.
 

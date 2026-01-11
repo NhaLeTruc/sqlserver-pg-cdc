@@ -8,18 +8,13 @@ This submodule provides functions to compare data between source and target data
 - SQL injection protection via identifier quoting
 """
 
+from .checksum import calculate_checksum, calculate_checksum_chunked
+from .counts import compare_checksums, compare_row_counts, get_row_count, reconcile_table
 from .quoting import (
+    _get_db_type,
     _quote_identifier,
     _quote_postgres_identifier,
     _quote_sqlserver_identifier,
-    _get_db_type
-)
-from .checksum import calculate_checksum, calculate_checksum_chunked
-from .counts import (
-    reconcile_table,
-    get_row_count,
-    compare_row_counts,
-    compare_checksums
 )
 
 __all__ = [

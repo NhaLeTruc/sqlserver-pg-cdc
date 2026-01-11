@@ -16,12 +16,12 @@ Features:
 Designed for tables up to 10M rows with safe concurrent database access.
 """
 
-from .reconciler import ParallelReconciler
 from .helpers import (
     create_parallel_reconcile_job,
     estimate_optimal_workers,
     get_parallel_reconciliation_stats,
 )
+from .reconciler import ParallelReconciler
 
 __all__ = [
     'ParallelReconciler',

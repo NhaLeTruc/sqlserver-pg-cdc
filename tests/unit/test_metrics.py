@@ -5,16 +5,17 @@ This module provides comprehensive tests for Prometheus metrics publishing funct
 including MetricsPublisher, ReconciliationMetrics, ConnectorMetrics, VaultMetrics, and ApplicationInfo.
 """
 
+from unittest.mock import Mock, patch
+
 import pytest
-import time
-from unittest.mock import Mock, patch, MagicMock, call
 from prometheus_client import CollectorRegistry
+
 from src.utils.metrics import (
+    ApplicationInfo,
+    ConnectorMetrics,
     MetricsPublisher,
     ReconciliationMetrics,
-    ConnectorMetrics,
     VaultMetrics,
-    ApplicationInfo,
     initialize_metrics,
 )
 

@@ -5,7 +5,6 @@ Tests ADD COLUMN, DROP COLUMN, ALTER COLUMN, and DLQ routing for schema mismatch
 
 import os
 import time
-from typing import Any, Dict, List, Optional
 
 import psycopg2
 import pyodbc
@@ -376,7 +375,7 @@ class TestSchemaEvolution:
     # CDC needs to be disabled and re-enabled for some schema changes to be detected.
     # Recommended to test ADD and DROP column manually as needed.
     # Auto.evolve should not be relied upon in production without careful consideration.
-    
+
     # def test_add_column_detection(
     #     self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
     # ) -> None:

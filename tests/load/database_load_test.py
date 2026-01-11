@@ -11,13 +11,12 @@ Note: This requires database access and is not run through Locust's HTTP framewo
 Use pytest-benchmark or custom runner.
 """
 
-import time
-import threading
+import logging
 import statistics
-from typing import List, Dict, Any, Optional
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +35,7 @@ class LoadTestResult:
     avg_latency_ms: float
     p95_latency_ms: float
     p99_latency_ms: float
-    errors: List[str]
+    errors: list[str]
 
 
 class DatabaseLoadTester:
@@ -80,8 +79,8 @@ class DatabaseLoadTester:
             Load test results
         """
         start_time = time.time()
-        latencies: List[float] = []
-        errors: List[str] = []
+        latencies: list[float] = []
+        errors: list[str] = []
         successful = 0
         failed = 0
 
@@ -159,8 +158,8 @@ class DatabaseLoadTester:
             Load test results
         """
         start_time = time.time()
-        latencies: List[float] = []
-        errors: List[str] = []
+        latencies: list[float] = []
+        errors: list[str] = []
         successful = 0
         failed = 0
 
@@ -247,8 +246,8 @@ class DatabaseLoadTester:
             Load test results
         """
         start_time = time.time()
-        latencies: List[float] = []
-        errors: List[str] = []
+        latencies: list[float] = []
+        errors: list[str] = []
         successful = 0
         failed = 0
         semaphore = threading.Semaphore(pool_size)
@@ -331,7 +330,7 @@ class DatabaseLoadTester:
         print(f"Failed:              {result.failed_operations}")
         print(f"Total Time:          {result.total_time_seconds:.2f}s")
         print(f"Throughput:          {result.operations_per_second:.2f} ops/sec")
-        print(f"\nLatency Statistics (ms):")
+        print("\nLatency Statistics (ms):")
         print(f"  Min:               {result.min_latency_ms:.2f}")
         print(f"  Average:           {result.avg_latency_ms:.2f}")
         print(f"  P95:               {result.p95_latency_ms:.2f}")
@@ -339,7 +338,7 @@ class DatabaseLoadTester:
         print(f"  Max:               {result.max_latency_ms:.2f}")
 
         if result.errors:
-            print(f"\nErrors (first 10):")
+            print("\nErrors (first 10):")
             for i, error in enumerate(result.errors, 1):
                 print(f"  {i}. {error}")
         print(f"{'='*60}\n")

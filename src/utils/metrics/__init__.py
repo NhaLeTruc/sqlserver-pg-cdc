@@ -23,17 +23,17 @@ from typing import Any, Dict, Optional
 
 from prometheus_client import CollectorRegistry
 
-from .publisher import MetricsPublisher, ApplicationInfo
-from .reconciliation import ReconciliationMetrics
 from .pipeline import ConnectorMetrics, VaultMetrics
+from .publisher import ApplicationInfo, MetricsPublisher
+from .reconciliation import ReconciliationMetrics
 
 logger = logging.getLogger(__name__)
 
 
 def initialize_metrics(
     port: int = 9091,
-    registry: Optional[CollectorRegistry] = None,
-) -> Dict[str, Any]:
+    registry: CollectorRegistry | None = None,
+) -> dict[str, Any]:
     """
     Initialize all metrics and start the metrics server
 

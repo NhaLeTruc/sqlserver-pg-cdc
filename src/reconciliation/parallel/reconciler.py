@@ -6,19 +6,21 @@ concurrently using ThreadPoolExecutor.
 """
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
+from datetime import UTC, datetime
+from typing import Any
 
 from opentelemetry import trace
 
 from src.utils.tracing import trace_operation
+
 from .metrics import (
-    PARALLEL_TABLES_PROCESSED,
-    PARALLEL_RECONCILIATION_TIME,
-    PARALLEL_TABLE_TIME,
     PARALLEL_ACTIVE_WORKERS,
     PARALLEL_QUEUE_SIZE,
+    PARALLEL_RECONCILIATION_TIME,
+    PARALLEL_TABLE_TIME,
+    PARALLEL_TABLES_PROCESSED,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,10 +61,10 @@ class ParallelReconciler:
 
     def reconcile_tables(
         self,
-        tables: List[str],
+        tables: list[str],
         reconcile_func: Callable,
         **reconcile_kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Reconcile multiple tables in parallel.
 
@@ -104,7 +106,7 @@ class ParallelReconciler:
             with PARALLEL_RECONCILIATION_TIME.labels(
                 worker_count=self.max_workers
             ).time():
-                start_time = datetime.now(timezone.utc)
+                start_time = datetime.now(UTC)
 
                 # Initialize results
                 results = {
@@ -120,7 +122,7 @@ class ParallelReconciler:
                 if not tables:
                     logger.warning("No tables to reconcile")
                     results["duration_seconds"] = 0
-                    results["timestamp"] = datetime.now(timezone.utc).isoformat()
+                    results["timestamp"] = datetime.now(UTC).isoformat()
                     return results
 
                 logger.info(
@@ -216,7 +218,7 @@ class ParallelReconciler:
                 PARALLEL_QUEUE_SIZE.set(0)
 
                 # Finalize results
-                end_time = datetime.now(timezone.utc)
+                end_time = datetime.now(UTC)
                 results["duration_seconds"] = (end_time - start_time).total_seconds()
                 results["timestamp"] = end_time.isoformat()
 
@@ -237,7 +239,7 @@ class ParallelReconciler:
         table: str,
         reconcile_func: Callable,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Wrapper to add table context, timing, and error handling.
 
@@ -254,7 +256,7 @@ class ParallelReconciler:
             kind=trace.SpanKind.INTERNAL,
             table=table,
         ):
-            start_time = datetime.now(timezone.utc)
+            start_time = datetime.now(UTC)
 
             try:
                 logger.debug(f"Starting reconciliation for table: {table}")
@@ -268,7 +270,7 @@ class ParallelReconciler:
 
                 # Add metadata
                 result["table"] = table
-                duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+                duration = (datetime.now(UTC) - start_time).total_seconds()
                 result["duration_seconds"] = duration
 
                 # Track per-table timing

@@ -12,16 +12,16 @@ They are skipped by default. To run them:
 2. Run: pytest tests/e2e/ -v --no-cov
 """
 
-import pytest
-import subprocess
 import json
-import time
-import sys
 import os
+import subprocess
+import sys
+import time
 from pathlib import Path
-from typing import Dict, Any
+
 import psycopg2
 import pyodbc
+import pytest
 
 # Get the Python interpreter from the virtual environment
 PYTHON_BIN = sys.executable

@@ -17,12 +17,13 @@ Designed for tables up to 10M rows with safe concurrent database access.
 """
 
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed, TimeoutError
-from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
+from datetime import UTC, datetime
+from typing import Any
 
 from opentelemetry import trace
-from prometheus_client import Counter, Gauge, Histogram, REGISTRY
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram
 
 from src.utils.tracing import get_tracer, trace_operation
 
@@ -118,10 +119,10 @@ class ParallelReconciler:
 
     def reconcile_tables(
         self,
-        tables: List[str],
+        tables: list[str],
         reconcile_func: Callable,
         **reconcile_kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Reconcile multiple tables in parallel.
 
@@ -163,7 +164,7 @@ class ParallelReconciler:
             with PARALLEL_RECONCILIATION_TIME.labels(
                 worker_count=self.max_workers
             ).time():
-                start_time = datetime.now(timezone.utc)
+                start_time = datetime.now(UTC)
 
                 # Initialize results
                 results = {
@@ -179,7 +180,7 @@ class ParallelReconciler:
                 if not tables:
                     logger.warning("No tables to reconcile")
                     results["duration_seconds"] = 0
-                    results["timestamp"] = datetime.now(timezone.utc).isoformat()
+                    results["timestamp"] = datetime.now(UTC).isoformat()
                     return results
 
                 logger.info(
@@ -275,7 +276,7 @@ class ParallelReconciler:
                 PARALLEL_QUEUE_SIZE.set(0)
 
                 # Finalize results
-                end_time = datetime.now(timezone.utc)
+                end_time = datetime.now(UTC)
                 results["duration_seconds"] = (end_time - start_time).total_seconds()
                 results["timestamp"] = end_time.isoformat()
 
@@ -296,7 +297,7 @@ class ParallelReconciler:
         table: str,
         reconcile_func: Callable,
         **kwargs,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """
         Wrapper to add table context, timing, and error handling.
 
@@ -313,7 +314,7 @@ class ParallelReconciler:
             kind=trace.SpanKind.INTERNAL,
             table=table,
         ):
-            start_time = datetime.now(timezone.utc)
+            start_time = datetime.now(UTC)
 
             try:
                 logger.debug(f"Starting reconciliation for table: {table}")
@@ -327,7 +328,7 @@ class ParallelReconciler:
 
                 # Add metadata
                 result["table"] = table
-                duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+                duration = (datetime.now(UTC) - start_time).total_seconds()
                 result["duration_seconds"] = duration
 
                 # Track per-table timing
@@ -382,7 +383,7 @@ def create_parallel_reconcile_job(
         fail_fast=fail_fast,
     )
 
-    def parallel_job(tables: List[str], **kwargs) -> Dict[str, Any]:
+    def parallel_job(tables: list[str], **kwargs) -> dict[str, Any]:
         """Execute parallel reconciliation job."""
         return reconciler.reconcile_tables(
             tables=tables,
@@ -436,7 +437,7 @@ def estimate_optimal_workers(
     return workers
 
 
-def get_parallel_reconciliation_stats() -> Dict[str, Any]:
+def get_parallel_reconciliation_stats() -> dict[str, Any]:
     """
     Get current parallel reconciliation statistics.
 

@@ -7,13 +7,10 @@ These tests require the full Docker Compose stack to be running.
 
 import os
 import time
-from datetime import datetime
-from typing import Any, Dict, List, Optional
 
 import psycopg2
 import pyodbc
 import pytest
-import requests
 
 
 class TestReplicationFlow:

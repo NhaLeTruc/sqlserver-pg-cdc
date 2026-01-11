@@ -7,10 +7,10 @@ in various formats: JSON, CSV, and console/terminal output.
 
 import csv
 import json
-from typing import Dict, Any
+from typing import Any
 
 
-def export_report_json(report: Dict[str, Any], output_path: str) -> None:
+def export_report_json(report: dict[str, Any], output_path: str) -> None:
     """
     Export report to JSON file
 
@@ -22,7 +22,7 @@ def export_report_json(report: Dict[str, Any], output_path: str) -> None:
         json.dump(report, f, indent=2)
 
 
-def export_report_csv(report: Dict[str, Any], output_path: str) -> None:
+def export_report_csv(report: dict[str, Any], output_path: str) -> None:
     """
     Export report to CSV file
 
@@ -58,7 +58,7 @@ def export_report_csv(report: Dict[str, Any], output_path: str) -> None:
             ])
 
 
-def format_report_console(report: Dict[str, Any]) -> str:
+def format_report_console(report: dict[str, Any]) -> str:
     """
     Format report for console output
 

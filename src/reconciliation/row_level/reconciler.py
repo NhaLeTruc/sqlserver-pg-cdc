@@ -7,11 +7,11 @@ identifying missing, extra, and modified rows using primary key matching.
 
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set, Tuple
+from datetime import UTC, datetime
+from typing import Any
 
 from opentelemetry import trace
-from prometheus_client import Counter, Histogram, REGISTRY
+from prometheus_client import REGISTRY, Counter, Histogram
 
 from src.utils.tracing import get_tracer, trace_operation
 
@@ -58,14 +58,14 @@ class RowDiscrepancy:
     """Represents a single row discrepancy."""
 
     table: str
-    primary_key: Dict[str, Any]
+    primary_key: dict[str, Any]
     discrepancy_type: str  # MISSING, EXTRA, MODIFIED
-    source_data: Optional[Dict[str, Any]]
-    target_data: Optional[Dict[str, Any]]
-    modified_columns: Optional[List[str]] = None
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    source_data: dict[str, Any] | None
+    target_data: dict[str, Any] | None
+    modified_columns: list[str] | None = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "table": self.table,
@@ -85,8 +85,8 @@ class RowLevelReconciler:
         self,
         source_cursor: Any,
         target_cursor: Any,
-        pk_columns: List[str],
-        compare_columns: Optional[List[str]] = None,
+        pk_columns: list[str],
+        compare_columns: list[str] | None = None,
         chunk_size: int = 1000,
         float_tolerance: float = 1e-9,
     ):
@@ -110,7 +110,7 @@ class RowLevelReconciler:
 
     def reconcile_table(
         self, source_table: str, target_table: str
-    ) -> List[RowDiscrepancy]:
+    ) -> list[RowDiscrepancy]:
         """
         Perform row-level reconciliation.
 
@@ -206,7 +206,7 @@ class RowLevelReconciler:
 
                 return discrepancies
 
-    def _get_all_primary_keys(self, cursor: Any, table: str) -> Set[Tuple]:
+    def _get_all_primary_keys(self, cursor: Any, table: str) -> set[tuple]:
         """Get all primary keys from table."""
         with trace_operation(
             "get_all_primary_keys", kind=trace.SpanKind.CLIENT, table=table
@@ -230,8 +230,8 @@ class RowLevelReconciler:
             return pks
 
     def _get_row_data(
-        self, cursor: Any, table: str, pk: Tuple
-    ) -> Dict[str, Any]:
+        self, cursor: Any, table: str, pk: tuple
+    ) -> dict[str, Any]:
         """Get full row data for given primary key."""
         with trace_operation(
             "get_row_data", kind=trace.SpanKind.CLIENT, table=table
@@ -271,8 +271,8 @@ class RowLevelReconciler:
             return dict(zip(columns, row))
 
     def _compare_rows(
-        self, source_data: Dict[str, Any], target_data: Dict[str, Any]
-    ) -> List[str]:
+        self, source_data: dict[str, Any], target_data: dict[str, Any]
+    ) -> list[str]:
         """
         Compare two rows and return list of modified columns.
 
@@ -316,7 +316,7 @@ class RowLevelReconciler:
 
             return modified
 
-    def _pk_tuple_to_dict(self, pk: Tuple) -> Dict[str, Any]:
+    def _pk_tuple_to_dict(self, pk: tuple) -> dict[str, Any]:
         """Convert PK tuple to dictionary."""
         if not isinstance(pk, tuple):
             pk = (pk,)

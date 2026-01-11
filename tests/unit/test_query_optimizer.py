@@ -4,7 +4,7 @@ Unit tests for query optimizer module.
 Tests query analysis, index recommendations, and DDL generation.
 """
 
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

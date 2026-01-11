@@ -5,8 +5,6 @@ Tests parallel table processing, error handling, timeouts, and metrics.
 """
 
 import time
-from concurrent.futures import TimeoutError
-from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 

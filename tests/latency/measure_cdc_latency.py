@@ -4,9 +4,9 @@ Measure CDC pipeline latency for INSERT, UPDATE, DELETE operations.
 """
 
 import time
-import pyodbc
+
 import psycopg2
-from datetime import datetime
+import pyodbc
 
 # Connection strings
 SQLSERVER_CONN_STR = (

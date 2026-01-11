@@ -4,19 +4,17 @@ Unit tests for row-level reconciliation.
 Tests row-by-row comparison, discrepancy detection, and repair script generation.
 """
 
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, Mock
-
-import pytest
+from datetime import datetime
+from unittest.mock import Mock
 
 from reconciliation.row_level import (
     RowDiscrepancy,
     RowLevelReconciler,
-    generate_repair_script,
     _format_value,
     _generate_delete_sql,
     _generate_insert_sql,
     _generate_update_sql,
+    generate_repair_script,
 )
 
 

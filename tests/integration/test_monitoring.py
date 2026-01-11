@@ -4,8 +4,7 @@ Tests Prometheus metrics, Grafana dashboards, alert firing, Jaeger tracing, and 
 """
 
 import os
-import time
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 import requests
@@ -39,7 +38,7 @@ class TestMonitoring:
         """Alertmanager API URL."""
         return os.getenv("ALERTMANAGER_URL", "http://localhost:9093")
 
-    def query_prometheus(self, prometheus_url: str, query: str) -> Dict[str, Any]:
+    def query_prometheus(self, prometheus_url: str, query: str) -> dict[str, Any]:
         """Query Prometheus API and return result."""
         response = requests.get(
             f"{prometheus_url}/api/v1/query",

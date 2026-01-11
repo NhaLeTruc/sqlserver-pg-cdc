@@ -6,15 +6,16 @@ row-level reconciliation, including INSERTs for missing rows, DELETEs for extra 
 and UPDATEs for modified rows.
 """
 
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from datetime import UTC, datetime
+from typing import Any
 
 from src.utils.tracing import trace_operation
+
 from .reconciler import RowDiscrepancy
 
 
 def generate_repair_script(
-    discrepancies: List[RowDiscrepancy], target_table: str, database_type: str = "postgresql"
+    discrepancies: list[RowDiscrepancy], target_table: str, database_type: str = "postgresql"
 ) -> str:
     """
     Generate SQL repair script from discrepancies.
@@ -35,7 +36,7 @@ def generate_repair_script(
     ):
         script_lines = [
             f"-- Repair script for {target_table}",
-            f"-- Generated: {datetime.now(timezone.utc).isoformat()}",
+            f"-- Generated: {datetime.now(UTC).isoformat()}",
             f"-- Total discrepancies: {len(discrepancies)}",
             f"-- Database type: {database_type}",
             "",
@@ -101,11 +102,11 @@ def generate_repair_script(
 
 
 def _generate_insert_sql(
-    table: str, data: Dict[str, Any], database_type: str = "postgresql"
+    table: str, data: dict[str, Any], database_type: str = "postgresql"
 ) -> str:
     """Generate INSERT statement."""
     if not data:
-        return f"-- Cannot generate INSERT: no data"
+        return "-- Cannot generate INSERT: no data"
 
     columns = list(data.keys())
     values = [_format_value(data[col], database_type) for col in columns]
@@ -125,11 +126,11 @@ def _generate_insert_sql(
 
 
 def _generate_delete_sql(
-    table: str, pk: Dict[str, Any], database_type: str = "postgresql"
+    table: str, pk: dict[str, Any], database_type: str = "postgresql"
 ) -> str:
     """Generate DELETE statement."""
     if not pk:
-        return f"-- Cannot generate DELETE: no primary key"
+        return "-- Cannot generate DELETE: no primary key"
 
     # Quote identifiers
     if database_type == "postgresql":
@@ -146,14 +147,14 @@ def _generate_delete_sql(
 
 def _generate_update_sql(
     table: str,
-    pk: Dict[str, Any],
-    data: Dict[str, Any],
-    modified_cols: List[str],
+    pk: dict[str, Any],
+    data: dict[str, Any],
+    modified_cols: list[str],
     database_type: str = "postgresql",
 ) -> str:
     """Generate UPDATE statement."""
     if not pk or not modified_cols:
-        return f"-- Cannot generate UPDATE: no primary key or modified columns"
+        return "-- Cannot generate UPDATE: no primary key or modified columns"
 
     # Quote identifiers and build SET clause
     if database_type == "postgresql":

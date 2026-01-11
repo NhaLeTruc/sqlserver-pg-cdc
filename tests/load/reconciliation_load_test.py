@@ -8,11 +8,12 @@ Simulates realistic reconciliation workloads:
 - Large table reconciliation
 """
 
-from locust import User, task, between, events
-import time
-import random
-from typing import List, Dict, Any
 import logging
+import random
+import time
+from typing import Any
+
+from locust import User, between, events, task
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,7 @@ class ReconciliationLoadSimulator:
         import hashlib
         return hashlib.sha256(f"{table_name}_{rows}_{time.time()}".encode()).hexdigest()
 
-    def simulate_row_level_reconciliation(self, table_name: str, sample_size: int = 1000) -> Dict[str, Any]:
+    def simulate_row_level_reconciliation(self, table_name: str, sample_size: int = 1000) -> dict[str, Any]:
         """Simulate row-level reconciliation with sampling."""
         table = next((t for t in self.tables if t["name"] == table_name), None)
         if not table:

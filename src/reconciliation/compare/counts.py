@@ -5,19 +5,20 @@ This module provides functions to compare row counts and perform
 full table reconciliation including optional checksum validation.
 """
 
-from datetime import datetime, timezone
-from typing import Dict, Any, Optional, List
+from datetime import UTC, datetime
+from typing import Any
 
 from src.utils.retry import retry_database_operation
-from .quoting import _quote_identifier
+
 from .checksum import calculate_checksum
+from .quoting import _quote_identifier
 
 
 def compare_row_counts(
     table_name: str,
     source_count: int,
     target_count: int
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Compare row counts between source and target tables
 
@@ -54,7 +55,7 @@ def compare_row_counts(
         "match": match,
         "difference": difference,
         "status": "MATCH" if match else "MISMATCH",
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat()
     }
 
     return result
@@ -62,9 +63,9 @@ def compare_row_counts(
 
 def compare_checksums(
     table_name: str,
-    source_checksum: Optional[str],
-    target_checksum: Optional[str]
-) -> Dict[str, Any]:
+    source_checksum: str | None,
+    target_checksum: str | None
+) -> dict[str, Any]:
     """
     Compare checksums between source and target tables
 
@@ -96,7 +97,7 @@ def compare_checksums(
         "target_checksum": target_checksum,
         "match": match,
         "status": "MATCH" if match else "MISMATCH",
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat()
     }
 
     return result
@@ -144,8 +145,8 @@ def reconcile_table(
     source_table: str,
     target_table: str,
     validate_checksum: bool = False,
-    columns: Optional[List] = None
-) -> Dict[str, Any]:
+    columns: list | None = None
+) -> dict[str, Any]:
     """
     Perform full reconciliation for a single table
 
@@ -179,7 +180,7 @@ def reconcile_table(
         "target_count": target_count,
         "match": source_count == target_count,
         "difference": target_count - source_count,
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(UTC).isoformat()
     }
 
     # Validate checksums if requested

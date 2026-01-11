@@ -6,12 +6,11 @@ with appropriate attributes and error handling.
 """
 
 import functools
-from typing import Optional
 
 from .context import trace_operation
 
 
-def trace_function(operation_name: Optional[str] = None, **default_attributes):
+def trace_function(operation_name: str | None = None, **default_attributes):
     """
     Decorator for tracing function calls.
 

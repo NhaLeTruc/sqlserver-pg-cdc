@@ -7,12 +7,12 @@ on large tables with few changes.
 """
 
 from .checksum import (
-    calculate_incremental_checksum,
-    calculate_checksum_chunked,
     _calculate_delta_checksum,
     _calculate_full_checksum,
     _get_db_type,
     _quote_identifier,
+    calculate_checksum_chunked,
+    calculate_incremental_checksum,
 )
 from .state import IncrementalChecksumTracker
 

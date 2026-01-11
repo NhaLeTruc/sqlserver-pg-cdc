@@ -5,12 +5,12 @@ This module provides a simple interface to fetch database credentials
 from HashiCorp Vault KV v2 secrets engine.
 """
 
-import os
-import requests
-from typing import Dict, Any, Optional
 import logging
+import os
 import re
+from typing import Any
 
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -24,9 +24,9 @@ class VaultClient:
 
     def __init__(
         self,
-        vault_addr: Optional[str] = None,
-        vault_token: Optional[str] = None,
-        namespace: Optional[str] = None
+        vault_addr: str | None = None,
+        vault_token: str | None = None,
+        namespace: str | None = None
     ):
         """
         Initialize Vault client
@@ -69,7 +69,7 @@ class VaultClient:
 
         logger.info(f"Initialized Vault client for {self.vault_addr}")
 
-    def get_secret(self, secret_path: str) -> Dict[str, Any]:
+    def get_secret(self, secret_path: str) -> dict[str, Any]:
         """
         Fetch secret from Vault KV v2 secrets engine
 
@@ -137,8 +137,8 @@ class VaultClient:
     def get_database_credentials(
         self,
         database_type: str,
-        database_name: Optional[str] = None
-    ) -> Dict[str, Any]:
+        database_name: str | None = None
+    ) -> dict[str, Any]:
         """
         Fetch database credentials from Vault
 
@@ -224,9 +224,9 @@ class VaultClient:
 
 def get_credentials_from_vault(
     database_type: str,
-    vault_addr: Optional[str] = None,
-    vault_token: Optional[str] = None
-) -> Dict[str, Any]:
+    vault_addr: str | None = None,
+    vault_token: str | None = None
+) -> dict[str, Any]:
     """
     Convenience function to fetch database credentials from Vault
 

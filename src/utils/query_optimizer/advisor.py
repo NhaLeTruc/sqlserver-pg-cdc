@@ -6,7 +6,6 @@ and generating database-specific DDL statements for creating those indexes.
 """
 
 from dataclasses import dataclass
-from typing import List, Optional
 
 
 @dataclass
@@ -14,10 +13,10 @@ class IndexRecommendation:
     """Index recommendation for query optimization."""
 
     table_name: str
-    column_names: List[str]
+    column_names: list[str]
     index_type: str  # 'btree', 'hash', 'gin', etc.
-    include_columns: Optional[List[str]] = None
-    where_clause: Optional[str] = None  # For partial indexes
+    include_columns: list[str] | None = None
+    where_clause: str | None = None  # For partial indexes
     reason: str = ""
     estimated_impact: str = "medium"  # 'low', 'medium', 'high'
 
@@ -32,11 +31,11 @@ class IndexAdvisor:
     @staticmethod
     def recommend_indexes_for_reconciliation(
         table_name: str,
-        primary_keys: List[str],
-        timestamp_column: Optional[str] = None,
-        checksum_column: Optional[str] = None,
-        status_column: Optional[str] = None,
-    ) -> List[IndexRecommendation]:
+        primary_keys: list[str],
+        timestamp_column: str | None = None,
+        checksum_column: str | None = None,
+        status_column: str | None = None,
+    ) -> list[IndexRecommendation]:
         """
         Generate index recommendations for common reconciliation patterns.
 

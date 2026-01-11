@@ -17,11 +17,12 @@ Usage:
         cursor.execute("SELECT * FROM table")
 """
 
-import time
-import random
 import logging
-from typing import Callable, Any, Optional, Type, Tuple
+import random
+import time
+from collections.abc import Callable
 from functools import wraps
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -32,8 +33,8 @@ def retry_with_backoff(
     max_delay: float = 60.0,
     exponential_base: float = 2.0,
     jitter: bool = True,
-    retryable_exceptions: Optional[Tuple[Type[Exception], ...]] = None,
-    on_retry: Optional[Callable[[int, Exception, float], None]] = None
+    retryable_exceptions: tuple[type[Exception], ...] | None = None,
+    on_retry: Callable[[int, Exception, float], None] | None = None
 ):
     """
     Decorator that retries a function with exponential backoff
@@ -190,7 +191,7 @@ def is_retryable_db_exception(exception: Exception) -> bool:
 def retry_database_operation(
     max_retries: int = 3,
     base_delay: float = 1.0,
-    on_retry: Optional[Callable[[int, Exception, float], None]] = None
+    on_retry: Callable[[int, Exception, float], None] | None = None
 ):
     """
     Convenience decorator for database operations with smart exception filtering

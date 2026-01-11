@@ -6,24 +6,22 @@ SQL Server source and PostgreSQL target databases.
 """
 
 import argparse
-import sys
-import logging
-from pathlib import Path
-from typing import Dict, Any, List
 import json
+import logging
+import sys
+from pathlib import Path
 
 from src.reconciliation.compare import reconcile_table
+from src.reconciliation.parallel import ParallelReconciler
 from src.reconciliation.report import (
-    generate_report,
-    export_report_json,
     export_report_csv,
-    format_report_console
+    export_report_json,
+    format_report_console,
+    generate_report,
 )
 from src.reconciliation.row_level import RowLevelReconciler, generate_repair_script
 from src.reconciliation.scheduler import ReconciliationScheduler, reconcile_job_wrapper
-from src.reconciliation.parallel import ParallelReconciler
 from src.utils.vault_client import VaultClient
-
 
 logger = logging.getLogger(__name__)
 
@@ -114,8 +112,8 @@ def cmd_run(args: argparse.Namespace) -> None:
     Args:
         args: Parsed command-line arguments
     """
-    import pyodbc
     import psycopg2
+    import pyodbc
 
     logger.info("Starting reconciliation run")
 
@@ -124,7 +122,7 @@ def cmd_run(args: argparse.Namespace) -> None:
 
     # Parse tables
     if args.tables_file:
-        with open(args.tables_file, 'r') as f:
+        with open(args.tables_file) as f:
             tables = [line.strip() for line in f if line.strip()]
     else:
         tables = args.tables.split(',')
@@ -349,7 +347,7 @@ def cmd_schedule(args: argparse.Namespace) -> None:
 
     # Parse tables
     if args.tables_file:
-        with open(args.tables_file, 'r') as f:
+        with open(args.tables_file) as f:
             tables = [line.strip() for line in f if line.strip()]
     else:
         tables = args.tables.split(',')
@@ -402,7 +400,7 @@ def cmd_report(args: argparse.Namespace) -> None:
     logger.info(f"Loading reconciliation report from {args.input}")
 
     try:
-        with open(args.input, 'r') as f:
+        with open(args.input) as f:
             report = json.load(f)
 
         if args.format == "console":

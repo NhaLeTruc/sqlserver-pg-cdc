@@ -6,7 +6,8 @@ gathering for parallel reconciliation operations.
 """
 
 import logging
-from typing import Any, Callable, Dict, List
+from collections.abc import Callable
+from typing import Any
 
 from prometheus_client import REGISTRY
 
@@ -50,7 +51,7 @@ def create_parallel_reconcile_job(
         fail_fast=fail_fast,
     )
 
-    def parallel_job(tables: List[str], **kwargs) -> Dict[str, Any]:
+    def parallel_job(tables: list[str], **kwargs) -> dict[str, Any]:
         """Execute parallel reconciliation job."""
         return reconciler.reconcile_tables(
             tables=tables,
@@ -104,7 +105,7 @@ def estimate_optimal_workers(
     return workers
 
 
-def get_parallel_reconciliation_stats() -> Dict[str, Any]:
+def get_parallel_reconciliation_stats() -> dict[str, Any]:
     """
     Get current parallel reconciliation statistics.
 

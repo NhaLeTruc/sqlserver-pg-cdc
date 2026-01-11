@@ -9,14 +9,10 @@ These tests can run in any order without dependencies on other tests.
 
 import os
 import time
-import uuid
-from datetime import datetime
-from typing import Any, Dict, List, Optional
 
 import psycopg2
 import pyodbc
 import pytest
-import requests
 
 
 class TestReplicationIndependent:
@@ -190,7 +186,7 @@ class TestReplicationIndependent:
         with postgres_conn.cursor() as cursor:
             try:
                 cursor.execute(f"TRUNCATE TABLE {table_name}")
-            except psycopg2.Error as e:
+            except psycopg2.Error:
                 # If table doesn't exist or can't be truncated, try dropping
                 try:
                     cursor.execute(f"DROP TABLE IF EXISTS {table_name}")

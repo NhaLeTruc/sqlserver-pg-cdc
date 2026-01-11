@@ -5,22 +5,20 @@ Tests for the command-line interface functionality including
 argument parsing, credential handling, and command execution.
 """
 
-import pytest
-import sys
 import argparse
-from unittest.mock import Mock, patch, MagicMock, mock_open
-from pathlib import Path
-import json
 import logging
+from unittest.mock import MagicMock, mock_open, patch
+
+import pytest
 
 from src.reconciliation.cli import (
-    setup_logging as cli_setup_logging,
-    get_credentials_from_vault_or_env,
+    cmd_report,
     cmd_run,
     cmd_schedule,
-    cmd_report,
-    main
+    get_credentials_from_vault_or_env,
+    main,
 )
+from src.reconciliation.cli import setup_logging as cli_setup_logging
 
 
 class TestSetupLogging:

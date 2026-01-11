@@ -7,7 +7,6 @@ and auto-instrumentation for common libraries.
 
 import logging
 import os
-from typing import Optional
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -18,13 +17,13 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExport
 logger = logging.getLogger(__name__)
 
 # Global tracer instance
-_tracer: Optional[trace.Tracer] = None
+_tracer: trace.Tracer | None = None
 _is_initialized = False
 
 
 def initialize_tracing(
     service_name: str = "sqlserver-pg-cdc",
-    otlp_endpoint: Optional[str] = None,
+    otlp_endpoint: str | None = None,
     console_export: bool = False,
     sampling_rate: float = 1.0
 ) -> trace.Tracer:

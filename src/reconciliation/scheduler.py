@@ -5,14 +5,15 @@ Provides cron-like scheduling functionality for automated reconciliation
 using APScheduler.
 """
 
-from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from apscheduler.triggers.cron import CronTrigger
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Dict, List, Any, Callable, Optional
 import logging
+from collections.abc import Callable
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
 
+from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +145,7 @@ class ReconciliationScheduler:
         self.scheduler.shutdown()
         logger.info("Scheduler stopped")
 
-    def list_jobs(self) -> List[Dict[str, Any]]:
+    def list_jobs(self) -> list[dict[str, Any]]:
         """
         List all scheduled jobs
 
@@ -165,9 +166,9 @@ class ReconciliationScheduler:
 
 
 def reconcile_job_wrapper(
-    source_config: Dict[str, Any],
-    target_config: Dict[str, Any],
-    tables: List[str],
+    source_config: dict[str, Any],
+    target_config: dict[str, Any],
+    tables: list[str],
     output_dir: str,
     validate_checksums: bool = False,
     use_connection_pool: bool = True
@@ -186,10 +187,9 @@ def reconcile_job_wrapper(
         validate_checksums: Whether to validate checksums
         use_connection_pool: Whether to use connection pooling (default: True)
     """
-    from src.reconciliation.compare import reconcile_table
-    from src.reconciliation.report import generate_report, export_report_json
+    from src.reconciliation.report import export_report_json, generate_report
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     output_path = Path(output_dir) / f"reconcile_{timestamp}.json"
 
     # Ensure output directory exists
@@ -221,8 +221,8 @@ def reconcile_job_wrapper(
                 target_cursor.close()
         else:
             # Legacy mode: create new connections for each job
-            import pyodbc
             import psycopg2
+            import pyodbc
 
             # Connect to source database (SQL Server)
             source_conn = pyodbc.connect(
@@ -281,9 +281,9 @@ def reconcile_job_wrapper(
 def _reconcile_tables(
     source_cursor: Any,
     target_cursor: Any,
-    tables: List[str],
+    tables: list[str],
     validate_checksums: bool
-) -> tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     """
     Reconcile a list of tables.
 

@@ -6,11 +6,12 @@ periodic reconciliation jobs using interval or cron triggers.
 """
 
 import logging
-from typing import List, Dict, Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from apscheduler.schedulers.blocking import BlockingScheduler
-from apscheduler.triggers.interval import IntervalTrigger
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 logger = logging.getLogger(__name__)
 
@@ -142,7 +143,7 @@ class ReconciliationScheduler:
         self.scheduler.shutdown()
         logger.info("Scheduler stopped")
 
-    def list_jobs(self) -> List[Dict[str, Any]]:
+    def list_jobs(self) -> list[dict[str, Any]]:
         """
         List all scheduled jobs
 

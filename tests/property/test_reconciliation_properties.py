@@ -8,19 +8,20 @@ Tests invariants and properties that should hold for all inputs:
 - Incremental checksum consistency
 """
 
-from hypothesis import given, strategies as st, settings, assume
-from hypothesis.stateful import RuleBasedStateMachine, rule, invariant, initialize
-from src.reconciliation.compare import (
-    compare_row_counts,
-    compare_checksums,
-    _quote_postgres_identifier,
-    _quote_sqlserver_identifier,
-    _get_db_type,
-)
 import hashlib
 import re
-from typing import Any, List
-from unittest.mock import Mock
+
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
+from hypothesis.stateful import RuleBasedStateMachine, initialize, invariant, rule
+
+from src.reconciliation.compare import (
+    _get_db_type,
+    _quote_postgres_identifier,
+    _quote_sqlserver_identifier,
+    compare_checksums,
+    compare_row_counts,
+)
 
 
 # Property: Row count comparison should be symmetric and consistent
@@ -267,7 +268,7 @@ class IncrementalChecksumMachine(RuleBasedStateMachine):
 
     def __init__(self):
         super().__init__()
-        self.rows: List[bytes] = []
+        self.rows: list[bytes] = []
         self.full_checksum: str = ""
         self.checksum_computed: bool = False
 
@@ -338,7 +339,7 @@ TestIncrementalChecksum = IncrementalChecksumMachine.TestCase
     data_after=st.lists(st.binary(min_size=1, max_size=100), min_size=1, max_size=20)
 )
 @settings(max_examples=50)
-def test_checksum_changes_with_data(data_before: List[bytes], data_after: List[bytes]):
+def test_checksum_changes_with_data(data_before: list[bytes], data_after: list[bytes]):
     """Checksum should change when underlying data changes."""
     assume(data_before != data_after)  # Only test when data is different
 
@@ -362,7 +363,7 @@ def test_checksum_changes_with_data(data_before: List[bytes], data_after: List[b
 @given(
     data=st.lists(st.binary(min_size=1, max_size=100), min_size=2, max_size=10, unique=True)
 )
-def test_checksum_order_dependent(data: List[bytes]):
+def test_checksum_order_dependent(data: list[bytes]):
     """Checksum should depend on row order."""
     assume(len(data) >= 2)
 

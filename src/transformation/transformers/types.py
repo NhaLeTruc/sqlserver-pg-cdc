@@ -7,16 +7,18 @@ application of transformations based on business rules.
 
 import logging
 import re
-from typing import Any, Callable, Dict, List, Optional, Pattern
+from collections.abc import Callable
+from re import Pattern
+from typing import Any
 
 from opentelemetry import trace
 
 from src.utils.tracing import trace_operation
 
 from .base import (
-    TRANSFORMATIONS_APPLIED,
     TRANSFORMATION_ERRORS,
     TRANSFORMATION_TIME,
+    TRANSFORMATIONS_APPLIED,
     Transformer,
 )
 
@@ -39,7 +41,7 @@ class TypeConversionTransformer(Transformer):
         """
         self.target_type = target_type
 
-    def transform(self, value: Any, context: Dict[str, Any]) -> Any:
+    def transform(self, value: Any, context: dict[str, Any]) -> Any:
         """Transform value by converting type."""
         with TRANSFORMATION_TIME.labels(transformer_type=self.get_type()).time():
             if value is None:
@@ -74,9 +76,9 @@ class ConditionalTransformer(Transformer):
 
     def __init__(
         self,
-        predicate: Callable[[Any, Dict[str, Any]], bool],
+        predicate: Callable[[Any, dict[str, Any]], bool],
         transformer: Transformer,
-        else_transformer: Optional[Transformer] = None,
+        else_transformer: Transformer | None = None,
     ):
         """
         Initialize conditional transformer.
@@ -90,7 +92,7 @@ class ConditionalTransformer(Transformer):
         self.transformer = transformer
         self.else_transformer = else_transformer
 
-    def transform(self, value: Any, context: Dict[str, Any]) -> Any:
+    def transform(self, value: Any, context: dict[str, Any]) -> Any:
         """Transform value conditionally."""
         with TRANSFORMATION_TIME.labels(transformer_type=self.get_type()).time():
             try:
@@ -119,8 +121,8 @@ class TransformationPipeline:
 
     def __init__(self):
         """Initialize transformation pipeline."""
-        self.field_transformers: Dict[str, List[Transformer]] = {}
-        self.compiled_patterns: Dict[str, Pattern] = {}
+        self.field_transformers: dict[str, list[Transformer]] = {}
+        self.compiled_patterns: dict[str, Pattern] = {}
 
     def add_transformer(
         self,
@@ -149,7 +151,7 @@ class TransformationPipeline:
             f"Added {transformer.get_type()} for pattern '{field_pattern}'"
         )
 
-    def transform_row(self, row: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_row(self, row: dict[str, Any]) -> dict[str, Any]:
         """
         Transform all fields in row.
 
@@ -182,7 +184,7 @@ class TransformationPipeline:
 
             return transformed
 
-    def transform_rows(self, rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def transform_rows(self, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """
         Transform multiple rows.
 
@@ -198,6 +200,6 @@ class TransformationPipeline:
         """Get total number of registered transformers."""
         return sum(len(transformers) for transformers in self.field_transformers.values())
 
-    def get_patterns(self) -> List[str]:
+    def get_patterns(self) -> list[str]:
         """Get list of registered field patterns."""
         return list(self.field_transformers.keys())

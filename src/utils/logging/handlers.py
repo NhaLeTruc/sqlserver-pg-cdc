@@ -5,7 +5,7 @@ Provides ContextLogger for adding contextual information to log messages.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 
 class ContextLogger:
@@ -87,7 +87,7 @@ class ContextLogger:
         """
         self.context.update(context)
 
-    def get_context(self) -> Dict[str, Any]:
+    def get_context(self) -> dict[str, Any]:
         """
         Get current context
 

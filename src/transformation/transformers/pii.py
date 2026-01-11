@@ -8,12 +8,12 @@ Provides transformers for masking personally identifiable information
 import hashlib
 import logging
 import re
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .base import (
-    TRANSFORMATIONS_APPLIED,
     TRANSFORMATION_ERRORS,
     TRANSFORMATION_TIME,
+    TRANSFORMATIONS_APPLIED,
     Transformer,
 )
 
@@ -45,7 +45,7 @@ class PIIMaskingTransformer(Transformer):
         self.preserve_format = preserve_format
         self.email_preserve_domain = email_preserve_domain
 
-    def transform(self, value: Any, context: Dict[str, Any]) -> Any:
+    def transform(self, value: Any, context: dict[str, Any]) -> Any:
         """Transform value by masking PII fields."""
         with TRANSFORMATION_TIME.labels(transformer_type=self.get_type()).time():
             if not isinstance(value, str):
@@ -214,7 +214,7 @@ class HashingTransformer(Transformer):
         self,
         algorithm: str = "sha256",
         salt: str = "",
-        truncate: Optional[int] = None,
+        truncate: int | None = None,
     ):
         """
         Initialize hashing transformer.
@@ -228,14 +228,14 @@ class HashingTransformer(Transformer):
         self.salt = salt
         self.truncate = truncate
 
-    def transform(self, value: Any, context: Dict[str, Any]) -> Any:
+    def transform(self, value: Any, context: dict[str, Any]) -> Any:
         """Transform value by hashing."""
         with TRANSFORMATION_TIME.labels(transformer_type=self.get_type()).time():
             if value is None:
                 return None
 
             try:
-                data = f"{self.salt}{str(value)}".encode("utf-8")
+                data = f"{self.salt}{str(value)}".encode()
                 hasher = hashlib.new(self.algorithm)
                 hasher.update(data)
                 hash_value = hasher.hexdigest()

@@ -23,31 +23,28 @@ Usage:
 """
 
 import argparse
-import sys
 import logging
+import sys
 from pathlib import Path
-from typing import List, Optional
-import pyodbc
+
 import psycopg2
+import pyodbc
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+from src.utils.logging_config import get_logger, setup_logging
+
 from src.reconciliation.compare import reconcile_table
 from src.reconciliation.report import (
-    generate_report,
-    export_report_json,
     export_report_csv,
-    format_report_console
+    export_report_json,
+    format_report_console,
+    generate_report,
 )
-from src.reconciliation.scheduler import (
-    ReconciliationScheduler,
-    reconcile_job_wrapper
-)
-from src.utils.vault_client import get_credentials_from_vault
-from src.utils.logging_config import setup_logging, get_logger
+from src.reconciliation.scheduler import ReconciliationScheduler, reconcile_job_wrapper
 from src.utils.metrics import initialize_metrics
-
+from src.utils.vault_client import get_credentials_from_vault
 
 logger = logging.getLogger(__name__)
 

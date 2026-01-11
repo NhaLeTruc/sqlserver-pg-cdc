@@ -6,14 +6,13 @@ for monitoring the data pipeline infrastructure.
 """
 
 import logging
-from typing import Optional
 
 from prometheus_client import (
+    REGISTRY,
+    CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
-    CollectorRegistry,
-    REGISTRY,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,7 +25,7 @@ class ConnectorMetrics:
     Tracks connector deployments, failures, and operations.
     """
 
-    def __init__(self, registry: Optional[CollectorRegistry] = None):
+    def __init__(self, registry: CollectorRegistry | None = None):
         """
         Initialize connector metrics
 
@@ -202,7 +201,7 @@ class VaultMetrics:
     Tracks credential retrievals and Vault health.
     """
 
-    def __init__(self, registry: Optional[CollectorRegistry] = None):
+    def __init__(self, registry: CollectorRegistry | None = None):
         """
         Initialize Vault metrics
 

@@ -14,7 +14,6 @@ import argparse
 import logging
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 import psycopg2
 import pyodbc
@@ -23,7 +22,7 @@ import yaml
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from utils.query_optimizer import IndexRecommendation, QueryOptimizer
+from utils.query_optimizer import QueryOptimizer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,13 +31,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def load_config(config_path: str) -> Dict:
+def load_config(config_path: str) -> dict:
     """Load configuration from YAML file."""
     with open(config_path) as f:
         return yaml.safe_load(f)
 
 
-def connect_postgres(config: Dict) -> psycopg2.extensions.connection:
+def connect_postgres(config: dict) -> psycopg2.extensions.connection:
     """Connect to PostgreSQL database."""
     return psycopg2.connect(
         host=config["host"],
@@ -49,7 +48,7 @@ def connect_postgres(config: Dict) -> psycopg2.extensions.connection:
     )
 
 
-def connect_sqlserver(config: Dict) -> pyodbc.Connection:
+def connect_sqlserver(config: dict) -> pyodbc.Connection:
     """Connect to SQL Server database."""
     conn_str = (
         f"DRIVER={{ODBC Driver 18 for SQL Server}};"
@@ -64,7 +63,7 @@ def connect_sqlserver(config: Dict) -> pyodbc.Connection:
 
 def analyze_query(
     database_type: str,
-    config: Dict,
+    config: dict,
     query: str,
     execute: bool = False,
 ) -> None:
@@ -113,13 +112,13 @@ def analyze_query(
     if metrics.execution_time_ms:
         print(f"  Execution Time: {metrics.execution_time_ms:.2f} ms")
     if metrics.has_table_scan:
-        print(f"  ⚠ Table Scan Detected: YES")
+        print("  ⚠ Table Scan Detected: YES")
     if metrics.has_index_scan:
-        print(f"  ✓ Index Scan Used: YES")
+        print("  ✓ Index Scan Used: YES")
     if metrics.has_hash_join:
-        print(f"  Hash Join: YES")
+        print("  Hash Join: YES")
     if metrics.has_nested_loop:
-        print(f"  Nested Loop: YES")
+        print("  Nested Loop: YES")
 
     if metrics.warnings:
         print("\nWarnings:")
@@ -132,10 +131,10 @@ def analyze_query(
 
 def recommend_indexes(
     table_name: str,
-    primary_keys: List[str],
-    timestamp_column: Optional[str] = None,
-    checksum_column: Optional[str] = None,
-    status_column: Optional[str] = None,
+    primary_keys: list[str],
+    timestamp_column: str | None = None,
+    checksum_column: str | None = None,
+    status_column: str | None = None,
     database_type: str = "postgresql",
 ) -> None:
     """
@@ -185,7 +184,7 @@ def recommend_indexes(
 
 def test_row_count_optimization(
     database_type: str,
-    config: Dict,
+    config: dict,
     table_name: str,
 ) -> None:
     """
@@ -234,9 +233,9 @@ def test_row_count_optimization(
 
 def test_checksum_optimization(
     database_type: str,
-    config: Dict,
+    config: dict,
     table_name: str,
-    columns: List[str],
+    columns: list[str],
 ) -> None:
     """
     Test optimized checksum query.

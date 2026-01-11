@@ -9,14 +9,13 @@ import logging
 import logging.handlers
 import os
 import sys
-from typing import Optional
 
 from .formatters import ConsoleFormatter, JSONFormatter
 
 
 def setup_logging(
     level: str = "INFO",
-    log_file: Optional[str] = None,
+    log_file: str | None = None,
     console_output: bool = True,
     json_format: bool = False,
     app_name: str = "sqlserver-pg-cdc",

@@ -8,11 +8,12 @@ and automatic connection recycling to prevent stale connections.
 import logging
 import threading
 import time
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from queue import Empty, Queue
-from typing import Any, Dict, Iterator, Optional
+from typing import Any
 
 from opentelemetry import trace
 from prometheus_client import Counter, Gauge, Histogram
@@ -373,7 +374,7 @@ class BaseConnectionPool:
         if self._closed:
             raise PoolClosedError("Connection pool is closed")
 
-        pooled_conn: Optional[PooledConnection] = None
+        pooled_conn: PooledConnection | None = None
         start_time = time.time()
 
         with trace_operation(
@@ -498,7 +499,7 @@ class BaseConnectionPool:
 
         logger.info(f"Connection pool '{self.pool_name}' closed")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get pool statistics."""
         with self._lock:
             total_size = len(self._all_connections)

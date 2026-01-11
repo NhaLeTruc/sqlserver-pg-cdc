@@ -5,7 +5,6 @@ Provides optimized query generation for common reconciliation patterns
 including row counts and checksum calculations.
 """
 
-from typing import List
 
 
 class QueryOptimizer:
@@ -56,7 +55,7 @@ WHERE t.name = '{table_name}'
     @staticmethod
     def optimize_checksum_query(
         table_name: str,
-        columns: List[str],
+        columns: list[str],
         database_type: str = "postgresql",
     ) -> str:
         """

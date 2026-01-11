@@ -9,9 +9,9 @@ on large tables with few changes.
 import hashlib
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from opentelemetry import trace
 from prometheus_client import Counter, Histogram
@@ -62,7 +62,7 @@ class IncrementalChecksumTracker:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Initialized checksum tracker with state dir: {self.state_dir}")
 
-    def get_last_checksum_timestamp(self, table: str) -> Optional[datetime]:
+    def get_last_checksum_timestamp(self, table: str) -> datetime | None:
         """
         Get timestamp of last checksum calculation.
 
@@ -97,7 +97,7 @@ class IncrementalChecksumTracker:
                 logger.warning(f"Failed to load checksum state for {table}: {e}")
                 return None
 
-    def get_last_checksum(self, table: str) -> Optional[str]:
+    def get_last_checksum(self, table: str) -> str | None:
         """
         Get last calculated checksum value.
 
@@ -125,7 +125,7 @@ class IncrementalChecksumTracker:
         table: str,
         checksum: str,
         row_count: int,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
         mode: str = "full",
     ) -> None:
         """
@@ -145,7 +145,7 @@ class IncrementalChecksumTracker:
             mode=mode,
         ):
             if timestamp is None:
-                timestamp = datetime.now(timezone.utc)
+                timestamp = datetime.now(UTC)
 
             state_file = self._get_state_file(table)
 
@@ -185,7 +185,7 @@ class IncrementalChecksumTracker:
             state_file.unlink()
             logger.info(f"Cleared checksum state for table {table}")
 
-    def list_tracked_tables(self) -> List[str]:
+    def list_tracked_tables(self) -> list[str]:
         """
         List all tables with saved checksum state.
 
@@ -211,10 +211,10 @@ def calculate_incremental_checksum(
     cursor: Any,
     table_name: str,
     pk_column: str,
-    last_checksum_time: Optional[datetime] = None,
+    last_checksum_time: datetime | None = None,
     change_tracking_column: str = "updated_at",
-    tracker: Optional[IncrementalChecksumTracker] = None,
-) -> Tuple[str, int]:
+    tracker: IncrementalChecksumTracker | None = None,
+) -> tuple[str, int]:
     """
     Calculate checksum only for rows changed since last run.
 
@@ -288,7 +288,7 @@ def calculate_incremental_checksum(
 
 def _calculate_full_checksum(
     cursor: Any, quoted_table: str, quoted_pk: str, db_type: str
-) -> Tuple[str, int]:
+) -> tuple[str, int]:
     """Calculate checksum for all rows in table."""
     query = f"SELECT * FROM {quoted_table} ORDER BY {quoted_pk}"
 
@@ -317,7 +317,7 @@ def _calculate_delta_checksum(
     quoted_change_col: str,
     since_timestamp: datetime,
     db_type: str,
-) -> Tuple[str, int]:
+) -> tuple[str, int]:
     """Calculate checksum only for changed rows."""
     # Build incremental query
     if db_type == "postgresql":

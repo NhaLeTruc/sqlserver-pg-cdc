@@ -8,7 +8,6 @@ automatically triggered. To use it, explicitly add it as a parameter to your tes
         # test code here
 """
 
-import pytest
 
 
 # Disabled: Auto-cleanup integration removed

@@ -6,17 +6,17 @@ to perform reconciliation jobs and save reports.
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
 def reconcile_job_wrapper(
-    source_config: Dict[str, Any],
-    target_config: Dict[str, Any],
-    tables: List[str],
+    source_config: dict[str, Any],
+    target_config: dict[str, Any],
+    tables: list[str],
     output_dir: str,
     validate_checksums: bool = False,
     use_connection_pool: bool = True
@@ -35,10 +35,9 @@ def reconcile_job_wrapper(
         validate_checksums: Whether to validate checksums
         use_connection_pool: Whether to use connection pooling (default: True)
     """
-    from src.reconciliation.compare import reconcile_table
-    from src.reconciliation.report import generate_report, export_report_json
+    from src.reconciliation.report import export_report_json, generate_report
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     output_path = Path(output_dir) / f"reconcile_{timestamp}.json"
 
     # Ensure output directory exists
@@ -70,8 +69,8 @@ def reconcile_job_wrapper(
                 target_cursor.close()
         else:
             # Legacy mode: create new connections for each job
-            import pyodbc
             import psycopg2
+            import pyodbc
 
             # Connect to source database (SQL Server)
             source_conn = pyodbc.connect(
@@ -130,9 +129,9 @@ def reconcile_job_wrapper(
 def _reconcile_tables(
     source_cursor: Any,
     target_cursor: Any,
-    tables: List[str],
+    tables: list[str],
     validate_checksums: bool
-) -> tuple[List[Dict[str, Any]], List[Dict[str, str]]]:
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
     """
     Reconcile a list of tables.
 

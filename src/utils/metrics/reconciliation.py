@@ -7,14 +7,13 @@ for monitoring data consistency validation processes.
 
 import logging
 import time
-from typing import Optional
 
 from prometheus_client import (
+    REGISTRY,
+    CollectorRegistry,
     Counter,
     Gauge,
     Histogram,
-    CollectorRegistry,
-    REGISTRY,
 )
 
 logger = logging.getLogger(__name__)
@@ -27,7 +26,7 @@ class ReconciliationMetrics:
     Tracks reconciliation runs, discrepancies, and performance.
     """
 
-    def __init__(self, registry: Optional[CollectorRegistry] = None):
+    def __init__(self, registry: CollectorRegistry | None = None):
         """
         Initialize reconciliation metrics
 
@@ -101,7 +100,7 @@ class ReconciliationMetrics:
         table_name: str,
         success: bool,
         duration: float,
-        rows_compared: Optional[int] = None,
+        rows_compared: int | None = None,
     ) -> None:
         """
         Record a reconciliation run

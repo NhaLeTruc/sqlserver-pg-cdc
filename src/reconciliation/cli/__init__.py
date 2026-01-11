@@ -12,10 +12,11 @@ Available commands:
 
 import sys
 
-from .credentials import setup_logging, get_credentials_from_vault_or_env
-from .parser import create_parser
-from .commands import cmd_run, cmd_schedule, cmd_report
 from src.utils.vault_client import VaultClient
+
+from .commands import cmd_report, cmd_run, cmd_schedule
+from .credentials import get_credentials_from_vault_or_env, setup_logging
+from .parser import create_parser
 
 
 def main() -> None:

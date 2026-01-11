@@ -5,9 +5,9 @@ This module provides functions to generate human-readable and machine-readable
 reports from reconciliation comparison results.
 """
 
-from datetime import datetime, timezone
-from typing import Dict, List, Any
 import json
+from datetime import UTC, datetime
+from typing import Any
 
 
 def format_timestamp(timestamp: datetime) -> str:
@@ -23,7 +23,7 @@ def format_timestamp(timestamp: datetime) -> str:
     return timestamp.isoformat()
 
 
-def generate_report(comparison_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_report(comparison_results: list[dict[str, Any]]) -> dict[str, Any]:
     """
     Generate reconciliation report from comparison results
 
@@ -52,7 +52,7 @@ def generate_report(comparison_results: List[Dict[str, Any]]) -> Dict[str, Any]:
             "discrepancies": [],
             "summary": "No comparison data available",
             "recommendations": [],
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "source_total_rows": 0,
             "target_total_rows": 0
         }
@@ -95,7 +95,7 @@ def generate_report(comparison_results: List[Dict[str, Any]]) -> Dict[str, Any]:
                         "missing_rows": abs(difference) if difference < 0 else 0,
                         "extra_rows": difference if difference > 0 else 0
                     },
-                    "timestamp": result.get("timestamp", datetime.now(timezone.utc).isoformat())
+                    "timestamp": result.get("timestamp", datetime.now(UTC).isoformat())
                 })
 
             # Add discrepancy for checksum mismatch
@@ -109,7 +109,7 @@ def generate_report(comparison_results: List[Dict[str, Any]]) -> Dict[str, Any]:
                         "target_checksum": result.get("target_checksum", ""),
                         "description": "Data corruption or modification detected"
                     },
-                    "timestamp": result.get("timestamp", datetime.now(timezone.utc).isoformat())
+                    "timestamp": result.get("timestamp", datetime.now(UTC).isoformat())
                 })
 
     # Determine overall status
@@ -129,7 +129,7 @@ def generate_report(comparison_results: List[Dict[str, Any]]) -> Dict[str, Any]:
         "discrepancies": discrepancies,
         "summary": summary,
         "recommendations": recommendations,
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "source_total_rows": source_total_rows,
         "target_total_rows": target_total_rows
     }
@@ -186,9 +186,9 @@ def _generate_summary(total_tables: int, matched: int, mismatched: int) -> str:
 
 
 def _generate_recommendations(
-    discrepancies: List[Dict[str, Any]],
-    comparison_results: List[Dict[str, Any]]
-) -> List[str]:
+    discrepancies: list[dict[str, Any]],
+    comparison_results: list[dict[str, Any]]
+) -> list[str]:
     """
     Generate actionable recommendations based on discrepancies
 
@@ -266,7 +266,7 @@ def _generate_recommendations(
     return recommendations
 
 
-def export_report_json(report: Dict[str, Any], output_path: str) -> None:
+def export_report_json(report: dict[str, Any], output_path: str) -> None:
     """
     Export report to JSON file
 
@@ -278,7 +278,7 @@ def export_report_json(report: Dict[str, Any], output_path: str) -> None:
         json.dump(report, f, indent=2)
 
 
-def export_report_csv(report: Dict[str, Any], output_path: str) -> None:
+def export_report_csv(report: dict[str, Any], output_path: str) -> None:
     """
     Export report to CSV file
 
@@ -316,7 +316,7 @@ def export_report_csv(report: Dict[str, Any], output_path: str) -> None:
             ])
 
 
-def format_report_console(report: Dict[str, Any]) -> str:
+def format_report_console(report: dict[str, Any]) -> str:
     """
     Format report for console output
 

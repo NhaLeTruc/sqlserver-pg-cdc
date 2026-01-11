@@ -7,9 +7,8 @@ checksum state across reconciliation runs.
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import List, Optional
 
 from opentelemetry import trace
 from prometheus_client import Counter
@@ -46,7 +45,7 @@ class IncrementalChecksumTracker:
         self.state_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Initialized checksum tracker with state dir: {self.state_dir}")
 
-    def get_last_checksum_timestamp(self, table: str) -> Optional[datetime]:
+    def get_last_checksum_timestamp(self, table: str) -> datetime | None:
         """
         Get timestamp of last checksum calculation.
 
@@ -81,7 +80,7 @@ class IncrementalChecksumTracker:
                 logger.warning(f"Failed to load checksum state for {table}: {e}")
                 return None
 
-    def get_last_checksum(self, table: str) -> Optional[str]:
+    def get_last_checksum(self, table: str) -> str | None:
         """
         Get last calculated checksum value.
 
@@ -109,7 +108,7 @@ class IncrementalChecksumTracker:
         table: str,
         checksum: str,
         row_count: int,
-        timestamp: Optional[datetime] = None,
+        timestamp: datetime | None = None,
         mode: str = "full",
     ) -> None:
         """
@@ -129,7 +128,7 @@ class IncrementalChecksumTracker:
             mode=mode,
         ):
             if timestamp is None:
-                timestamp = datetime.now(timezone.utc)
+                timestamp = datetime.now(UTC)
 
             state_file = self._get_state_file(table)
 
@@ -169,7 +168,7 @@ class IncrementalChecksumTracker:
             state_file.unlink()
             logger.info(f"Cleared checksum state for table {table}")
 
-    def list_tracked_tables(self) -> List[str]:
+    def list_tracked_tables(self) -> list[str]:
         """
         List all tables with saved checksum state.
 

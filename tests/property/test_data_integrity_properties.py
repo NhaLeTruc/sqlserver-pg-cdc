@@ -8,10 +8,11 @@ Tests properties related to:
 - Data corruption detection
 """
 
-from hypothesis import given, strategies as st, assume, settings
-from typing import Any, List, Optional, Tuple
 import hashlib
+from typing import Any
 
+from hypothesis import assume, given, settings
+from hypothesis import strategies as st
 
 # Strategy for database-like values (common SQL types)
 db_value = st.one_of(
@@ -27,12 +28,12 @@ db_value = st.one_of(
 )
 
 
-def row_to_string(row: Tuple[Any, ...]) -> str:
+def row_to_string(row: tuple[Any, ...]) -> str:
     """Convert row to string representation (simulating checksum calculation)."""
     return "|".join(str(val) if val is not None else "NULL" for val in row)
 
 
-def calculate_row_checksum(rows: List[Tuple[Any, ...]]) -> str:
+def calculate_row_checksum(rows: list[tuple[Any, ...]]) -> str:
     """Calculate checksum for list of rows."""
     hasher = hashlib.sha256()
     for row in rows:
@@ -68,7 +69,7 @@ def test_null_handling_consistency(non_null_value: int, position: int):
     )
 )
 @settings(max_examples=50)
-def test_row_order_preservation(rows: List[Tuple[Any, ...]]):
+def test_row_order_preservation(rows: list[tuple[Any, ...]]):
     """Checksums should preserve row order."""
     checksum1 = calculate_row_checksum(rows)
     checksum2 = calculate_row_checksum(list(reversed(rows)))
@@ -84,7 +85,7 @@ def test_row_order_preservation(rows: List[Tuple[Any, ...]]):
     base_row=st.tuples(db_value, db_value, db_value),
     count=st.integers(min_value=1, max_value=10)
 )
-def test_duplicate_row_detection(base_row: Tuple[Any, ...], count: int):
+def test_duplicate_row_detection(base_row: tuple[Any, ...], count: int):
     """Duplicate rows should produce different checksum than single row."""
     single_row = [base_row]
     multiple_rows = [base_row] * count
@@ -189,7 +190,7 @@ def test_special_character_handling(special_string: str):
         max_size=100
     )
 )
-def test_row_count_preservation(rows: List[Tuple[Any, ...]]):
+def test_row_count_preservation(rows: list[tuple[Any, ...]]):
     """Number of rows should be preserved in processing."""
     # Simulate processing
     processed_count = 0
@@ -243,8 +244,8 @@ def test_single_column_modification_detection(
     new_row=st.tuples(db_value, db_value)
 )
 def test_row_addition_detection(
-    existing_rows: List[Tuple[Any, ...]],
-    new_row: Tuple[Any, ...]
+    existing_rows: list[tuple[Any, ...]],
+    new_row: tuple[Any, ...]
 ):
     """Adding a row should change the checksum."""
     checksum_before = calculate_row_checksum(existing_rows)
@@ -267,7 +268,7 @@ def test_row_addition_detection(
     index_to_remove=st.integers(min_value=0)
 )
 def test_row_removal_detection(
-    rows: List[Tuple[Any, ...]],
+    rows: list[tuple[Any, ...]],
     index_to_remove: int
 ):
     """Removing a row should change the checksum."""
@@ -360,7 +361,7 @@ def test_column_count_consistency(column_count: int, value: Any):
         max_size=100
     )
 )
-def test_checksum_length_fixed(rows: List[Tuple[Any, ...]]):
+def test_checksum_length_fixed(rows: list[tuple[Any, ...]]):
     """SHA256 checksums should always be 64 hex characters."""
     checksum = calculate_row_checksum(rows)
 

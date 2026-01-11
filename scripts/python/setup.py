@@ -9,8 +9,9 @@ Usage:
     python setup.py develop  # For development mode
 """
 
-from setuptools import setup, find_packages
 from pathlib import Path
+
+from setuptools import find_packages, setup
 
 # Read README if it exists
 readme_file = Path(__file__).parent.parent.parent / "README.md"

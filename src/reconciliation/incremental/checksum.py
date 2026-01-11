@@ -8,12 +8,13 @@ Provides 10-100x speedup on large tables with few changes.
 import hashlib
 import logging
 from datetime import datetime
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from opentelemetry import trace
 from prometheus_client import Counter, Histogram
 
 from src.utils.tracing import trace_operation
+
 from .state import IncrementalChecksumTracker
 
 logger = logging.getLogger(__name__)
@@ -38,10 +39,10 @@ def calculate_incremental_checksum(
     cursor: Any,
     table_name: str,
     pk_column: str,
-    last_checksum_time: Optional[datetime] = None,
+    last_checksum_time: datetime | None = None,
     change_tracking_column: str = "updated_at",
-    tracker: Optional[IncrementalChecksumTracker] = None,
-) -> Tuple[str, int]:
+    tracker: IncrementalChecksumTracker | None = None,
+) -> tuple[str, int]:
     """
     Calculate checksum only for rows changed since last run.
 
@@ -115,7 +116,7 @@ def calculate_incremental_checksum(
 
 def _calculate_full_checksum(
     cursor: Any, quoted_table: str, quoted_pk: str, db_type: str
-) -> Tuple[str, int]:
+) -> tuple[str, int]:
     """Calculate checksum for all rows in table."""
     query = f"SELECT * FROM {quoted_table} ORDER BY {quoted_pk}"
 
@@ -144,7 +145,7 @@ def _calculate_delta_checksum(
     quoted_change_col: str,
     since_timestamp: datetime,
     db_type: str,
-) -> Tuple[str, int]:
+) -> tuple[str, int]:
     """Calculate checksum only for changed rows."""
     # Build incremental query
     if db_type == "postgresql":

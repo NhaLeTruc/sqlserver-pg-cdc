@@ -4,22 +4,19 @@ Unit tests for incremental checksum calculation.
 Tests state management, incremental vs full checksums, and chunked processing.
 """
 
-import json
 import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import Mock, patch
-
-import pytest
+from unittest.mock import Mock
 
 from reconciliation.incremental import (
     IncrementalChecksumTracker,
-    calculate_incremental_checksum,
-    calculate_checksum_chunked,
     _calculate_delta_checksum,
     _calculate_full_checksum,
     _get_db_type,
     _quote_identifier,
+    calculate_checksum_chunked,
+    calculate_incremental_checksum,
 )
 
 
@@ -46,7 +43,7 @@ class TestIncrementalChecksumTracker:
         table = "users"
         checksum = "abc123"
         row_count = 1000
-        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        timestamp = datetime(2025, 1, 1, 12, 0, 0, tzinfo=UTC)
 
         # Save state
         self.tracker.save_checksum_state(table, checksum, row_count, timestamp, "full")
@@ -71,11 +68,11 @@ class TestIncrementalChecksumTracker:
 
     def test_save_state_default_timestamp(self):
         """Test saving state with default timestamp."""
-        before = datetime.now(timezone.utc)
+        before = datetime.now(UTC)
 
         self.tracker.save_checksum_state("users", "checksum", 100)
 
-        after = datetime.now(timezone.utc)
+        after = datetime.now(UTC)
 
         loaded_timestamp = self.tracker.get_last_checksum_timestamp("users")
         assert before <= loaded_timestamp <= after
@@ -254,7 +251,7 @@ class TestCalculateDeltaChecksum:
             (2, "Bob", 30),
         ]))
 
-        since = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        since = datetime(2025, 1, 1, tzinfo=UTC)
 
         checksum, row_count = _calculate_delta_checksum(
             cursor, '"users"', '"id"', '"updated_at"', since, "postgresql"
@@ -274,7 +271,7 @@ class TestCalculateDeltaChecksum:
         cursor = Mock()
         cursor.__iter__ = Mock(return_value=iter([(1, "Alice", 25)]))
 
-        since = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        since = datetime(2025, 1, 1, tzinfo=UTC)
 
         checksum, row_count = _calculate_delta_checksum(
             cursor, "[users]", "[id]", "[updated_at]", since, "sqlserver"
@@ -292,7 +289,7 @@ class TestCalculateDeltaChecksum:
         cursor = Mock()
         cursor.__iter__ = Mock(return_value=iter([]))
 
-        since = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        since = datetime(2025, 1, 1, tzinfo=UTC)
 
         checksum, row_count = _calculate_delta_checksum(
             cursor, '"users"', '"id"', '"updated_at"', since, "postgresql"
@@ -327,7 +324,7 @@ class TestCalculateIncrementalChecksum:
         cursor.__class__.__name__ = "PostgreSQLCursor"
         cursor.__iter__ = Mock(return_value=iter([(3, "Charlie", 35)]))
 
-        last_time = datetime(2025, 1, 1, tzinfo=timezone.utc)
+        last_time = datetime(2025, 1, 1, tzinfo=UTC)
 
         checksum, row_count = calculate_incremental_checksum(
             cursor, "users", "id", last_checksum_time=last_time

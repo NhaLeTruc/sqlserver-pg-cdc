@@ -5,8 +5,7 @@ This module defines metrics to track parallel reconciliation performance
 and throughput.
 """
 
-from prometheus_client import Counter, Gauge, Histogram, REGISTRY
-
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram
 
 # Metrics
 try:

@@ -4,16 +4,13 @@ Unit tests for data transformation framework.
 Tests PII masking, hashing, type conversion, and transformation pipelines.
 """
 
-from unittest.mock import Mock, patch
-
-import pytest
+from unittest.mock import patch
 
 from transformation.transformers import (
     ConditionalTransformer,
     HashingTransformer,
     PIIMaskingTransformer,
     TransformationPipeline,
-    Transformer,
     TypeConversionTransformer,
     create_gdpr_pipeline,
     create_pii_pipeline,

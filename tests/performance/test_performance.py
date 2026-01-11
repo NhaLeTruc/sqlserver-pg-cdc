@@ -12,7 +12,6 @@ Run with: pytest tests/performance/test_performance.py -v -m slow
 
 import os
 import time
-from typing import Dict, Tuple
 
 import psycopg2
 import pyodbc
@@ -158,7 +157,7 @@ class TestPerformanceMeasurement:
         postgres_conn: psycopg2.extensions.connection,
         expected_count: int,
         timeout: int = 30,
-    ) -> Tuple[bool, float]:
+    ) -> tuple[bool, float]:
         """Wait for replication to reach expected count.
 
         Note: Filters out soft-deleted rows (__deleted='true') to avoid counting
@@ -249,7 +248,7 @@ class TestPerformanceMeasurement:
         insert_time = time.time() - insert_start
 
         # Wait for replication
-        print(f"\nWaiting for replication...")
+        print("\nWaiting for replication...")
         success, replication_wait_time = self.wait_for_replication(
             postgres_conn, total_rows, timeout=30
         )
@@ -270,7 +269,7 @@ class TestPerformanceMeasurement:
 
         # Report results
         print(f"\n{'='*70}")
-        print(f"THROUGHPUT RESULTS")
+        print("THROUGHPUT RESULTS")
         print(f"{'='*70}")
         print(f"Total rows:           {total_rows:,}")
         print(f"Insert time:          {insert_time:.2f}s")
@@ -306,7 +305,7 @@ class TestPerformanceMeasurement:
         ]
 
         print(f"\n{'='*70}")
-        print(f"REPLICATION LAG MEASUREMENT")
+        print("REPLICATION LAG MEASUREMENT")
         print(f"{'='*70}")
 
         results = []
@@ -315,7 +314,7 @@ class TestPerformanceMeasurement:
             self.clear_tables(sqlserver_conn, postgres_conn)
 
             print(f"\n{name}: {total_rows:,} rows")
-            print(f"-" * 50)
+            print("-" * 50)
 
             # Insert data
             insert_start = time.time()
@@ -330,7 +329,7 @@ class TestPerformanceMeasurement:
             )
 
             if not success:
-                print(f"  ⚠ Replication timed out")
+                print("  ⚠ Replication timed out")
                 continue
 
             lag = time.time() - lag_start
@@ -347,7 +346,7 @@ class TestPerformanceMeasurement:
 
         # Summary
         print(f"\n{'='*70}")
-        print(f"LAG SUMMARY")
+        print("LAG SUMMARY")
         print(f"{'='*70}")
         print(f"{'Batch':<20} {'Rows':>10} {'Insert (s)':>12} {'Lag (s)':>10}")
         print(f"{'-'*70}")
@@ -382,7 +381,7 @@ class TestPerformanceMeasurement:
             self.clear_tables(sqlserver_conn, postgres_conn)
 
             print(f"\nIteration {iteration + 1}/{num_iterations}")
-            print(f"-" * 50)
+            print("-" * 50)
 
             # Measure end-to-end
             start = time.time()
@@ -423,15 +422,15 @@ class TestPerformanceMeasurement:
 
             # Summary
             print(f"\n{'='*70}")
-            print(f"SUSTAINED PERFORMANCE SUMMARY")
+            print("SUSTAINED PERFORMANCE SUMMARY")
             print(f"{'='*70}")
             print(f"Iterations completed:     {len(throughputs)}/{num_iterations}")
-            print(f"\nThroughput:")
+            print("\nThroughput:")
             print(f"  Average:                {avg_throughput:.0f} rows/sec")
             print(f"  Std deviation:          {tp_std_dev:.0f} rows/sec")
             print(f"  Min:                    {min(throughputs):.0f} rows/sec")
             print(f"  Max:                    {max(throughputs):.0f} rows/sec")
-            print(f"\nReplication Lag:")
+            print("\nReplication Lag:")
             print(f"  Average:                {avg_lag:.2f}s")
             print(f"  Std deviation:          {lag_std_dev:.2f}s")
             print(f"  Min:                    {min(lags):.2f}s")

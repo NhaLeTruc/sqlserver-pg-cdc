@@ -6,9 +6,7 @@ This script helps identify why test_measure_replication_throughput is unstable.
 """
 
 import os
-import sys
 import time
-from pathlib import Path
 
 import psycopg2
 import pyodbc
@@ -162,10 +160,10 @@ def simulate_test_scenario():
     print("Checking database state...")
     db_state = check_database_state(sqlserver_conn, postgres_conn)
     print("Database State:")
-    print(f"  SQL Server:")
+    print("  SQL Server:")
     print(f"    Total rows: {db_state.get('sqlserver_total_rows', 'N/A')}")
     print(f"    Perf Test rows: {db_state.get('sqlserver_perf_test_rows', 'N/A')}")
-    print(f"  PostgreSQL:")
+    print("  PostgreSQL:")
     print(f"    Total rows: {db_state.get('postgres_total_rows', 'N/A')}")
     print(f"    Perf Test rows: {db_state.get('postgres_perf_test_rows', 'N/A')}")
     print()

@@ -8,7 +8,7 @@ and extracting metrics from PostgreSQL and SQL Server databases.
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import psycopg2
 import psycopg2.extensions
@@ -41,18 +41,18 @@ QUERY_PLAN_ANALYSIS_TIME = Histogram(
 class ExecutionPlanMetrics:
     """Metrics extracted from query execution plan."""
 
-    estimated_rows: Optional[int] = None
-    actual_rows: Optional[int] = None
-    execution_time_ms: Optional[float] = None
-    cpu_time_ms: Optional[float] = None
-    logical_reads: Optional[int] = None
-    physical_reads: Optional[int] = None
-    scan_count: Optional[int] = None
+    estimated_rows: int | None = None
+    actual_rows: int | None = None
+    execution_time_ms: float | None = None
+    cpu_time_ms: float | None = None
+    logical_reads: int | None = None
+    physical_reads: int | None = None
+    scan_count: int | None = None
     has_index_scan: bool = False
     has_table_scan: bool = False
     has_nested_loop: bool = False
     has_hash_join: bool = False
-    warnings: List[str] = None
+    warnings: list[str] = None
 
     def __post_init__(self) -> None:
         if self.warnings is None:
@@ -70,9 +70,9 @@ class QueryAnalyzer:
     def analyze_postgres_query(
         conn: psycopg2.extensions.connection,
         query: str,
-        params: Optional[Tuple] = None,
+        params: tuple | None = None,
         execute: bool = False,
-    ) -> Tuple[Optional[ExecutionPlanMetrics], Optional[str]]:
+    ) -> tuple[ExecutionPlanMetrics | None, str | None]:
         """
         Analyze PostgreSQL query and return execution plan metrics.
 
@@ -136,7 +136,7 @@ class QueryAnalyzer:
 
     @staticmethod
     def _parse_postgres_plan(
-        plan_json: List[Dict[str, Any]], executed: bool
+        plan_json: list[dict[str, Any]], executed: bool
     ) -> ExecutionPlanMetrics:
         """Parse PostgreSQL JSON execution plan."""
         metrics = ExecutionPlanMetrics()
@@ -174,7 +174,7 @@ class QueryAnalyzer:
         return metrics
 
     @staticmethod
-    def _check_plan_nodes(plan: Dict[str, Any], metrics: ExecutionPlanMetrics) -> None:
+    def _check_plan_nodes(plan: dict[str, Any], metrics: ExecutionPlanMetrics) -> None:
         """Recursively check plan nodes for optimization opportunities."""
         # Check for table scans
         node_type = plan.get("Node Type", "")
@@ -197,9 +197,9 @@ class QueryAnalyzer:
     def analyze_sqlserver_query(
         conn: pyodbc.Connection,
         query: str,
-        params: Optional[Tuple] = None,
+        params: tuple | None = None,
         execute: bool = False,
-    ) -> Tuple[Optional[ExecutionPlanMetrics], Optional[str]]:
+    ) -> tuple[ExecutionPlanMetrics | None, str | None]:
         """
         Analyze SQL Server query and return execution plan metrics.
 

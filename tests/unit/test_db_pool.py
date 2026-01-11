@@ -205,7 +205,7 @@ class TestBaseConnectionPool:
 
     def test_unhealthy_connection_recycled(self):
         """Test that unhealthy connections are recycled."""
-        pool = MockConnectionPool(min_size=2, max_size=5)
+        pool = MockConnectionPool(min_size=2, max_size=5, acquire_timeout=1.0)
         time.sleep(0.1)
 
         # Make health checks fail

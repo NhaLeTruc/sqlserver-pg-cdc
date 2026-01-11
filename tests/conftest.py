@@ -24,6 +24,28 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
+# =============================================================================
+# Disable OpenTelemetry Tracing for Unit Tests
+# =============================================================================
+
+# Set this BEFORE pytest starts to prevent any tracing initialization
+os.environ["OTEL_SDK_DISABLED"] = "true"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def disable_tracing_for_tests():
+    """
+    Disable OpenTelemetry tracing during test runs.
+
+    This prevents tests from trying to export traces to a collector
+    that isn't running, which causes error messages and delays.
+    """
+    # Already set above at module level
+    yield
+    # Clean up after all tests
+    os.environ.pop("OTEL_SDK_DISABLED", None)
+
+
 def pytest_configure(config: pytest.Config) -> None:
     """Configure pytest with custom markers."""
     config.addinivalue_line("markers", "integration: mark test as integration test")

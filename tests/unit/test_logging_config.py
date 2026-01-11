@@ -797,7 +797,7 @@ class TestConfigureFromEnv:
         "LOG_JSON": "true",
         "LOG_CONSOLE": "false"
     })
-    @patch('src.utils.logging_config.setup_logging')
+    @patch('src.utils.logging.config.setup_logging')
     def test_configure_from_env_all_vars_set(self, mock_setup):
         """Test configuration from all environment variables"""
         # Arrange & Act
@@ -812,7 +812,7 @@ class TestConfigureFromEnv:
         )
 
     @patch.dict(os.environ, {}, clear=True)
-    @patch('src.utils.logging_config.setup_logging')
+    @patch('src.utils.logging.config.setup_logging')
     def test_configure_from_env_with_defaults(self, mock_setup):
         """Test configuration with default values"""
         # Arrange & Act
@@ -827,7 +827,7 @@ class TestConfigureFromEnv:
         )
 
     @patch.dict(os.environ, {"LOG_LEVEL": "WARNING"})
-    @patch('src.utils.logging_config.setup_logging')
+    @patch('src.utils.logging.config.setup_logging')
     def test_configure_from_env_partial_vars(self, mock_setup):
         """Test configuration with partial environment variables"""
         # Arrange & Act
@@ -842,7 +842,7 @@ class TestConfigureFromEnv:
         )
 
     @patch.dict(os.environ, {"LOG_JSON": "1"})
-    @patch('src.utils.logging_config.setup_logging')
+    @patch('src.utils.logging.config.setup_logging')
     def test_configure_from_env_json_true_variations(self, mock_setup):
         """Test that various true values for LOG_JSON work"""
         # Arrange & Act
@@ -852,7 +852,7 @@ class TestConfigureFromEnv:
         assert mock_setup.call_args[1]["json_format"] is True
 
     @patch.dict(os.environ, {"LOG_JSON": "yes"})
-    @patch('src.utils.logging_config.setup_logging')
+    @patch('src.utils.logging.config.setup_logging')
     def test_configure_from_env_json_yes(self, mock_setup):
         """Test LOG_JSON with 'yes' value"""
         # Arrange & Act
@@ -862,7 +862,7 @@ class TestConfigureFromEnv:
         assert mock_setup.call_args[1]["json_format"] is True
 
     @patch.dict(os.environ, {"LOG_JSON": "false"})
-    @patch('src.utils.logging_config.setup_logging')
+    @patch('src.utils.logging.config.setup_logging')
     def test_configure_from_env_json_false(self, mock_setup):
         """Test LOG_JSON with 'false' value"""
         # Arrange & Act
@@ -872,7 +872,7 @@ class TestConfigureFromEnv:
         assert mock_setup.call_args[1]["json_format"] is False
 
     @patch.dict(os.environ, {"LOG_CONSOLE": "0"})
-    @patch('src.utils.logging_config.setup_logging')
+    @patch('src.utils.logging.config.setup_logging')
     def test_configure_from_env_console_false_variations(self, mock_setup):
         """Test that false values for LOG_CONSOLE work"""
         # Arrange & Act
@@ -882,7 +882,7 @@ class TestConfigureFromEnv:
         assert mock_setup.call_args[1]["console_output"] is False
 
     @patch.dict(os.environ, {"LOG_FILE": "/var/log/myapp.log"})
-    @patch('src.utils.logging_config.setup_logging')
+    @patch('src.utils.logging.config.setup_logging')
     def test_configure_from_env_with_log_file(self, mock_setup):
         """Test configuration with LOG_FILE set"""
         # Arrange & Act

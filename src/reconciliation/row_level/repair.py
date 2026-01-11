@@ -9,6 +9,8 @@ and UPDATEs for modified rows.
 from datetime import UTC, datetime
 from typing import Any
 
+from opentelemetry import trace
+
 from src.utils.tracing import trace_operation
 
 from .reconciler import RowDiscrepancy
@@ -30,7 +32,7 @@ def generate_repair_script(
     """
     with trace_operation(
         "generate_repair_script",
-        kind="INTERNAL",
+        kind=trace.SpanKind.INTERNAL,
         table=target_table,
         discrepancy_count=len(discrepancies),
     ):

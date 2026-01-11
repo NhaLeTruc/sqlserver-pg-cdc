@@ -52,8 +52,8 @@ class TestMetricsPublisher:
         # Assert
         assert publisher.registry is custom_registry
 
-    @patch('src.utils.metrics.start_http_server')
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.publisher.start_http_server')
+    @patch('src.utils.metrics.publisher.logger')
     def test_start_successful(self, mock_logger, mock_start_http_server):
         """Test successful server start"""
         # Arrange
@@ -68,8 +68,8 @@ class TestMetricsPublisher:
         mock_logger.info.assert_called_once()
         assert "Metrics server started on port 9091" in mock_logger.info.call_args[0][0]
 
-    @patch('src.utils.metrics.start_http_server')
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.publisher.start_http_server')
+    @patch('src.utils.metrics.publisher.logger')
     def test_start_already_started_warning(self, mock_logger, mock_start_http_server):
         """Test that starting already-started server logs warning"""
         # Arrange
@@ -84,8 +84,8 @@ class TestMetricsPublisher:
         mock_logger.warning.assert_called_once()
         assert "already running" in mock_logger.warning.call_args[0][0]
 
-    @patch('src.utils.metrics.start_http_server')
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.publisher.start_http_server')
+    @patch('src.utils.metrics.publisher.logger')
     def test_start_port_already_in_use(self, mock_logger, mock_start_http_server):
         """Test handling of port already in use"""
         # Arrange
@@ -100,7 +100,7 @@ class TestMetricsPublisher:
         assert "Metrics server port 9091 is already in use" in str(exc_info.value)
         assert "Cannot start metrics collection" in str(exc_info.value)
 
-    @patch('src.utils.metrics.start_http_server')
+    @patch('src.utils.metrics.publisher.start_http_server')
     def test_start_other_os_error_raises(self, mock_start_http_server):
         """Test that non-port OSErrors are raised"""
         # Arrange
@@ -124,7 +124,7 @@ class TestMetricsPublisher:
         # Assert
         assert result is False
 
-    @patch('src.utils.metrics.start_http_server')
+    @patch('src.utils.metrics.publisher.start_http_server')
     def test_is_started_returns_true_after_start(self, mock_start_http_server):
         """Test that is_started returns True after starting"""
         # Arrange
@@ -160,7 +160,7 @@ class TestReconciliationMetrics:
         assert metrics.comparison_rate is not None
 
     @patch('src.utils.metrics.time.time')
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.reconciliation.logger')
     def test_record_reconciliation_run_success(self, mock_logger, mock_time):
         """Test recording a successful reconciliation run"""
         # Arrange
@@ -191,7 +191,7 @@ class TestReconciliationMetrics:
         assert "45.2" in log_message
 
     @patch('src.utils.metrics.time.time')
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.reconciliation.logger')
     def test_record_reconciliation_run_failure(self, mock_logger, mock_time):
         """Test recording a failed reconciliation run"""
         # Arrange
@@ -277,7 +277,7 @@ class TestReconciliationMetrics:
         rows_value = metrics.rows_compared_total.labels(table_name="customers")._value.get()
         assert rows_value == 0.0
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.reconciliation.logger')
     def test_record_row_count_mismatch(self, mock_logger):
         """Test recording row count mismatch"""
         # Arrange
@@ -307,7 +307,7 @@ class TestReconciliationMetrics:
         assert "Row count mismatch detected" in log_message
         assert "orders" in log_message
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.reconciliation.logger')
     def test_record_row_count_mismatch_negative_difference(self, mock_logger):
         """Test recording row count mismatch with negative difference"""
         # Arrange
@@ -327,7 +327,7 @@ class TestReconciliationMetrics:
         )._value.get()
         assert difference_value == -50.0  # 500 - 550
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.reconciliation.logger')
     def test_record_checksum_mismatch(self, mock_logger):
         """Test recording checksum mismatch"""
         # Arrange
@@ -385,7 +385,7 @@ class TestConnectorMetrics:
         assert metrics.connector_tasks_running is not None
         assert metrics.connector_tasks_failed is not None
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_record_deployment_success(self, mock_logger):
         """Test recording successful deployment"""
         # Arrange
@@ -410,7 +410,7 @@ class TestConnectorMetrics:
         assert "sqlserver-source" in log_message
         assert "success" in log_message
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_record_deployment_failure(self, mock_logger):
         """Test recording failed deployment"""
         # Arrange
@@ -430,7 +430,7 @@ class TestConnectorMetrics:
         )._value.get()
         assert counter_value == 1.0
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_record_operation_pause_success(self, mock_logger):
         """Test recording successful pause operation"""
         # Arrange
@@ -455,7 +455,7 @@ class TestConnectorMetrics:
         mock_logger.info.assert_called_once()
         assert "pause" in mock_logger.info.call_args[0][0]
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_record_operation_restart_failure(self, mock_logger):
         """Test recording failed restart operation"""
         # Arrange
@@ -477,7 +477,7 @@ class TestConnectorMetrics:
         )._value.get()
         assert counter_value == 1.0
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_update_connector_state_running(self, mock_logger):
         """Test updating connector state to RUNNING"""
         # Arrange
@@ -509,7 +509,7 @@ class TestConnectorMetrics:
         )._value.get()
         assert tasks_running_value == 4
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_update_connector_state_paused(self, mock_logger):
         """Test updating connector state to PAUSED"""
         # Arrange
@@ -531,7 +531,7 @@ class TestConnectorMetrics:
         )._value.get()
         assert state_value == 2  # PAUSED = 2
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_update_connector_state_failed(self, mock_logger):
         """Test updating connector state to FAILED"""
         # Arrange
@@ -558,7 +558,7 @@ class TestConnectorMetrics:
         )._value.get()
         assert tasks_failed_value == 4
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_update_connector_state_stopped(self, mock_logger):
         """Test updating connector state to STOPPED"""
         # Arrange
@@ -580,7 +580,7 @@ class TestConnectorMetrics:
         )._value.get()
         assert state_value == 0  # STOPPED = 0
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_update_connector_state_unknown_state(self, mock_logger):
         """Test updating connector state with unknown state"""
         # Arrange
@@ -602,7 +602,7 @@ class TestConnectorMetrics:
         )._value.get()
         assert state_value == -1  # Unknown state = -1
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_update_connector_state_lowercase(self, mock_logger):
         """Test updating connector state with lowercase state name"""
         # Arrange
@@ -642,7 +642,7 @@ class TestVaultMetrics:
         assert metrics.vault_health_check_total is not None
         assert metrics.vault_is_sealed is not None
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_record_credential_retrieval_success(self, mock_logger):
         """Test recording successful credential retrieval"""
         # Arrange
@@ -667,7 +667,7 @@ class TestVaultMetrics:
         assert "secret/database/postgres" in log_message
         assert "success" in log_message
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_record_credential_retrieval_failure(self, mock_logger):
         """Test recording failed credential retrieval"""
         # Arrange
@@ -687,7 +687,7 @@ class TestVaultMetrics:
         )._value.get()
         assert counter_value == 1.0
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_record_health_check_healthy_unsealed(self, mock_logger):
         """Test recording healthy and unsealed Vault"""
         # Arrange
@@ -709,7 +709,7 @@ class TestVaultMetrics:
         sealed_value = metrics.vault_is_sealed._value.get()
         assert sealed_value == 0  # 0 = unsealed
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_record_health_check_unhealthy_sealed(self, mock_logger):
         """Test recording unhealthy and sealed Vault"""
         # Arrange
@@ -731,7 +731,7 @@ class TestVaultMetrics:
         sealed_value = metrics.vault_is_sealed._value.get()
         assert sealed_value == 1  # 1 = sealed
 
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.pipeline.logger')
     def test_record_health_check_healthy_sealed(self, mock_logger):
         """Test recording healthy but sealed Vault (standby)"""
         # Arrange
@@ -839,7 +839,7 @@ class TestInitializeMetrics:
     """Test initialize_metrics convenience function"""
 
     @patch('src.utils.metrics.MetricsPublisher')
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.publisher.logger')
     def test_initialize_metrics_with_defaults(self, mock_logger, mock_publisher_class):
         """Test initialize_metrics with default parameters"""
         # Arrange
@@ -876,7 +876,7 @@ class TestInitializeMetrics:
         mock_logger.info.assert_called()
 
     @patch('src.utils.metrics.MetricsPublisher')
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.publisher.logger')
     def test_initialize_metrics_with_custom_registry(self, mock_logger, mock_publisher_class):
         """Test initialize_metrics with custom registry"""
         # Arrange
@@ -891,7 +891,7 @@ class TestInitializeMetrics:
         mock_publisher_class.assert_called_once_with(port=9091, registry=custom_registry)
 
     @patch('src.utils.metrics.MetricsPublisher')
-    @patch('src.utils.metrics.logger')
+    @patch('src.utils.metrics.publisher.logger')
     def test_initialize_metrics_returns_all_components(self, mock_logger, mock_publisher_class):
         """Test that initialize_metrics returns all metric components"""
         # Arrange

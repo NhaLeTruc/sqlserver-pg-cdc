@@ -63,7 +63,7 @@ class TestSetupLogging:
 class TestGetCredentialsFromVaultOrEnv:
     """Tests for get_credentials_from_vault_or_env function"""
 
-    @patch('src.reconciliation.cli.VaultClient')
+    @patch('src.reconciliation.cli.credentials.VaultClient')
     def test_get_credentials_from_vault_success(self, mock_vault_client_class):
         """Test successful credential retrieval from Vault"""
         # Setup mock
@@ -104,7 +104,7 @@ class TestGetCredentialsFromVaultOrEnv:
         assert target_config["username"] == "pguser"
         assert target_config["password"] == "pgpass"
 
-    @patch('src.reconciliation.cli.VaultClient')
+    @patch('src.reconciliation.cli.credentials.VaultClient')
     def test_get_credentials_from_vault_missing_port(self, mock_vault_client_class):
         """Test Vault credentials with missing port defaults to 5432"""
         mock_vault_client = MagicMock()
@@ -130,7 +130,7 @@ class TestGetCredentialsFromVaultOrEnv:
 
         assert target_config["port"] == 5432
 
-    @patch('src.reconciliation.cli.VaultClient')
+    @patch('src.reconciliation.cli.credentials.VaultClient')
     def test_get_credentials_from_vault_failure(self, mock_vault_client_class):
         """Test Vault credential retrieval failure exits with error"""
         mock_vault_client = MagicMock()
@@ -210,7 +210,7 @@ class TestGetCredentialsFromVaultOrEnv:
         assert target_config["port"] == 5434
 
     @patch.dict('os.environ', {}, clear=True)
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     def test_get_credentials_missing_source_password(self, mock_exit):
         """Test missing source password exits with error"""
         args = argparse.Namespace(
@@ -233,7 +233,7 @@ class TestGetCredentialsFromVaultOrEnv:
     @patch.dict('os.environ', {
         'SQLSERVER_PASSWORD': 'sqlpass'
     }, clear=True)
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     def test_get_credentials_missing_target_password(self, mock_exit):
         """Test missing target password exits with error"""
         args = argparse.Namespace(
@@ -260,10 +260,10 @@ class TestCmdRun:
     @patch('src.reconciliation.cli.get_credentials_from_vault_or_env')
     @patch('pyodbc.connect')
     @patch('psycopg2.connect')
-    @patch('src.reconciliation.cli.reconcile_table')
-    @patch('src.reconciliation.cli.generate_report')
-    @patch('src.reconciliation.cli.format_report_console')
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.reconcile_table')
+    @patch('src.reconciliation.cli.commands.generate_report')
+    @patch('src.reconciliation.cli.commands.format_report_console')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     @patch('builtins.print')
     def test_cmd_run_basic_success(
         self, mock_print, mock_exit, mock_format_console,
@@ -338,10 +338,10 @@ class TestCmdRun:
     @patch('builtins.open', new_callable=mock_open, read_data="table1\ntable2\ntable3\n")
     @patch('pyodbc.connect')
     @patch('psycopg2.connect')
-    @patch('src.reconciliation.cli.reconcile_table')
-    @patch('src.reconciliation.cli.generate_report')
-    @patch('src.reconciliation.cli.format_report_console')
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.reconcile_table')
+    @patch('src.reconciliation.cli.commands.generate_report')
+    @patch('src.reconciliation.cli.commands.format_report_console')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     @patch('builtins.print')
     def test_cmd_run_with_tables_file(
         self, mock_print, mock_exit, mock_format_console,
@@ -400,10 +400,10 @@ class TestCmdRun:
     @patch('src.reconciliation.cli.get_credentials_from_vault_or_env')
     @patch('pyodbc.connect')
     @patch('psycopg2.connect')
-    @patch('src.reconciliation.cli.reconcile_table')
-    @patch('src.reconciliation.cli.generate_report')
-    @patch('src.reconciliation.cli.export_report_json')
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.reconcile_table')
+    @patch('src.reconciliation.cli.commands.generate_report')
+    @patch('src.reconciliation.cli.commands.export_report_json')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     @patch('pathlib.Path.mkdir')
     def test_cmd_run_with_json_output(
         self, mock_mkdir, mock_exit, mock_export_json,
@@ -461,10 +461,10 @@ class TestCmdRun:
     @patch('src.reconciliation.cli.get_credentials_from_vault_or_env')
     @patch('pyodbc.connect')
     @patch('psycopg2.connect')
-    @patch('src.reconciliation.cli.reconcile_table')
-    @patch('src.reconciliation.cli.generate_report')
-    @patch('src.reconciliation.cli.export_report_csv')
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.reconcile_table')
+    @patch('src.reconciliation.cli.commands.generate_report')
+    @patch('src.reconciliation.cli.commands.export_report_csv')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     @patch('pathlib.Path.mkdir')
     def test_cmd_run_with_csv_output(
         self, mock_mkdir, mock_exit, mock_export_csv,
@@ -521,10 +521,10 @@ class TestCmdRun:
     @patch('src.reconciliation.cli.get_credentials_from_vault_or_env')
     @patch('pyodbc.connect')
     @patch('psycopg2.connect')
-    @patch('src.reconciliation.cli.reconcile_table')
-    @patch('src.reconciliation.cli.generate_report')
-    @patch('src.reconciliation.cli.format_report_console')
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.reconcile_table')
+    @patch('src.reconciliation.cli.commands.generate_report')
+    @patch('src.reconciliation.cli.commands.format_report_console')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     @patch('builtins.print')
     def test_cmd_run_with_mismatch_exits_with_error(
         self, mock_print, mock_exit, mock_format_console,
@@ -576,9 +576,10 @@ class TestCmdRun:
 
     @patch('src.reconciliation.cli.get_credentials_from_vault_or_env')
     @patch('pyodbc.connect')
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('psycopg2.connect')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     def test_cmd_run_connection_error_exits(
-        self, mock_exit, mock_pyodbc_connect, mock_get_credentials
+        self, mock_exit, mock_psycopg2_connect, mock_pyodbc_connect, mock_get_credentials
     ):
         """Test connection error exits with code 1"""
         mock_get_credentials.return_value = (
@@ -614,10 +615,10 @@ class TestCmdRun:
     @patch('src.reconciliation.cli.get_credentials_from_vault_or_env')
     @patch('pyodbc.connect')
     @patch('psycopg2.connect')
-    @patch('src.reconciliation.cli.reconcile_table')
-    @patch('src.reconciliation.cli.generate_report')
-    @patch('src.reconciliation.cli.format_report_console')
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.reconcile_table')
+    @patch('src.reconciliation.cli.commands.generate_report')
+    @patch('src.reconciliation.cli.commands.format_report_console')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     @patch('builtins.print')
     def test_cmd_run_continue_on_error(
         self, mock_print, mock_exit, mock_format_console,
@@ -683,7 +684,7 @@ class TestCmdSchedule:
     """Tests for cmd_schedule command"""
 
     @patch('src.reconciliation.cli.get_credentials_from_vault_or_env')
-    @patch('src.reconciliation.cli.ReconciliationScheduler')
+    @patch('src.reconciliation.cli.commands.ReconciliationScheduler')
     @patch('pathlib.Path.mkdir')
     def test_cmd_schedule_with_cron(
         self, mock_mkdir, mock_scheduler_class, mock_get_credentials
@@ -722,7 +723,7 @@ class TestCmdSchedule:
         mock_scheduler.start.assert_called_once()
 
     @patch('src.reconciliation.cli.get_credentials_from_vault_or_env')
-    @patch('src.reconciliation.cli.ReconciliationScheduler')
+    @patch('src.reconciliation.cli.commands.ReconciliationScheduler')
     @patch('pathlib.Path.mkdir')
     def test_cmd_schedule_with_interval(
         self, mock_mkdir, mock_scheduler_class, mock_get_credentials
@@ -762,7 +763,7 @@ class TestCmdSchedule:
 
     @patch('src.reconciliation.cli.get_credentials_from_vault_or_env')
     @patch('builtins.open', new_callable=mock_open, read_data="table1\ntable2\n")
-    @patch('src.reconciliation.cli.ReconciliationScheduler')
+    @patch('src.reconciliation.cli.commands.ReconciliationScheduler')
     @patch('pathlib.Path.mkdir')
     def test_cmd_schedule_with_tables_file(
         self, mock_mkdir, mock_scheduler_class, mock_file, mock_get_credentials
@@ -806,7 +807,7 @@ class TestCmdReport:
     """Tests for cmd_report command"""
 
     @patch('builtins.open', new_callable=mock_open, read_data='{"status": "PASS"}')
-    @patch('src.reconciliation.cli.format_report_console')
+    @patch('src.reconciliation.cli.commands.format_report_console')
     @patch('builtins.print')
     def test_cmd_report_console_format(
         self, mock_print, mock_format_console, mock_file
@@ -825,7 +826,7 @@ class TestCmdReport:
         mock_print.assert_called_once_with("Formatted report")
 
     @patch('builtins.open', new_callable=mock_open, read_data='{"status": "PASS"}')
-    @patch('src.reconciliation.cli.export_report_csv')
+    @patch('src.reconciliation.cli.commands.export_report_csv')
     def test_cmd_report_csv_format(
         self, mock_export_csv, mock_file
     ):
@@ -841,7 +842,7 @@ class TestCmdReport:
         mock_export_csv.assert_called_once()
 
     @patch('builtins.open', new_callable=mock_open, read_data='{"status": "PASS"}')
-    @patch('src.reconciliation.cli.export_report_json')
+    @patch('src.reconciliation.cli.commands.export_report_json')
     def test_cmd_report_json_format(
         self, mock_export_json, mock_file
     ):
@@ -857,7 +858,7 @@ class TestCmdReport:
         mock_export_json.assert_called_once()
 
     @patch('builtins.open', new_callable=mock_open, read_data='{"status": "PASS"}')
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     def test_cmd_report_csv_without_output_fails(
         self, mock_exit, mock_file
     ):
@@ -873,7 +874,7 @@ class TestCmdReport:
         mock_exit.assert_called_once_with(1)
 
     @patch('builtins.open', new_callable=mock_open, read_data='{"status": "PASS"}')
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     def test_cmd_report_json_without_output_fails(
         self, mock_exit, mock_file
     ):
@@ -889,7 +890,7 @@ class TestCmdReport:
         mock_exit.assert_called_once_with(1)
 
     @patch('builtins.open', side_effect=FileNotFoundError("File not found"))
-    @patch('src.reconciliation.cli.sys.exit')
+    @patch('src.reconciliation.cli.commands.sys.exit')
     def test_cmd_report_file_not_found(
         self, mock_exit, mock_file
     ):

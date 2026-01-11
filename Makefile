@@ -330,7 +330,7 @@ test-lite: test-unit test-contract test-integration test-e2e test-perf ## Run li
 
 test-unit: ## Run unit tests
 	@echo "$(BLUE)Running unit tests...$(NC)"
-	@.venv/bin/pytest tests/unit/ -v
+	@.venv/bin/pytest tests/unit/ -v --no-cov
 
 test-contract: ## Run unit tests
 	@echo "$(BLUE)Running contract tests...$(NC)"

@@ -47,6 +47,14 @@ def initialize_tracing(
     """
     global _tracer, _is_initialized
 
+    # Check if OpenTelemetry SDK is disabled (e.g., during tests)
+    if os.getenv("OTEL_SDK_DISABLED", "").lower() == "true":
+        logger.info("OpenTelemetry SDK disabled via OTEL_SDK_DISABLED environment variable")
+        # Return a no-op tracer
+        _tracer = trace.get_tracer(__name__)
+        _is_initialized = True
+        return _tracer
+
     if _is_initialized:
         logger.warning("Tracing already initialized, returning existing tracer")
         return _tracer

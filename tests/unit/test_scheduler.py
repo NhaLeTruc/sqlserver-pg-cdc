@@ -42,7 +42,7 @@ class TestReconciliationSchedulerInit:
         assert isinstance(scheduler.jobs, list)
         assert len(scheduler.jobs) == 0
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_scheduler_creates_blocking_scheduler_instance(self, mock_blocking_scheduler):
         """Test scheduler instantiates BlockingScheduler"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -59,7 +59,7 @@ class TestReconciliationSchedulerInit:
 class TestIntervalJobs:
     """Test interval-based job scheduling"""
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_interval_job_with_valid_params(self, mock_scheduler_class):
         """Test add_interval_job with valid parameters"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -79,7 +79,7 @@ class TestIntervalJobs:
         assert len(scheduler.jobs) == 1
         assert scheduler.jobs[0] == mock_job
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_interval_job_creates_interval_trigger(self, mock_scheduler_class):
         """Test add_interval_job creates IntervalTrigger"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -98,7 +98,7 @@ class TestIntervalJobs:
         assert call_args[1]['id'] == "test_job"
         assert call_args[1]['replace_existing'] is True
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_interval_job_with_kwargs(self, mock_scheduler_class):
         """Test add_interval_job passes kwargs to job function"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -122,7 +122,7 @@ class TestIntervalJobs:
         assert 'kwargs' in call_args[1]
         assert call_args[1]['kwargs']['source_config'] == {"host": "localhost"}
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_interval_job_with_small_interval(self, mock_scheduler_class):
         """Test add_interval_job with 1 second interval"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -138,7 +138,7 @@ class TestIntervalJobs:
 
         assert len(scheduler.jobs) == 1
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_interval_job_with_large_interval(self, mock_scheduler_class):
         """Test add_interval_job with large interval (1 day)"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -154,7 +154,7 @@ class TestIntervalJobs:
 
         assert len(scheduler.jobs) == 1
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_interval_job_replace_existing(self, mock_scheduler_class):
         """Test add_interval_job replaces existing job with same ID"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -176,8 +176,8 @@ class TestIntervalJobs:
         for call_args in mock_scheduler.add_job.call_args_list:
             assert call_args[1]['replace_existing'] is True
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.logger')
     def test_add_interval_job_logs_addition(self, mock_logger, mock_scheduler_class):
         """Test add_interval_job logs job addition"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -204,7 +204,7 @@ class TestIntervalJobs:
 class TestCronJobs:
     """Test cron-based job scheduling"""
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_cron_job_with_valid_expression(self, mock_scheduler_class):
         """Test add_cron_job with valid cron expression"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -221,7 +221,7 @@ class TestCronJobs:
         assert len(scheduler.jobs) == 1
         mock_scheduler.add_job.assert_called_once()
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_cron_job_every_six_hours(self, mock_scheduler_class):
         """Test add_cron_job with 'every 6 hours' expression"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -238,7 +238,7 @@ class TestCronJobs:
         call_args = mock_scheduler.add_job.call_args
         assert call_args[0][0] == job_func
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_cron_job_daily_midnight(self, mock_scheduler_class):
         """Test add_cron_job with daily at midnight expression"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -254,7 +254,7 @@ class TestCronJobs:
 
         assert len(scheduler.jobs) == 1
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_cron_job_every_thirty_minutes(self, mock_scheduler_class):
         """Test add_cron_job with every 30 minutes expression"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -270,7 +270,7 @@ class TestCronJobs:
 
         assert len(scheduler.jobs) == 1
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_cron_job_weekly_sunday(self, mock_scheduler_class):
         """Test add_cron_job with weekly on Sunday expression"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -286,7 +286,7 @@ class TestCronJobs:
 
         assert len(scheduler.jobs) == 1
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_cron_job_invalid_too_few_parts(self, mock_scheduler_class):
         """Test add_cron_job raises ValueError for too few parts"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -300,7 +300,7 @@ class TestCronJobs:
         with pytest.raises(ValueError, match="must have 5 parts"):
             scheduler.add_cron_job(job_func, "0 0 * *", "invalid_job")
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_cron_job_invalid_too_many_parts(self, mock_scheduler_class):
         """Test add_cron_job raises ValueError for too many parts"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -314,7 +314,7 @@ class TestCronJobs:
         with pytest.raises(ValueError, match="must have 5 parts"):
             scheduler.add_cron_job(job_func, "0 0 * * * *", "invalid_job")
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_add_cron_job_with_kwargs(self, mock_scheduler_class):
         """Test add_cron_job passes kwargs to job function"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -337,8 +337,8 @@ class TestCronJobs:
         assert 'kwargs' in call_args[1]
         assert call_args[1]['kwargs']['tables'] == ["customers", "orders"]
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.logger')
     def test_add_cron_job_logs_addition(self, mock_logger, mock_scheduler_class):
         """Test add_cron_job logs job addition"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -365,7 +365,7 @@ class TestCronJobs:
 class TestJobManagement:
     """Test job management operations"""
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_remove_job_removes_from_scheduler(self, mock_scheduler_class):
         """Test remove_job removes job from scheduler"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -383,7 +383,7 @@ class TestJobManagement:
 
         mock_scheduler.remove_job.assert_called_once_with("removable_job")
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_remove_job_removes_from_jobs_list(self, mock_scheduler_class):
         """Test remove_job removes job from internal jobs list"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -402,8 +402,8 @@ class TestJobManagement:
         scheduler.remove_job("removable_job")
         assert len(scheduler.jobs) == 0
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.logger')
     def test_remove_job_logs_removal(self, mock_logger, mock_scheduler_class):
         """Test remove_job logs job removal"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -423,7 +423,7 @@ class TestJobManagement:
         info_calls = [call[0][0] for call in mock_logger.info.call_args_list]
         assert any("Removed job" in msg and "logged_removal" in msg for msg in info_calls)
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_list_jobs_returns_empty_list(self, mock_scheduler_class):
         """Test list_jobs returns empty list when no jobs"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -439,7 +439,7 @@ class TestJobManagement:
         assert jobs == []
         assert isinstance(jobs, list)
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_list_jobs_returns_job_information(self, mock_scheduler_class):
         """Test list_jobs returns formatted job information"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -465,7 +465,7 @@ class TestJobManagement:
         assert jobs[0]['next_run_time'] == "2025-12-04T10:00:00"
         assert jobs[0]['trigger'] == "interval[0:05:00]"
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_list_jobs_with_multiple_jobs(self, mock_scheduler_class):
         """Test list_jobs returns multiple jobs"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -495,7 +495,7 @@ class TestJobManagement:
         assert jobs[0]['id'] == "job1"
         assert jobs[1]['id'] == "job2"
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_list_jobs_with_none_next_run_time(self, mock_scheduler_class):
         """Test list_jobs handles None next_run_time"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -526,8 +526,8 @@ class TestJobManagement:
 class TestSchedulerLifecycle:
     """Test scheduler start, stop, and lifecycle management"""
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.logger')
     def test_start_logs_starting_message(self, mock_logger, mock_scheduler_class):
         """Test start() logs starting message"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -547,7 +547,7 @@ class TestSchedulerLifecycle:
         info_calls = [call[0][0] for call in mock_logger.info.call_args_list]
         assert any("Starting reconciliation scheduler" in msg for msg in info_calls)
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
     def test_start_calls_scheduler_start(self, mock_scheduler_class):
         """Test start() calls scheduler.start()"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -565,8 +565,8 @@ class TestSchedulerLifecycle:
 
         mock_scheduler.start.assert_called_once()
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.logger')
     def test_start_handles_keyboard_interrupt(self, mock_logger, mock_scheduler_class):
         """Test start() handles KeyboardInterrupt gracefully"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -582,8 +582,8 @@ class TestSchedulerLifecycle:
         # Should call stop() which calls shutdown
         mock_scheduler.shutdown.assert_called_once()
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.logger')
     def test_start_handles_system_exit(self, mock_logger, mock_scheduler_class):
         """Test start() handles SystemExit gracefully"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -598,8 +598,8 @@ class TestSchedulerLifecycle:
 
         mock_scheduler.shutdown.assert_called_once()
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.logger')
     def test_stop_calls_scheduler_shutdown(self, mock_logger, mock_scheduler_class):
         """Test stop() calls scheduler.shutdown()"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -612,8 +612,8 @@ class TestSchedulerLifecycle:
 
         mock_scheduler.shutdown.assert_called_once()
 
-    @patch('src.reconciliation.scheduler.BlockingScheduler')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.scheduler.BlockingScheduler')
+    @patch('src.reconciliation.scheduler.scheduler.logger')
     def test_stop_logs_stopped_message(self, mock_logger, mock_scheduler_class):
         """Test stop() logs stopped message"""
         from src.reconciliation.scheduler import ReconciliationScheduler
@@ -635,13 +635,13 @@ class TestSchedulerLifecycle:
 class TestReconcileJobWrapper:
     """Test reconcile_job_wrapper function"""
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     @patch('src.reconciliation.report.generate_report')
     @patch('src.reconciliation.report.export_report_json')
-    @patch('src.reconciliation.scheduler.datetime')
+    @patch('src.reconciliation.scheduler.jobs.datetime')
     def test_reconcile_job_wrapper_successful_execution(
         self, mock_datetime, mock_export, mock_generate, mock_reconcile,
         mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
@@ -701,9 +701,9 @@ class TestReconcileJobWrapper:
         mock_generate.assert_called_once()
         mock_export.assert_called_once()
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     def test_reconcile_job_wrapper_creates_sqlserver_connection(
         self, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
@@ -749,9 +749,9 @@ class TestReconcileJobWrapper:
         mock_get_sqlserver_pool.assert_called_once()
         mock_get_postgres_pool.assert_called_once()
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     def test_reconcile_job_wrapper_creates_postgres_connection(
         self, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
@@ -793,9 +793,9 @@ class TestReconcileJobWrapper:
         mock_get_postgres_pool.assert_called_once()
         mock_get_sqlserver_pool.assert_called_once()
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     def test_reconcile_job_wrapper_iterates_tables(
         self, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
@@ -836,11 +836,11 @@ class TestReconcileJobWrapper:
 
         assert mock_reconcile.call_count == 3
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.jobs.logger')
     def test_reconcile_job_wrapper_continues_on_table_error(
         self, mock_logger, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
@@ -887,13 +887,13 @@ class TestReconcileJobWrapper:
         # Should have logged error
         mock_logger.error.assert_called()
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     @patch('src.reconciliation.report.generate_report')
     @patch('src.reconciliation.report.export_report_json')
-    @patch('src.reconciliation.scheduler.datetime')
+    @patch('src.reconciliation.scheduler.jobs.datetime')
     def test_reconcile_job_wrapper_creates_output_directory(
         self, mock_datetime, mock_export, mock_generate, mock_reconcile,
         mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path_class
@@ -934,13 +934,13 @@ class TestReconcileJobWrapper:
         # Verify mkdir was called
         mock_path_instance.mkdir.assert_called_with(parents=True, exist_ok=True)
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     @patch('src.reconciliation.report.generate_report')
     @patch('src.reconciliation.report.export_report_json')
-    @patch('src.reconciliation.scheduler.datetime')
+    @patch('src.reconciliation.scheduler.jobs.datetime')
     def test_reconcile_job_wrapper_uses_timestamp_in_filename(
         self, mock_datetime, mock_export, mock_generate, mock_reconcile,
         mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path_class
@@ -988,9 +988,9 @@ class TestReconcileJobWrapper:
         # When converted to string, it should have the timestamp
         assert str(call_arg) == "/reports/reconcile_20251204_103045.json"
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     def test_reconcile_job_wrapper_closes_connections(
         self, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
@@ -1040,10 +1040,10 @@ class TestReconcileJobWrapper:
         mock_source_cursor.close.assert_called_once()
         mock_target_cursor.close.assert_called_once()
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
-    @patch('src.reconciliation.scheduler.logger')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.logger')
     def test_reconcile_job_wrapper_propagates_fatal_exception(
         self, mock_logger, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
     ):
@@ -1060,9 +1060,9 @@ class TestReconcileJobWrapper:
 
         mock_logger.error.assert_called()
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     def test_reconcile_job_wrapper_with_checksum_validation(
         self, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path
@@ -1106,9 +1106,9 @@ class TestReconcileJobWrapper:
         call_args = mock_reconcile.call_args
         assert call_args[1]['validate_checksum'] is True
 
-    @patch('src.reconciliation.scheduler.Path')
-    @patch('utils.db_pool.get_postgres_pool')
-    @patch('utils.db_pool.get_sqlserver_pool')
+    @patch('src.reconciliation.scheduler.jobs.Path')
+    @patch('src.utils.db_pool.get_postgres_pool')
+    @patch('src.utils.db_pool.get_sqlserver_pool')
     @patch('src.reconciliation.compare.reconcile_table')
     def test_reconcile_job_wrapper_without_checksum_validation(
         self, mock_reconcile, mock_get_sqlserver_pool, mock_get_postgres_pool, mock_path

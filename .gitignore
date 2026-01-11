@@ -65,6 +65,7 @@ Thumbs.db
 *.pid
 <*>
 *.html
+.metals/
 
 # Secrets (NEVER commit)
 *.key

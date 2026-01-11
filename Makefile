@@ -360,51 +360,6 @@ test-latency: ## Measure CDC pipeline latency for INSERT/UPDATE/DELETE operation
 	@echo "$(BLUE)Measuring CDC pipeline latency...$(NC)"
 	@.venv/bin/python tests/latency/measure_cdc_latency.py
 
-mutation-clean: ## Clean up mutation test cache and restore source files
-	@echo "$(BLUE)Cleaning mutation test state...$(NC)"
-	@rm -rf .mutmut-cache
-	@git restore src/reconciliation/*.py 2>/dev/null || true
-	@echo "$(GREEN)✓ Mutation test state cleaned$(NC)"
-
-mutation-test: mutation-clean ## Run mutation tests with mutmut (optimized with coverage and fast runner)
-	@echo "$(BLUE)Running optimized mutation tests...$(NC)"
-	@echo "$(YELLOW)Step 1: Generating coverage data...$(NC)"
-	@.venv/bin/pytest tests/unit/ tests/property/ --cov=src/reconciliation --cov-report= -q
-	@echo "$(YELLOW)Step 2: Running mutation tests with coverage-based filtering...$(NC)"
-	@.venv/bin/mutmut run --use-coverage || (echo "$(RED)Mutation testing failed or interrupted$(NC)"; git restore src/reconciliation/*.py 2>/dev/null; exit 1)
-	@echo "$(GREEN)✓ Mutation testing complete$(NC)"
-	@echo "$(BLUE)Mutation test summary:$(NC)"
-	@.venv/bin/mutmut results
-
-mutation-results: ## Show mutation test results
-	@echo "$(BLUE)Mutation Test Results:$(NC)"
-	@.venv/bin/mutmut results
-
-mutation-html: ## Generate HTML mutation test report
-	@echo "$(BLUE)Generating HTML mutation report...$(NC)"
-	@.venv/bin/mutmut html
-	@echo "$(GREEN)✓ Report generated at html/index.html$(NC)"
-
-mutation-survived: ## Show survived mutations
-	@echo "$(BLUE)Survived Mutations:$(NC)"
-	@.venv/bin/mutmut results | grep "survived"
-
-mutation-incremental: ## Run mutation tests only on changed files (fast for development)
-	@echo "$(BLUE)Running incremental mutation tests on changed files...$(NC)"
-	@CHANGED_FILES=$$(git diff --name-only HEAD | grep "^src/reconciliation/.*\.py$$" || echo ""); \
-	if [ -z "$$CHANGED_FILES" ]; then \
-		echo "$(YELLOW)No changed files in src/reconciliation/, running full test$(NC)"; \
-		$(MAKE) mutation-test; \
-	else \
-		echo "$(GREEN)Testing changed files: $$CHANGED_FILES$(NC)"; \
-		for file in $$CHANGED_FILES; do \
-			echo "$(BLUE)Mutating $$file...$(NC)"; \
-			.venv/bin/mutmut run --paths-to-mutate=$$file --use-coverage; \
-		done; \
-		echo "$(GREEN)✓ Incremental mutation testing complete$(NC)"; \
-		.venv/bin/mutmut results; \
-	fi
-
 test-load: load-api load-reconciliation load-database ## Run load tests with Locust (headless mode)
 	@echo "$(GREEN)✓ Load test complete. Report: tests/load/report.html$(NC)"
 

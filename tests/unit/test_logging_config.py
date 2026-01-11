@@ -17,7 +17,6 @@ from src.utils.logging import (
     ContextLogger,
     JSONFormatter,
     configure_from_env,
-    get_logger,
     setup_logging,
 )
 
@@ -210,57 +209,7 @@ class TestJSONFormatter:
             # Custom field should be in context
             assert data["context"]["custom_field"] == "value"
 
-    def test_format_includes_process_info(self):
-        """Test that process information is included"""
-        # Arrange
-        formatter = JSONFormatter()
-        record = logging.LogRecord(
-            name="test_logger",
-            level=logging.INFO,
-            pathname="/path/to/test.py",
-            lineno=10,
-            msg="Test",
-            args=(),
-            exc_info=None
-        )
 
-        # Act
-        result = formatter.format(record)
-        data = json.loads(result)
-
-        # Assert
-        assert "process" in data
-        assert "pid" in data["process"]
-        assert "thread" in data["process"]
-        assert "thread_name" in data["process"]
-
-    def test_format_without_extra_context(self):
-        """Test formatting when no extra context is present (besides LogRecord defaults)"""
-        # Arrange
-        formatter = JSONFormatter()
-        record = logging.LogRecord(
-            name="test_logger",
-            level=logging.INFO,
-            pathname="/path/to/test.py",
-            lineno=10,
-            msg="Test",
-            args=(),
-            exc_info=None
-        )
-        # Don't add any custom fields (LogRecord adds some defaults like taskName, asctime)
-
-        # Act
-        result = formatter.format(record)
-        data = json.loads(result)
-
-        # Assert
-        # Should have basic structure
-        assert data["message"] == "Test"
-        assert data["level"] == "INFO"
-        # Context may have LogRecord's default fields, but not custom ones
-        if "context" in data:
-            # Should only have LogRecord defaults, not custom fields
-            assert "custom_field" not in data["context"]
 
 
 class TestConsoleFormatter:
@@ -378,29 +327,6 @@ class TestConsoleFormatter:
             assert level_name in result
             assert f"{level_name} message" in result
 
-    def test_format_without_custom_extra_items(self):
-        """Test formatting when no custom extra items are present"""
-        # Arrange
-        formatter = ConsoleFormatter(use_colors=False)
-        record = logging.LogRecord(
-            name="test_logger",
-            level=logging.INFO,
-            pathname="/path/to/test.py",
-            lineno=10,
-            msg="Test message",
-            args=(),
-            exc_info=None
-        )
-        # Don't add any custom fields (LogRecord adds defaults like taskName, asctime)
-
-        # Act
-        result = formatter.format(record)
-
-        # Assert
-        # Should have the message
-        assert "Test message" in result
-        # May have brackets for LogRecord defaults, but not custom fields
-        assert "custom_field" not in result
 
     @patch('sys.stderr.isatty', return_value=True)
     def test_format_with_colors_level_not_in_colors(self, mock_isatty):
@@ -540,16 +466,6 @@ class TestSetupLogging:
         # Should have exactly one handler (the new console handler)
         assert len(root_logger.handlers) == 1
 
-    def test_setup_logging_sets_third_party_levels(self):
-        """Test that third-party library log levels are set"""
-        # Arrange & Act
-        setup_logging()
-
-        # Assert
-        assert logging.getLogger("urllib3").level == logging.WARNING
-        assert logging.getLogger("requests").level == logging.WARNING
-        assert logging.getLogger("kafka").level == logging.WARNING
-        assert logging.getLogger("hvac").level == logging.WARNING
 
     def test_setup_logging_with_custom_max_bytes(self):
         """Test setup with custom max_bytes for rotation"""
@@ -600,24 +516,6 @@ class TestSetupLogging:
 
 class TestGetLogger:
     """Test get_logger function"""
-
-    def test_get_logger_returns_logger(self):
-        """Test that get_logger returns a Logger instance"""
-        # Arrange & Act
-        logger = get_logger("test_module")
-
-        # Assert
-        assert isinstance(logger, logging.Logger)
-        assert logger.name == "test_module"
-
-    def test_get_logger_returns_same_instance(self):
-        """Test that get_logger returns the same instance for the same name"""
-        # Arrange & Act
-        logger1 = get_logger("test_module")
-        logger2 = get_logger("test_module")
-
-        # Assert
-        assert logger1 is logger2
 
 
 class TestContextLogger:

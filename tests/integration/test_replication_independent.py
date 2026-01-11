@@ -117,11 +117,7 @@ class TestReplicationIndependent:
         yield conn
         conn.close()
 
-    def create_test_table(
-        self,
-        sqlserver_conn: pyodbc.Connection,
-        table_name: str
-    ) -> None:
+    def create_test_table(self, sqlserver_conn: pyodbc.Connection, table_name: str) -> None:
         """Create a test table with CDC enabled."""
         with sqlserver_conn.cursor() as cursor:
             # Disable CDC if it exists
@@ -179,7 +175,7 @@ class TestReplicationIndependent:
         self,
         sqlserver_conn: pyodbc.Connection,
         postgres_conn: psycopg2.extensions.connection,
-        table_name: str
+        table_name: str,
     ) -> None:
         """Clean up test table from both databases."""
         # Clean up PostgreSQL - truncate instead of drop to preserve connector-created structure
@@ -211,7 +207,7 @@ class TestReplicationIndependent:
         postgres_conn: psycopg2.extensions.connection,
         table_name: str,
         expected_count: int,
-        timeout: int = 30
+        timeout: int = 30,
     ) -> bool:
         """Wait for replication to complete."""
         elapsed = 0
@@ -237,7 +233,7 @@ class TestReplicationIndependent:
         self,
         sqlserver_conn: pyodbc.Connection,
         postgres_conn: psycopg2.extensions.connection,
-        unique_table_name: str
+        unique_table_name: str,
     ) -> None:
         """Independent test: INSERT single row reusing existing table."""
         # Cleanup before test to ensure clean state
@@ -262,11 +258,13 @@ class TestReplicationIndependent:
 
             # Verify data in PostgreSQL
             with postgres_conn.cursor() as cursor:
-                cursor.execute(f"SELECT name, email, age FROM {unique_table_name} WHERE name = 'Test User Independent'")
+                cursor.execute(
+                    f"SELECT name, email, age FROM {unique_table_name} WHERE name = 'Test User Independent'"
+                )
                 row = cursor.fetchone()
                 assert row is not None, "Row not found in PostgreSQL"
-                assert row[0] == 'Test User Independent'
-                assert row[1] == 'test@example.com'
+                assert row[0] == "Test User Independent"
+                assert row[1] == "test@example.com"
                 assert row[2] == 25
 
         finally:
@@ -277,7 +275,7 @@ class TestReplicationIndependent:
         self,
         sqlserver_conn: pyodbc.Connection,
         postgres_conn: psycopg2.extensions.connection,
-        unique_table_name: str
+        unique_table_name: str,
     ) -> None:
         """Independent test: UPDATE operation reusing existing table."""
         # Cleanup before test to ensure clean state
@@ -323,7 +321,7 @@ class TestReplicationIndependent:
         self,
         sqlserver_conn: pyodbc.Connection,
         postgres_conn: psycopg2.extensions.connection,
-        unique_table_name: str
+        unique_table_name: str,
     ) -> None:
         """Independent test: Bulk INSERT reusing existing table."""
         # Cleanup before test to ensure clean state
@@ -367,7 +365,7 @@ class TestReplicationIndependent:
         self,
         sqlserver_conn: pyodbc.Connection,
         postgres_conn: psycopg2.extensions.connection,
-        unique_table_name: str
+        unique_table_name: str,
     ) -> None:
         """Independent test: NULL value handling reusing existing table."""
         # Cleanup before test to ensure clean state
@@ -421,7 +419,7 @@ class TestReplicationIndependent:
         self,
         sqlserver_conn: pyodbc.Connection,
         postgres_conn: psycopg2.extensions.connection,
-        unique_table_name: str
+        unique_table_name: str,
     ) -> None:
         """Independent test: DELETE operation reusing existing table."""
         # Cleanup before test to ensure clean state
@@ -450,10 +448,14 @@ class TestReplicationIndependent:
 
             # Verify row is marked as deleted (Debezium soft delete)
             with postgres_conn.cursor() as cursor:
-                cursor.execute(f"SELECT __deleted FROM {unique_table_name} WHERE name = 'Delete Test'")
+                cursor.execute(
+                    f"SELECT __deleted FROM {unique_table_name} WHERE name = 'Delete Test'"
+                )
                 row = cursor.fetchone()
                 if row:  # Some CDC configs may actually remove the row
-                    assert row[0] == 'true', f"Row should be marked deleted, got __deleted='{row[0]}'"
+                    assert row[0] == "true", (
+                        f"Row should be marked deleted, got __deleted='{row[0]}'"
+                    )
 
         finally:
             # Cleanup

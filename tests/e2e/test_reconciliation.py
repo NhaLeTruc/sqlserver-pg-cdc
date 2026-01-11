@@ -40,7 +40,7 @@ class TestReconciliationE2E:
                 "DATABASE=warehouse_source;"
                 "UID=sa;"
                 "PWD=YourStrong!Passw0rd",
-                timeout=5
+                timeout=5,
             )
             yield conn
             conn.close()
@@ -57,7 +57,7 @@ class TestReconciliationE2E:
                 database="warehouse_target",
                 user="postgres",
                 password="postgres_secure_password",
-                connect_timeout=5
+                connect_timeout=5,
             )
             yield conn
             conn.close()
@@ -65,9 +65,7 @@ class TestReconciliationE2E:
             pytest.skip(f"PostgreSQL not available: {e}")
 
     @pytest.mark.e2e
-    def test_reconcile_tool_basic_execution(
-        self, sqlserver_connection, postgres_connection
-    ):
+    def test_reconcile_tool_basic_execution(self, sqlserver_connection, postgres_connection):
         """
         Test basic reconciliation tool execution
 
@@ -97,10 +95,13 @@ class TestReconciliationE2E:
 
         # Insert 1000 rows
         for i in range(1, 1001):
-            sqlserver_cursor.execute(f"""
+            sqlserver_cursor.execute(
+                f"""
                 INSERT INTO dbo.{test_table} (customer_id, name, email, created_at)
                 VALUES (?, ?, ?, GETDATE())
-            """, (i, f"Customer {i}", f"customer{i}@example.com"))
+            """,
+                (i, f"Customer {i}", f"customer{i}@example.com"),
+            )
 
         sqlserver_connection.commit()
 
@@ -117,10 +118,13 @@ class TestReconciliationE2E:
         """)
 
         for i in range(1, 1001):
-            postgres_cursor.execute(f"""
+            postgres_cursor.execute(
+                f"""
                 INSERT INTO {test_table} (customer_id, name, email, created_at)
                 VALUES (%s, %s, %s, NOW())
-            """, (i, f"Customer {i}", f"customer{i}@example.com"))
+            """,
+                (i, f"Customer {i}", f"customer{i}@example.com"),
+            )
 
         postgres_connection.commit()
 
@@ -129,20 +133,31 @@ class TestReconciliationE2E:
             [
                 PYTHON_BIN,
                 "scripts/python/reconcile.py",
-                "--source-server", "localhost",
-                "--source-database", "warehouse_source",
-                "--source-username", "sa",
-                "--source-password", "YourStrong!Passw0rd",
-                "--target-host", "localhost",
-                "--target-database", "warehouse_target",
-                "--target-username", "postgres",
-                "--target-password", "postgres_secure_password",
-                "--source-table", f"dbo.{test_table}",
-                "--target-table", test_table,
-                "--output", "/tmp/reconcile_report.json"
+                "--source-server",
+                "localhost",
+                "--source-database",
+                "warehouse_source",
+                "--source-username",
+                "sa",
+                "--source-password",
+                "YourStrong!Passw0rd",
+                "--target-host",
+                "localhost",
+                "--target-database",
+                "warehouse_target",
+                "--target-username",
+                "postgres",
+                "--target-password",
+                "postgres_secure_password",
+                "--source-table",
+                f"dbo.{test_table}",
+                "--target-table",
+                test_table,
+                "--output",
+                "/tmp/reconcile_report.json",
             ],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         assert result.returncode == 0, f"Reconcile tool failed: {result.stderr}"
@@ -199,8 +214,7 @@ class TestReconciliationE2E:
 
         for i in range(1, 1001):
             sqlserver_cursor.execute(
-                f"INSERT INTO dbo.{test_table} VALUES (?, ?, ?)",
-                (i, i % 100, float(i * 10.5))
+                f"INSERT INTO dbo.{test_table} VALUES (?, ?, ?)", (i, i % 100, float(i * 10.5))
             )
 
         sqlserver_connection.commit()
@@ -218,8 +232,7 @@ class TestReconciliationE2E:
 
         for i in range(1, 951):  # Only 950 rows
             postgres_cursor.execute(
-                f"INSERT INTO {test_table} VALUES (%s, %s, %s)",
-                (i, i % 100, float(i * 10.5))
+                f"INSERT INTO {test_table} VALUES (%s, %s, %s)", (i, i % 100, float(i * 10.5))
             )
 
         postgres_connection.commit()
@@ -229,20 +242,31 @@ class TestReconciliationE2E:
             [
                 PYTHON_BIN,
                 "scripts/python/reconcile.py",
-                "--source-server", "localhost",
-                "--source-database", "warehouse_source",
-                "--source-username", "sa",
-                "--source-password", "YourStrong!Passw0rd",
-                "--target-host", "localhost",
-                "--target-database", "warehouse_target",
-                "--target-username", "postgres",
-                "--target-password", "postgres_secure_password",
-                "--source-table", f"dbo.{test_table}",
-                "--target-table", test_table,
-                "--output", "/tmp/reconcile_mismatch_report.json"
+                "--source-server",
+                "localhost",
+                "--source-database",
+                "warehouse_source",
+                "--source-username",
+                "sa",
+                "--source-password",
+                "YourStrong!Passw0rd",
+                "--target-host",
+                "localhost",
+                "--target-database",
+                "warehouse_target",
+                "--target-username",
+                "postgres",
+                "--target-password",
+                "postgres_secure_password",
+                "--source-table",
+                f"dbo.{test_table}",
+                "--target-table",
+                test_table,
+                "--output",
+                "/tmp/reconcile_mismatch_report.json",
             ],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         # Tool should exit with non-zero status when mismatches found
@@ -298,7 +322,7 @@ class TestReconciliationE2E:
         for i in range(1, 101):
             sqlserver_cursor.execute(
                 f"INSERT INTO dbo.{test_table} VALUES (?, ?, ?)",
-                (i, f"Product {i}", float(i * 9.99))
+                (i, f"Product {i}", float(i * 9.99)),
             )
 
         sqlserver_connection.commit()
@@ -318,7 +342,7 @@ class TestReconciliationE2E:
             # Different price values (data corruption simulation)
             postgres_cursor.execute(
                 f"INSERT INTO {test_table} VALUES (%s, %s, %s)",
-                (i, f"Product {i}", float(i * 8.99))  # Different prices
+                (i, f"Product {i}", float(i * 8.99)),  # Different prices
             )
 
         postgres_connection.commit()
@@ -328,21 +352,32 @@ class TestReconciliationE2E:
             [
                 PYTHON_BIN,
                 "scripts/python/reconcile.py",
-                "--source-server", "localhost",
-                "--source-database", "warehouse_source",
-                "--source-username", "sa",
-                "--source-password", "YourStrong!Passw0rd",
-                "--target-host", "localhost",
-                "--target-database", "warehouse_target",
-                "--target-username", "postgres",
-                "--target-password", "postgres_secure_password",
-                "--source-table", f"dbo.{test_table}",
-                "--target-table", test_table,
+                "--source-server",
+                "localhost",
+                "--source-database",
+                "warehouse_source",
+                "--source-username",
+                "sa",
+                "--source-password",
+                "YourStrong!Passw0rd",
+                "--target-host",
+                "localhost",
+                "--target-database",
+                "warehouse_target",
+                "--target-username",
+                "postgres",
+                "--target-password",
+                "postgres_secure_password",
+                "--source-table",
+                f"dbo.{test_table}",
+                "--target-table",
+                test_table,
                 "--validate-checksums",
-                "--output", "/tmp/reconcile_checksum_report.json"
+                "--output",
+                "/tmp/reconcile_checksum_report.json",
             ],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         assert result.returncode != 0
@@ -358,8 +393,7 @@ class TestReconciliationE2E:
         # If discrepancies exist, verify checksum mismatch
         if report.get("discrepancies"):
             checksum_discrepancies = [
-                d for d in report["discrepancies"]
-                if d["issue_type"] == "CHECKSUM_MISMATCH"
+                d for d in report["discrepancies"] if d["issue_type"] == "CHECKSUM_MISMATCH"
             ]
 
             if checksum_discrepancies:
@@ -368,9 +402,7 @@ class TestReconciliationE2E:
 
     @pytest.mark.e2e
     @pytest.mark.vault
-    def test_reconcile_tool_with_vault_credentials(
-        self, sqlserver_connection, postgres_connection
-    ):
+    def test_reconcile_tool_with_vault_credentials(self, sqlserver_connection, postgres_connection):
         """
         Test reconciliation tool fetches credentials from Vault
 
@@ -384,9 +416,7 @@ class TestReconciliationE2E:
         # Check if vault container is available
         try:
             result = subprocess.run(
-                ["docker", "exec", "cdc-vault", "vault", "status"],
-                capture_output=True,
-                timeout=5
+                ["docker", "exec", "cdc-vault", "vault", "status"], capture_output=True, timeout=5
             )
             if result.returncode not in [0, 2]:  # 0=unsealed, 2=sealed but running
                 pytest.skip("Vault container not available")
@@ -412,8 +442,7 @@ class TestReconciliationE2E:
 
         for i in range(1, 11):
             sqlserver_cursor.execute(
-                f"INSERT INTO dbo.{test_table} VALUES (?, ?)",
-                (i, f"Value {i}")
+                f"INSERT INTO dbo.{test_table} VALUES (?, ?)", (i, f"Value {i}")
             )
 
         sqlserver_connection.commit()
@@ -429,10 +458,7 @@ class TestReconciliationE2E:
         """)
 
         for i in range(1, 11):
-            postgres_cursor.execute(
-                f"INSERT INTO {test_table} VALUES (%s, %s)",
-                (i, f"Value {i}")
-            )
+            postgres_cursor.execute(f"INSERT INTO {test_table} VALUES (%s, %s)", (i, f"Value {i}"))
 
         postgres_connection.commit()
 
@@ -440,30 +466,38 @@ class TestReconciliationE2E:
             # Setup: Store credentials in Vault using docker exec
             subprocess.run(
                 [
-                    "docker", "exec", "cdc-vault",
-                    "vault", "kv", "put",
+                    "docker",
+                    "exec",
+                    "cdc-vault",
+                    "vault",
+                    "kv",
+                    "put",
                     "secret/database/sqlserver",
                     "username=sa",
                     "password=YourStrong!Passw0rd",
                     "server=localhost",
-                    "database=warehouse_source"
+                    "database=warehouse_source",
                 ],
                 check=True,
-                env={**os.environ, "VAULT_TOKEN": "dev-root-token"}
+                env={**os.environ, "VAULT_TOKEN": "dev-root-token"},
             )
 
             subprocess.run(
                 [
-                    "docker", "exec", "cdc-vault",
-                    "vault", "kv", "put",
+                    "docker",
+                    "exec",
+                    "cdc-vault",
+                    "vault",
+                    "kv",
+                    "put",
                     "secret/database/postgresql",
                     "username=postgres",
                     "password=postgres_secure_password",
                     "host=localhost",
-                    "database=warehouse_target"
+                    "database=warehouse_target",
                 ],
                 check=True,
-                env={**os.environ, "VAULT_TOKEN": "dev-root-token"}
+                env={**os.environ, "VAULT_TOKEN": "dev-root-token"},
             )
 
             # Run reconciliation without explicit credentials
@@ -471,18 +505,21 @@ class TestReconciliationE2E:
                 [
                     PYTHON_BIN,
                     "scripts/python/reconcile.py",
-                    "--source-table", f"dbo.{test_table}",
-                    "--target-table", test_table,
+                    "--source-table",
+                    f"dbo.{test_table}",
+                    "--target-table",
+                    test_table,
                     "--use-vault",
-                    "--output", "/tmp/reconcile_vault_report.json"
+                    "--output",
+                    "/tmp/reconcile_vault_report.json",
                 ],
                 capture_output=True,
                 text=True,
                 env={
                     **os.environ,  # Inherit environment
                     "VAULT_ADDR": "http://localhost:8200",
-                    "VAULT_TOKEN": "dev-root-token"  # Use correct dev token
-                }
+                    "VAULT_TOKEN": "dev-root-token",  # Use correct dev token
+                },
             )
 
             assert result.returncode == 0, f"Reconciliation failed: {result.stderr}"
@@ -506,9 +543,7 @@ class TestReconciliationE2E:
                 pass
 
     @pytest.mark.e2e
-    def test_reconcile_tool_output_formats(
-        self, sqlserver_connection, postgres_connection
-    ):
+    def test_reconcile_tool_output_formats(self, sqlserver_connection, postgres_connection):
         """
         Test reconciliation supports multiple output formats
 
@@ -533,8 +568,7 @@ class TestReconciliationE2E:
 
         for i in range(1, 11):
             sqlserver_cursor.execute(
-                f"INSERT INTO dbo.{test_table} VALUES (?, ?)",
-                (i, f"Value {i}")
+                f"INSERT INTO dbo.{test_table} VALUES (?, ?)", (i, f"Value {i}")
             )
 
         sqlserver_connection.commit()
@@ -550,10 +584,7 @@ class TestReconciliationE2E:
         """)
 
         for i in range(1, 11):
-            postgres_cursor.execute(
-                f"INSERT INTO {test_table} VALUES (%s, %s)",
-                (i, f"Value {i}")
-            )
+            postgres_cursor.execute(f"INSERT INTO {test_table} VALUES (%s, %s)", (i, f"Value {i}"))
 
         postgres_connection.commit()
 
@@ -563,20 +594,31 @@ class TestReconciliationE2E:
                 [
                     PYTHON_BIN,
                     "scripts/python/reconcile.py",
-                    "--source-server", "localhost",
-                    "--source-database", "warehouse_source",
-                    "--source-username", "sa",
-                    "--source-password", "YourStrong!Passw0rd",
-                    "--target-host", "localhost",
-                    "--target-database", "warehouse_target",
-                    "--target-username", "postgres",
-                    "--target-password", "postgres_secure_password",
-                    "--source-table", f"dbo.{test_table}",
-                    "--target-table", test_table,
-                    "--output", "/tmp/report.json"
+                    "--source-server",
+                    "localhost",
+                    "--source-database",
+                    "warehouse_source",
+                    "--source-username",
+                    "sa",
+                    "--source-password",
+                    "YourStrong!Passw0rd",
+                    "--target-host",
+                    "localhost",
+                    "--target-database",
+                    "warehouse_target",
+                    "--target-username",
+                    "postgres",
+                    "--target-password",
+                    "postgres_secure_password",
+                    "--source-table",
+                    f"dbo.{test_table}",
+                    "--target-table",
+                    test_table,
+                    "--output",
+                    "/tmp/report.json",
                 ],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             assert result.returncode == 0, f"JSON format failed: {result.stderr}"
@@ -587,21 +629,33 @@ class TestReconciliationE2E:
                 [
                     PYTHON_BIN,
                     "scripts/python/reconcile.py",
-                    "--source-server", "localhost",
-                    "--source-database", "warehouse_source",
-                    "--source-username", "sa",
-                    "--source-password", "YourStrong!Passw0rd",
-                    "--target-host", "localhost",
-                    "--target-database", "warehouse_target",
-                    "--target-username", "postgres",
-                    "--target-password", "postgres_secure_password",
-                    "--source-table", f"dbo.{test_table}",
-                    "--target-table", test_table,
-                    "--output", "/tmp/report.csv",
-                    "--format", "csv"
+                    "--source-server",
+                    "localhost",
+                    "--source-database",
+                    "warehouse_source",
+                    "--source-username",
+                    "sa",
+                    "--source-password",
+                    "YourStrong!Passw0rd",
+                    "--target-host",
+                    "localhost",
+                    "--target-database",
+                    "warehouse_target",
+                    "--target-username",
+                    "postgres",
+                    "--target-password",
+                    "postgres_secure_password",
+                    "--source-table",
+                    f"dbo.{test_table}",
+                    "--target-table",
+                    test_table,
+                    "--output",
+                    "/tmp/report.csv",
+                    "--format",
+                    "csv",
                 ],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             assert result.returncode == 0, f"CSV format failed: {result.stderr}"
@@ -612,20 +666,31 @@ class TestReconciliationE2E:
                 [
                     PYTHON_BIN,
                     "scripts/python/reconcile.py",
-                    "--source-server", "localhost",
-                    "--source-database", "warehouse_source",
-                    "--source-username", "sa",
-                    "--source-password", "YourStrong!Passw0rd",
-                    "--target-host", "localhost",
-                    "--target-database", "warehouse_target",
-                    "--target-username", "postgres",
-                    "--target-password", "postgres_secure_password",
-                    "--source-table", f"dbo.{test_table}",
-                    "--target-table", test_table,
-                    "--format", "console"
+                    "--source-server",
+                    "localhost",
+                    "--source-database",
+                    "warehouse_source",
+                    "--source-username",
+                    "sa",
+                    "--source-password",
+                    "YourStrong!Passw0rd",
+                    "--target-host",
+                    "localhost",
+                    "--target-database",
+                    "warehouse_target",
+                    "--target-username",
+                    "postgres",
+                    "--target-password",
+                    "postgres_secure_password",
+                    "--source-table",
+                    f"dbo.{test_table}",
+                    "--target-table",
+                    test_table,
+                    "--format",
+                    "console",
                 ],
                 capture_output=True,
-                text=True
+                text=True,
             )
 
             assert result.returncode == 0
@@ -664,23 +729,35 @@ class TestReconciliationE2E:
             [
                 PYTHON_BIN,
                 "scripts/python/reconcile.py",
-                "--source-server", "localhost",
-                "--source-database", "warehouse_source",
-                "--source-username", "sa",
-                "--source-password", "YourStrong!Passw0rd",
-                "--target-host", "localhost",
-                "--target-database", "warehouse_target",
-                "--target-username", "postgres",
-                "--target-password", "postgres_secure_password",
-                "--source-table", "dbo.customers",  # Add required table parameter
-                "--target-table", "customers",  # Add required table parameter
+                "--source-server",
+                "localhost",
+                "--source-database",
+                "warehouse_source",
+                "--source-username",
+                "sa",
+                "--source-password",
+                "YourStrong!Passw0rd",
+                "--target-host",
+                "localhost",
+                "--target-database",
+                "warehouse_target",
+                "--target-username",
+                "postgres",
+                "--target-password",
+                "postgres_secure_password",
+                "--source-table",
+                "dbo.customers",  # Add required table parameter
+                "--target-table",
+                "customers",  # Add required table parameter
                 "--schedule",
-                "--interval", "60",  # Every 60 seconds
-                "--output-dir", "/tmp/reconcile_scheduled/"
+                "--interval",
+                "60",  # Every 60 seconds
+                "--output-dir",
+                "/tmp/reconcile_scheduled/",
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True
+            text=True,
         )
 
         try:

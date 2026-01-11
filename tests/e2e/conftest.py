@@ -9,7 +9,6 @@ automatically triggered. To use it, explicitly add it as a parameter to your tes
 """
 
 
-
 # Disabled: Auto-cleanup integration removed
 # To use clean_test_environment, explicitly add it as a test parameter
 #

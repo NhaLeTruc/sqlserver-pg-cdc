@@ -239,7 +239,7 @@ class TestReplicationFlow:
             with postgres_conn.cursor() as cursor:
                 cursor.execute("SELECT __deleted FROM test_customers WHERE name = 'Bob Johnson'")
                 row = cursor.fetchone()
-                if row and row[0] == 'true':
+                if row and row[0] == "true":
                     deleted_marked = True
                     break
 
@@ -248,7 +248,9 @@ class TestReplicationFlow:
             cursor.execute("SELECT __deleted FROM test_customers WHERE name = 'Bob Johnson'")
             row = cursor.fetchone()
             assert row is not None, "Row not found in PostgreSQL"
-            assert row[0] == 'true', f"Row should be marked as deleted (__deleted='true'), got __deleted='{row[0]}'"
+            assert row[0] == "true", (
+                f"Row should be marked as deleted (__deleted='true'), got __deleted='{row[0]}'"
+            )
 
     def test_transactional_consistency(
         self, sqlserver_conn: pyodbc.Connection, postgres_conn: psycopg2.extensions.connection
@@ -272,12 +274,16 @@ class TestReplicationFlow:
 
         # Verify these 3 specific rows are present
         with postgres_conn.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM test_customers WHERE name IN ('Alice Brown', 'Charlie Davis', 'Diana Evans')")
+            cursor.execute(
+                "SELECT COUNT(*) FROM test_customers WHERE name IN ('Alice Brown', 'Charlie Davis', 'Diana Evans')"
+            )
             count = cursor.fetchone()[0]
             assert count == 3, f"Expected 3 new rows, got {count}"
 
             # Verify all names are present
-            cursor.execute("SELECT name FROM test_customers WHERE name IN ('Alice Brown', 'Charlie Davis', 'Diana Evans') ORDER BY name")
+            cursor.execute(
+                "SELECT name FROM test_customers WHERE name IN ('Alice Brown', 'Charlie Davis', 'Diana Evans') ORDER BY name"
+            )
             names = [row[0] for row in cursor.fetchall()]
             expected_names = ["Alice Brown", "Charlie Davis", "Diana Evans"]
             assert names == expected_names, f"Names mismatch: {names} != {expected_names}"

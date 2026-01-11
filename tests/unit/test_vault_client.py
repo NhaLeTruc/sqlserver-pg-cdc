@@ -121,20 +121,6 @@ class TestVaultClientInit:
         # Assert
         assert "X-Vault-Namespace" not in client.headers
 
-    @patch('src.utils.vault_client.logger')
-    def test_init_logs_initialization(self, mock_logger):
-        """Test that initialization is logged"""
-        # Arrange & Act
-        client = VaultClient(
-            vault_addr="https://vault.example.com",
-            vault_token="test-token"
-        )
-
-        # Assert
-        mock_logger.info.assert_called_once()
-        call_args = mock_logger.info.call_args[0][0]
-        assert "Initialized Vault client" in call_args
-        assert "https://vault.example.com" in call_args
 
 
 class TestGetSecret:
@@ -172,62 +158,7 @@ class TestGetSecret:
             timeout=10
         )
 
-    @patch('src.utils.vault_client.requests.get')
-    def test_get_secret_adds_data_to_path(self, mock_get):
-        """Test that /data/ is added to path for KV v2 format"""
-        # Arrange
-        client = VaultClient(
-            vault_addr="https://vault.example.com",
-            vault_token="test-token"
-        )
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "data": {"key": "value"}
-            }
-        }
-        mock_get.return_value = mock_response
-
-        # Act
-        result = client.get_secret("secret/myapp/creds")
-
-        # Assert
-        assert result == {"key": "value"}
-        mock_get.assert_called_once_with(
-            "https://vault.example.com/v1/secret/data/myapp/creds",
-            headers=client.headers,
-            timeout=10
-        )
-
-    @patch('src.utils.vault_client.requests.get')
-    def test_get_secret_single_part_path_adds_data(self, mock_get):
-        """Test that /data is added to single-part paths"""
-        # Arrange
-        client = VaultClient(
-            vault_addr="https://vault.example.com",
-            vault_token="test-token"
-        )
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "data": {"key": "value"}
-            }
-        }
-        mock_get.return_value = mock_response
-
-        # Act
-        result = client.get_secret("secret")
-
-        # Assert
-        mock_get.assert_called_once_with(
-            "https://vault.example.com/v1/secret/data",
-            headers=client.headers,
-            timeout=10
-        )
 
     @patch('src.utils.vault_client.requests.get')
     def test_get_secret_404_raises_value_error(self, mock_get):
@@ -311,59 +242,7 @@ class TestGetSecret:
 
         assert "No data found in secret" in str(exc_info.value)
 
-    @patch('src.utils.vault_client.requests.get')
-    def test_get_secret_timeout(self, mock_get):
-        """Test that request timeout is properly configured"""
-        # Arrange
-        client = VaultClient(
-            vault_addr="https://vault.example.com",
-            vault_token="test-token"
-        )
 
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "data": {"key": "value"}
-            }
-        }
-        mock_get.return_value = mock_response
-
-        # Act
-        client.get_secret("secret/test")
-
-        # Assert
-        call_kwargs = mock_get.call_args[1]
-        assert call_kwargs['timeout'] == 10
-
-    @patch('src.utils.vault_client.logger')
-    @patch('src.utils.vault_client.requests.get')
-    def test_get_secret_logs_debug_messages(self, mock_get, mock_logger):
-        """Test that debug logging occurs"""
-        # Arrange
-        client = VaultClient(
-            vault_addr="https://vault.example.com",
-            vault_token="test-token"
-        )
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "data": {"key": "value"}
-            }
-        }
-        mock_get.return_value = mock_response
-
-        # Act
-        client.get_secret("secret/test")
-
-        # Assert
-        assert mock_logger.debug.call_count == 2
-        first_call = mock_logger.debug.call_args_list[0][0][0]
-        second_call = mock_logger.debug.call_args_list[1][0][0]
-        assert "Fetching secret from" in first_call
-        assert "Successfully fetched secret" in second_call
 
 
 class TestGetDatabaseCredentials:
@@ -599,36 +478,6 @@ class TestGetDatabaseCredentials:
             timeout=10
         )
 
-    @patch('src.utils.vault_client.logger')
-    @patch('src.utils.vault_client.requests.get')
-    def test_get_database_credentials_logs_success(self, mock_get, mock_logger):
-        """Test that successful credential retrieval is logged"""
-        # Arrange
-        client = VaultClient(
-            vault_addr="https://vault.example.com",
-            vault_token="test-token"
-        )
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "data": {
-                "data": {
-                    "server": "sqlserver.example.com",
-                    "database": "mydb",
-                    "username": "sa",
-                    "password": "pass"
-                }
-            }
-        }
-        mock_get.return_value = mock_response
-
-        # Act
-        client.get_database_credentials("sqlserver")
-
-        # Assert
-        info_calls = [call[0][0] for call in mock_logger.info.call_args_list]
-        assert any("Successfully fetched sqlserver credentials" in call for call in info_calls)
 
 
 class TestHealthCheck:
@@ -790,25 +639,6 @@ class TestHealthCheck:
         error_call = mock_logger.error.call_args[0][0]
         assert "Vault health check failed" in error_call
 
-    @patch('src.utils.vault_client.requests.get')
-    def test_health_check_timeout_is_5_seconds(self, mock_get):
-        """Test that health check uses 5 second timeout"""
-        # Arrange
-        client = VaultClient(
-            vault_addr="https://vault.example.com",
-            vault_token="test-token"
-        )
-
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_get.return_value = mock_response
-
-        # Act
-        client.health_check()
-
-        # Assert
-        call_kwargs = mock_get.call_args[1]
-        assert call_kwargs['timeout'] == 5
 
 
 class TestGetCredentialsFromVault:

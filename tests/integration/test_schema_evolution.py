@@ -141,7 +141,9 @@ class TestSchemaEvolution:
         with postgres_conn.cursor() as cursor:
             cursor.execute("DROP TABLE IF EXISTS schema_test CASCADE")
 
-    def wait_for_schema_change(self, postgres_conn: psycopg2.extensions.connection, timeout: int = 60) -> bool:
+    def wait_for_schema_change(
+        self, postgres_conn: psycopg2.extensions.connection, timeout: int = 60
+    ) -> bool:
         """Wait for schema change to propagate."""
         time.sleep(timeout)  # Schema changes take time to propagate
         return True
@@ -188,9 +190,7 @@ class TestSchemaEvolution:
 
                     # If row exists, type change was handled successfully
                     if row is not None:
-                        assert len(row[0]) > 100, (
-                            "Long name should have more than 100 characters"
-                        )
+                        assert len(row[0]) > 100, "Long name should have more than 100 characters"
 
             except Exception as e:
                 # Type changes may fail or be complex - log for investigation
@@ -226,7 +226,9 @@ class TestSchemaEvolution:
             except Exception as e:
                 print(f"Failed to drop column (may have constraints): {e}")
                 # If we can't drop, create a different incompatibility
-                cursor.execute("ALTER TABLE schema_test ADD CONSTRAINT name_required CHECK (name IS NOT NULL AND LENGTH(name) < 5)")
+                cursor.execute(
+                    "ALTER TABLE schema_test ADD CONSTRAINT name_required CHECK (name IS NOT NULL AND LENGTH(name) < 5)"
+                )
 
         # Insert data that will fail PostgreSQL constraints
         with sqlserver_conn.cursor() as cursor:
@@ -266,11 +268,17 @@ class TestSchemaEvolution:
             # Use docker exec to get topic info
             result = subprocess.run(
                 [
-                    "docker", "exec", "cdc-kafka",
-                    "kafka-run-class", "kafka.tools.GetOffsetShell",
-                    "--broker-list", "localhost:9092",
-                    "--topic", topic,
-                    "--time", "-1"
+                    "docker",
+                    "exec",
+                    "cdc-kafka",
+                    "kafka-run-class",
+                    "kafka.tools.GetOffsetShell",
+                    "--broker-list",
+                    "localhost:9092",
+                    "--topic",
+                    topic,
+                    "--time",
+                    "-1",
                 ],
                 capture_output=True,
                 text=True,
@@ -281,9 +289,9 @@ class TestSchemaEvolution:
                 # Parse output to get total offset
                 # Format: "topic:partition:offset"
                 total = 0
-                for line in result.stdout.strip().split('\n'):
-                    if line and ':' in line:
-                        parts = line.split(':')
+                for line in result.stdout.strip().split("\n"):
+                    if line and ":" in line:
+                        parts = line.split(":")
                         if len(parts) >= 3:
                             try:
                                 offset = int(parts[2])
@@ -329,9 +337,7 @@ class TestSchemaEvolution:
 
         print(f"Schema change detection passed: {size} schema events captured")
 
-    def test_connector_handles_schema_registry(
-        self, kafka_connect_url: str
-    ) -> None:
+    def test_connector_handles_schema_registry(self, kafka_connect_url: str) -> None:
         """
         Test that connectors are properly using Schema Registry for Avro schemas.
 
@@ -350,21 +356,18 @@ class TestSchemaEvolution:
         expected_patterns = ["sqlserver", "warehouse_source", "schema_test"]
 
         matching_subjects = [
-            s for s in subjects
-            if any(pattern in s for pattern in expected_patterns)
+            s for s in subjects if any(pattern in s for pattern in expected_patterns)
         ]
 
         assert len(matching_subjects) > 0, (
-            f"No schemas found for test table in Schema Registry. "
-            f"All subjects: {subjects}"
+            f"No schemas found for test table in Schema Registry. All subjects: {subjects}"
         )
 
         # Get schema details for one subject
         if matching_subjects:
             subject = matching_subjects[0]
             response = requests.get(
-                f"{schema_registry_url}/subjects/{subject}/versions/latest",
-                timeout=5
+                f"{schema_registry_url}/subjects/{subject}/versions/latest", timeout=5
             )
 
             if response.status_code == 200:

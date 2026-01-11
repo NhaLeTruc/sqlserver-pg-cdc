@@ -64,7 +64,7 @@ class TestMonitoring:
 
         # Test that Kafka broker metrics are available
         kafka_metrics = self.query_prometheus(
-            prometheus_url, 'kafka_server_replicamanager_leadercount'
+            prometheus_url, "kafka_server_replicamanager_leadercount"
         )
         assert kafka_metrics["status"] == "success", "Failed to query Kafka metrics"
 
@@ -74,12 +74,8 @@ class TestMonitoring:
             print("WARNING: No Kafka broker metrics found. JMX exporter may not be configured.")
 
         # Test that Kafka Connect metrics are available
-        connect_metrics = self.query_prometheus(
-            prometheus_url, 'kafka_connect_connector_status'
-        )
-        assert connect_metrics["status"] == "success", (
-            "Failed to query Kafka Connect metrics"
-        )
+        connect_metrics = self.query_prometheus(prometheus_url, "kafka_connect_connector_status")
+        assert connect_metrics["status"] == "success", "Failed to query Kafka Connect metrics"
 
         # Note: Metrics may be empty if connectors aren't deployed yet
         # In a real test, we'd check after T051-T053 are complete
@@ -203,9 +199,7 @@ class TestMonitoring:
                 f"Alert '{expected_alert}' not found in Prometheus rules"
             )
 
-    def test_alert_firing_high_error_rate(
-        self, prometheus_url: str
-    ) -> None:
+    def test_alert_firing_high_error_rate(self, prometheus_url: str) -> None:
         """
         Test that alerts fire when error rate exceeds threshold.
 
@@ -213,7 +207,7 @@ class TestMonitoring:
         are configured and can fire.
         """
         # Query for error rate metrics
-        error_rate_query = 'rate(kafka_connect_task_error_total[5m])'
+        error_rate_query = "rate(kafka_connect_task_error_total[5m])"
         error_metrics = self.query_prometheus(prometheus_url, error_rate_query)
 
         assert error_metrics["status"] == "success", "Failed to query error rate"
@@ -227,8 +221,7 @@ class TestMonitoring:
 
         # Check for error rate alerts
         error_alerts = [
-            alert for alert in alerts
-            if "Error" in alert.get("labels", {}).get("alertname", "")
+            alert for alert in alerts if "Error" in alert.get("labels", {}).get("alertname", "")
         ]
 
         print(f"Error-related alerts: {[a['labels']['alertname'] for a in error_alerts]}")
@@ -283,9 +276,7 @@ class TestMonitoring:
         # May return 200 with empty data if no traces yet
         assert response.status_code == 200, "Failed to query Jaeger traces"
 
-    def test_resource_usage_validation(
-        self, kafka_connect_url: str
-    ) -> None:
+    def test_resource_usage_validation(self, kafka_connect_url: str) -> None:
         """
         Test that resource usage stays within limits (4GB memory, 2 CPU cores).
 
@@ -307,9 +298,12 @@ class TestMonitoring:
                 # Get container stats
                 result = subprocess.run(
                     [
-                        "docker", "stats", container,
-                        "--no-stream", "--format",
-                        "{{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}"
+                        "docker",
+                        "stats",
+                        container,
+                        "--no-stream",
+                        "--format",
+                        "{{.Name}}\t{{.MemUsage}}\t{{.CPUPerc}}",
                     ],
                     capture_output=True,
                     text=True,
@@ -333,14 +327,18 @@ class TestMonitoring:
                             current_mem = current_mem.strip()
                             limit_mem = limit_mem.strip()
 
-                            print(f"{container}: Memory {current_mem} / {limit_mem}, CPU {cpu_usage}")
+                            print(
+                                f"{container}: Memory {current_mem} / {limit_mem}, CPU {cpu_usage}"
+                            )
 
                             # Parse memory values to MB for comparison
                             def parse_memory(mem_str: str) -> float:
                                 """Parse memory string like '123.4MiB' to MB."""
                                 mem_str = mem_str.strip()
                                 if "GiB" in mem_str or "GB" in mem_str:
-                                    return float(mem_str.replace("GiB", "").replace("GB", "")) * 1024
+                                    return (
+                                        float(mem_str.replace("GiB", "").replace("GB", "")) * 1024
+                                    )
                                 elif "MiB" in mem_str or "MB" in mem_str:
                                     return float(mem_str.replace("MiB", "").replace("MB", ""))
                                 else:
@@ -359,7 +357,9 @@ class TestMonitoring:
                             if current_mb > 0 and limit_mb > 0:
                                 usage_percent = (current_mb / limit_mb) * 100
                                 if usage_percent > 90:
-                                    print(f"WARNING: {container} memory usage at {usage_percent:.1f}%")
+                                    print(
+                                        f"WARNING: {container} memory usage at {usage_percent:.1f}%"
+                                    )
 
                         # Parse CPU usage
                         if "%" in cpu_usage:
@@ -367,7 +367,9 @@ class TestMonitoring:
 
                             # Warn if CPU usage consistently > 200% (2 cores)
                             if cpu_percent > 200:
-                                print(f"WARNING: {container} CPU usage at {cpu_percent:.1f}% (>2 cores)")
+                                print(
+                                    f"WARNING: {container} CPU usage at {cpu_percent:.1f}% (>2 cores)"
+                                )
 
             except subprocess.TimeoutExpired:
                 print(f"Timeout getting stats for {container}")
@@ -393,9 +395,7 @@ class TestMonitoring:
 
         # Check scrape interval in config (should be 15s as per our config)
         config_yaml = config_data["data"]["yaml"]
-        assert "scrape_interval: 15s" in config_yaml, (
-            "Scrape interval not configured to 15s"
-        )
+        assert "scrape_interval: 15s" in config_yaml, "Scrape interval not configured to 15s"
 
     def test_grafana_provisioning(self, grafana_url: str) -> None:
         """
@@ -441,9 +441,7 @@ class TestMonitoring:
                     alert_count += 1
                     # Check that alerts have labels
                     labels = rule.get("labels", {})
-                    assert "severity" in labels, (
-                        f"Alert {rule.get('name')} missing severity label"
-                    )
+                    assert "severity" in labels, f"Alert {rule.get('name')} missing severity label"
 
         print(f"Total alerting rules configured: {alert_count}")
         assert alert_count > 0, "No alerting rules configured"
@@ -458,10 +456,10 @@ class TestMonitoring:
         """
         # List of important connector metrics to verify
         metrics_to_check = [
-            'kafka_connect_connector_status',
-            'kafka_connect_task_status',
-            'kafka_connect_source_task_source_record_poll_total',
-            'kafka_connect_sink_task_sink_record_send_total',
+            "kafka_connect_connector_status",
+            "kafka_connect_task_status",
+            "kafka_connect_source_task_source_record_poll_total",
+            "kafka_connect_sink_task_sink_record_send_total",
         ]
 
         for metric in metrics_to_check:

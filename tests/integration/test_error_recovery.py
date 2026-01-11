@@ -10,7 +10,6 @@ These tests validate configuration rather than simulating actual failures,
 as failure simulation would require complex infrastructure setup.
 """
 
-
 import pytest
 import requests
 
@@ -28,9 +27,7 @@ class TestErrorRecoveryConfiguration:
         """Name of the existing JDBC sink connector"""
         return "postgresql-jdbc-sink"
 
-    def test_connector_has_retry_configuration(
-        self, kafka_connect_url, connector_name
-    ):
+    def test_connector_has_retry_configuration(self, kafka_connect_url, connector_name):
         """
         Test T077: Verify connector has retry configuration for PostgreSQL downtime recovery
 
@@ -41,8 +38,7 @@ class TestErrorRecoveryConfiguration:
         """
         # Get connector configuration
         response = requests.get(
-            f"{kafka_connect_url}/connectors/{connector_name}/config",
-            timeout=5
+            f"{kafka_connect_url}/connectors/{connector_name}/config", timeout=5
         )
 
         assert response.status_code == 200, (
@@ -52,40 +48,30 @@ class TestErrorRecoveryConfiguration:
         config = response.json()
 
         # Verify retry timeout is configured (should be at least 60 seconds)
-        assert "errors.retry.timeout" in config, (
-            "errors.retry.timeout not configured"
-        )
+        assert "errors.retry.timeout" in config, "errors.retry.timeout not configured"
         retry_timeout_ms = int(config["errors.retry.timeout"])
         assert retry_timeout_ms >= 60000, (
             f"Retry timeout too short: {retry_timeout_ms}ms (should be >= 60000ms)"
         )
 
         # Verify connection attempts is configured
-        assert "connection.attempts" in config, (
-            "connection.attempts not configured"
-        )
+        assert "connection.attempts" in config, "connection.attempts not configured"
         connection_attempts = int(config["connection.attempts"])
         assert connection_attempts >= 3, (
             f"Connection attempts too low: {connection_attempts} (should be >= 3)"
         )
 
         # Verify connection backoff is configured
-        assert "connection.backoff.ms" in config, (
-            "connection.backoff.ms not configured"
-        )
+        assert "connection.backoff.ms" in config, "connection.backoff.ms not configured"
         backoff_ms = int(config["connection.backoff.ms"])
-        assert backoff_ms >= 1000, (
-            f"Backoff too short: {backoff_ms}ms (should be >= 1000ms)"
-        )
+        assert backoff_ms >= 1000, f"Backoff too short: {backoff_ms}ms (should be >= 1000ms)"
 
         print("✓ Retry configuration validated:")
         print(f"  - errors.retry.timeout: {retry_timeout_ms}ms")
         print(f"  - connection.attempts: {connection_attempts}")
         print(f"  - connection.backoff.ms: {backoff_ms}ms")
 
-    def test_connector_has_exponential_backoff_config(
-        self, kafka_connect_url, connector_name
-    ):
+    def test_connector_has_exponential_backoff_config(self, kafka_connect_url, connector_name):
         """
         Test T078: Verify connector has exponential backoff configuration
 
@@ -93,8 +79,7 @@ class TestErrorRecoveryConfiguration:
         by checking the retry delay configuration.
         """
         response = requests.get(
-            f"{kafka_connect_url}/connectors/{connector_name}/config",
-            timeout=5
+            f"{kafka_connect_url}/connectors/{connector_name}/config", timeout=5
         )
 
         assert response.status_code == 200
@@ -115,9 +100,7 @@ class TestErrorRecoveryConfiguration:
         backoff_ms = int(config["connection.backoff.ms"])
         print(f"✓ Initial backoff: {backoff_ms}ms")
 
-    def test_connector_respects_retry_timeout_config(
-        self, kafka_connect_url, connector_name
-    ):
+    def test_connector_respects_retry_timeout_config(self, kafka_connect_url, connector_name):
         """
         Test T078: Verify connector has maximum retry timeout configured
 
@@ -125,8 +108,7 @@ class TestErrorRecoveryConfiguration:
         rather than retrying indefinitely.
         """
         response = requests.get(
-            f"{kafka_connect_url}/connectors/{connector_name}/config",
-            timeout=5
+            f"{kafka_connect_url}/connectors/{connector_name}/config", timeout=5
         )
 
         assert response.status_code == 200
@@ -142,11 +124,11 @@ class TestErrorRecoveryConfiguration:
             f"Retry timeout should be between 1-30 minutes, got {retry_timeout_ms}ms"
         )
 
-        print(f"✓ Retry timeout configured: {retry_timeout_ms}ms ({retry_timeout_ms/1000/60:.1f} minutes)")
+        print(
+            f"✓ Retry timeout configured: {retry_timeout_ms}ms ({retry_timeout_ms / 1000 / 60:.1f} minutes)"
+        )
 
-    def test_connector_has_dlq_configuration(
-        self, kafka_connect_url, connector_name
-    ):
+    def test_connector_has_dlq_configuration(self, kafka_connect_url, connector_name):
         """
         Test T079: Verify connector has Dead Letter Queue (DLQ) configuration
 
@@ -154,25 +136,20 @@ class TestErrorRecoveryConfiguration:
         rather than failing the entire connector.
         """
         response = requests.get(
-            f"{kafka_connect_url}/connectors/{connector_name}/config",
-            timeout=5
+            f"{kafka_connect_url}/connectors/{connector_name}/config", timeout=5
         )
 
         assert response.status_code == 200
         config = response.json()
 
         # Verify error tolerance is set to allow DLQ routing
-        assert "errors.tolerance" in config, (
-            "errors.tolerance not configured"
-        )
+        assert "errors.tolerance" in config, "errors.tolerance not configured"
         assert config["errors.tolerance"] == "all", (
             f"errors.tolerance should be 'all' for DLQ, got '{config['errors.tolerance']}'"
         )
 
         # Verify DLQ topic is configured
-        assert "errors.deadletterqueue.topic.name" in config, (
-            "DLQ topic name not configured"
-        )
+        assert "errors.deadletterqueue.topic.name" in config, "DLQ topic name not configured"
         dlq_topic = config["errors.deadletterqueue.topic.name"]
         assert len(dlq_topic) > 0, "DLQ topic name is empty"
 
@@ -189,9 +166,7 @@ class TestErrorRecoveryConfiguration:
         print(f"  - DLQ topic: {dlq_topic}")
         print("  - Context headers enabled: true")
 
-    def test_dlq_topic_exists(
-        self, kafka_connect_url, connector_name
-    ):
+    def test_dlq_topic_exists(self, kafka_connect_url, connector_name):
         """
         Test T079: Verify DLQ topic exists in Kafka
 
@@ -199,8 +174,7 @@ class TestErrorRecoveryConfiguration:
         exist until the first error occurs, which is expected behavior.
         """
         response = requests.get(
-            f"{kafka_connect_url}/connectors/{connector_name}/config",
-            timeout=5
+            f"{kafka_connect_url}/connectors/{connector_name}/config", timeout=5
         )
 
         assert response.status_code == 200
@@ -213,9 +187,7 @@ class TestErrorRecoveryConfiguration:
         else:
             pytest.fail("DLQ topic not configured")
 
-    def test_connector_logs_errors(
-        self, kafka_connect_url, connector_name
-    ):
+    def test_connector_logs_errors(self, kafka_connect_url, connector_name):
         """
         Test T079: Verify connector logs errors for debugging
 
@@ -223,25 +195,18 @@ class TestErrorRecoveryConfiguration:
         can monitor and investigate issues.
         """
         response = requests.get(
-            f"{kafka_connect_url}/connectors/{connector_name}/config",
-            timeout=5
+            f"{kafka_connect_url}/connectors/{connector_name}/config", timeout=5
         )
 
         assert response.status_code == 200
         config = response.json()
 
         # Verify error logging is enabled
-        assert "errors.log.enable" in config, (
-            "Error logging not configured"
-        )
-        assert config["errors.log.enable"] == "true", (
-            "Error logging should be enabled"
-        )
+        assert "errors.log.enable" in config, "Error logging not configured"
+        assert config["errors.log.enable"] == "true", "Error logging should be enabled"
 
         # Verify messages are included in logs
-        assert "errors.log.include.messages" in config, (
-            "Error message logging not configured"
-        )
+        assert "errors.log.include.messages" in config, "Error message logging not configured"
         assert config["errors.log.include.messages"] == "true", (
             "Error messages should be included in logs"
         )
@@ -250,9 +215,7 @@ class TestErrorRecoveryConfiguration:
         print("  - errors.log.enable: true")
         print("  - errors.log.include.messages: true")
 
-    def test_connector_status_healthy(
-        self, kafka_connect_url, connector_name
-    ):
+    def test_connector_status_healthy(self, kafka_connect_url, connector_name):
         """
         Verify the connector is running and healthy
 
@@ -260,8 +223,7 @@ class TestErrorRecoveryConfiguration:
         is actually operational.
         """
         response = requests.get(
-            f"{kafka_connect_url}/connectors/{connector_name}/status",
-            timeout=5
+            f"{kafka_connect_url}/connectors/{connector_name}/status", timeout=5
         )
 
         assert response.status_code == 200, (

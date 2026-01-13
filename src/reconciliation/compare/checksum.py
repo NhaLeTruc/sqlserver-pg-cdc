@@ -41,7 +41,11 @@ def calculate_checksum(cursor: Any, table_name: str, columns: list | None = None
         # Get all columns
         if hasattr(cursor, 'description') and cursor.description is not None:
             # Use introspection to get columns
-            query = f"SELECT * FROM {quoted_table} LIMIT 0"
+            db_type = _get_db_type(cursor)
+            if db_type == 'postgresql':
+                query = f"SELECT * FROM {quoted_table} LIMIT 0"
+            else:  # SQL Server
+                query = f"SELECT TOP 0 * FROM {quoted_table}"
             cursor.execute(query)
             columns = [desc[0] for desc in cursor.description]
         else:
@@ -203,7 +207,11 @@ def calculate_checksum_chunked(
     # Get columns if not specified
     if columns is None:
         if hasattr(cursor, 'description') and cursor.description is not None:
-            query = f"SELECT * FROM {quoted_table} LIMIT 0"
+            db_type = _get_db_type(cursor)
+            if db_type == 'postgresql':
+                query = f"SELECT * FROM {quoted_table} LIMIT 0"
+            else:  # SQL Server
+                query = f"SELECT TOP 0 * FROM {quoted_table}"
             cursor.execute(query)
             columns = [desc[0] for desc in cursor.description]
         else:

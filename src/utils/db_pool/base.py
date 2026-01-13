@@ -515,3 +515,18 @@ class BaseConnectionPool:
                 "max_size": self.max_size,
                 "closed": self._closed,
             }
+
+    def size(self) -> int:
+        """Get total number of connections in the pool."""
+        with self._lock:
+            return len(self._all_connections)
+
+    @property
+    def pool_size(self) -> int:
+        """Get the base pool size (min_size)."""
+        return self.min_size
+
+    @property
+    def max_overflow(self) -> int:
+        """Get the maximum overflow connections (max_size - min_size)."""
+        return self.max_size - self.min_size

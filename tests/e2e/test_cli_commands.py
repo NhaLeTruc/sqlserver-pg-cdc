@@ -15,15 +15,9 @@ import pytest
 
 
 @pytest.fixture(scope="module")
-def project_root():
-    """Get project root directory."""
-    return Path(__file__).parent.parent.parent
-
-
-@pytest.fixture(scope="module")
 def cli_module(project_root):
     """Get path to CLI module."""
-    return str(project_root / "src" / "reconciliation" / "cli" / "main.py")
+    return str(project_root / "src" / "reconciliation" / "cli.py")
 
 
 @pytest.fixture
@@ -149,7 +143,8 @@ class TestCLIRunCommand:
 
         # Should contain report output
         assert "PASS" in result.stdout or "FAIL" in result.stdout
-        assert "cli_test_customers" in result.stdout
+        # Table name appears in log output (stderr)
+        assert "cli_test_customers" in result.stderr
 
     def test_run_with_json_output(self, cli_module, setup_test_tables, cli_env, tmp_path):
         """Test running reconciliation with JSON output."""

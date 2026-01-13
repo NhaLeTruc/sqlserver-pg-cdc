@@ -25,10 +25,15 @@ class TestSchemaEvolution:
             f"UID={os.getenv('SQLSERVER_USER', 'sa')};"
             f"PWD={os.getenv('SQLSERVER_PASSWORD', 'YourStrong!Passw0rd')};"
             f"TrustServerCertificate=yes;"
+            f"Connection Timeout=30;"
         )
         conn = pyodbc.connect(conn_str, autocommit=False)
         yield conn
-        conn.close()
+        try:
+            if conn:
+                conn.close()
+        except:
+            pass
 
     @pytest.fixture(scope="class")
     def postgres_conn(self) -> psycopg2.extensions.connection:
@@ -125,21 +130,52 @@ class TestSchemaEvolution:
         yield
 
         # Cleanup
-        with sqlserver_conn.cursor() as cursor:
+        try:
+            # Validate connection is still alive, reconnect if needed
             try:
-                cursor.execute("""
-                    EXEC sys.sp_cdc_disable_table
-                        @source_schema = N'dbo',
-                        @source_name = N'schema_test',
-                        @capture_instance = 'all'
-                """)
-            except:
-                pass
-            cursor.execute("DROP TABLE IF EXISTS dbo.schema_test")
-            sqlserver_conn.commit()
+                with sqlserver_conn.cursor() as test_cursor:
+                    test_cursor.execute("SELECT 1")
+                    test_cursor.fetchone()
+            except Exception:
+                # Connection is dead, reconnect
+                conn_str = (
+                    f"DRIVER={{ODBC Driver 18 for SQL Server}};"
+                    f"SERVER={os.getenv('SQLSERVER_HOST', 'localhost')},1433;"
+                    f"DATABASE={os.getenv('SQLSERVER_DATABASE', 'warehouse_source')};"
+                    f"UID={os.getenv('SQLSERVER_USER', 'sa')};"
+                    f"PWD={os.getenv('SQLSERVER_PASSWORD', 'YourStrong!Passw0rd')};"
+                    f"TrustServerCertificate=yes;"
+                    f"Connection Timeout=30;"
+                )
+                sqlserver_conn = pyodbc.connect(conn_str, autocommit=False)
 
-        with postgres_conn.cursor() as cursor:
-            cursor.execute("DROP TABLE IF EXISTS schema_test CASCADE")
+            with sqlserver_conn.cursor() as cursor:
+                try:
+                    cursor.execute("""
+                        EXEC sys.sp_cdc_disable_table
+                            @source_schema = N'dbo',
+                            @source_name = N'schema_test',
+                            @capture_instance = 'all'
+                    """)
+                    sqlserver_conn.commit()
+                except Exception as e:
+                    print(f"Note: Failed to disable CDC during cleanup: {e}")
+                    sqlserver_conn.rollback()
+
+                try:
+                    cursor.execute("DROP TABLE IF EXISTS dbo.schema_test")
+                    sqlserver_conn.commit()
+                except Exception as e:
+                    print(f"Note: Failed to drop SQL Server table during cleanup: {e}")
+                    sqlserver_conn.rollback()
+        except Exception as e:
+            print(f"Note: SQL Server cleanup error (non-critical): {e}")
+
+        try:
+            with postgres_conn.cursor() as cursor:
+                cursor.execute("DROP TABLE IF EXISTS schema_test CASCADE")
+        except Exception as e:
+            print(f"Note: PostgreSQL cleanup error (non-critical): {e}")
 
     def wait_for_schema_change(
         self, postgres_conn: psycopg2.extensions.connection, timeout: int = 60

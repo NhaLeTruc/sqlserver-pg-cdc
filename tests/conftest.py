@@ -92,7 +92,7 @@ def docker_configs_dir(project_root: Path) -> Path:
     return project_root / "docker" / "configs"
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(scope="session", autouse=True)
 def set_test_env_vars() -> None:
     """Set default test environment variables if not already set."""
     defaults = {

@@ -33,7 +33,7 @@ import pyodbc
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from src.utils.logging_config import get_logger, setup_logging
+from src.utils.logging import get_logger, setup_logging
 
 from src.reconciliation.compare import reconcile_table
 from src.reconciliation.report import (

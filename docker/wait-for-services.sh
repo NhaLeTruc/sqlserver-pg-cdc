@@ -28,10 +28,10 @@ declare -A SERVICE_CHECKS=(
     ["cdc-kafka"]="health"
     ["cdc-schema-registry"]="health"
     ["cdc-kafka-connect"]="health"
-    ["cdc-vault"]="running"  # Vault in dev mode doesn't have health check
+    ["cdc-vault"]="health"  # Vault has health check
     ["cdc-prometheus"]="health"
     ["cdc-grafana"]="health"
-    ["cdc-jaeger"]="running"  # Jaeger may not have health check
+    ["cdc-jaeger"]="health"  # Jaeger has health check
 )
 
 # Colors for output

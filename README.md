@@ -125,39 +125,28 @@ Once the environment is set up, the CDC pipeline will automatically:
 ## Tests
 
 ```bash
-# Run unit, contract, integration, e2e
+# Run unit, contract, property, integration, e2e, performance tests
 make test-lite
 
 .venv/bin/pytest tests/ -v
 
 .venv/bin/pytest tests/ -v --cov=src --cov-report=html --cov-report=term
 
-.venv/bin/pytest tests/contract/ -v
-
 .venv/bin/pytest tests/unit/ -v
 
-.venv/bin/pytest tests/integration/ -v
+.venv/bin/pytest tests/contract/ -v
 
-.venv/bin/pytest tests/integration/test_replication_flow.py -v --no-cov
+.venv/bin/pytest tests/property/ -v
+
+.venv/bin/pytest tests/integration/ -v
 
 .venv/bin/pytest tests/e2e/ -v
 
 .venv/bin/pytest tests/performance/ -v
 
-# Integration tests only
-.venv/bin/pytest -m integration -v
+.venv/bin/pytest tests/latency/ -v
 
-# Contract tests only
-.venv/bin/pytest -m contract -v
-
-# Performance tests only
-.venv/bin/pytest -m performance -v
-
-# Slow tests only
-.venv/bin/pytest -m slow -v
-
-# Generate JUnit XML (for CI/CD)
-.venv/bin/pytest tests/ --junitxml=test-results.xml
+.venv/bin/pytest tests/load/ -v
 ```
 
 ## Linting

@@ -325,8 +325,8 @@ reset-test-env-quick: ## Quick reset (skip connector restart for faster reset)
 	@./scripts/bash/reset-test-environment.sh --quick
 	@echo "$(GREEN)✓ Quick test environment reset complete$(NC)"
 
-test-lite: test-unit test-contract test-integration test-e2e test-perf ## Run lightweight tests
-	@echo "$(BLUE) Unit, Contract, Integration, e2e, and performance tests ran$(NC)"
+test-lite: test-unit test-contract test-property test-integration test-e2e test-perf   ## Run lightweight tests
+	@echo "$(BLUE) Unit, Contract, Property, Integration, e2e, and performance tests ran$(NC)"
 
 test-unit: ## Run unit tests
 	@echo "$(BLUE)Running unit tests...$(NC)"

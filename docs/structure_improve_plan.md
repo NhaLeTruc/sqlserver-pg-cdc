@@ -554,10 +554,6 @@ make test-integration
 ```bash
 # Generate coverage report
 pytest --cov=src --cov-report=term-missing --cov-report=html
-
-# Run mutation tests (if updated)
-mutmut run
-mutmut results
 ```
 
 ---

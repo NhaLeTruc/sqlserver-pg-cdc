@@ -85,8 +85,6 @@ coverage.xml
 .coverage.*
 nosetests.xml
 test-results/
-mutants/
-.mutmut-cache
 
 # Documentation builds
 docs/_build/

@@ -44,7 +44,6 @@ dev = [
     "ruff>=0.1.8",
     "mypy>=1.7.1",
     "hypothesis>=6.92.0",
-    "mutmut>=2.4.4",
     "locust>=2.20.0",
     "pact-python>=2.2.0",
     "pre-commit>=3.6.0",
@@ -122,9 +121,3 @@ warn_unused_ignores = true
 warn_no_return = true
 strict_equality = true
 
-[tool.mutmut]
-paths_to_mutate = "src/reconciliation"
-runner = ".venv/bin/pytest -x --tb=line -q --no-cov tests/unit/ tests/property/"
-tests_dir = "tests/"
-use_coverage = true
-test_time_multiplier = 1.5

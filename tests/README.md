@@ -220,23 +220,6 @@ open htmlcov/index.html
 
 ### Advanced Testing
 
-#### Mutation Testing
-
-Validate test suite effectiveness by introducing bugs:
-
-```bash
-# Run mutation tests
-make mutation-test
-
-# View results
-make mutation-results
-
-# Generate HTML report
-make mutation-html
-```
-
-Target mutation score: **>80%**
-
 #### Property-Based Testing Profiles
 
 ```bash

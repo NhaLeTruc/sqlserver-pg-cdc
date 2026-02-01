@@ -304,8 +304,8 @@ class TestQueryOptimizer:
 
         assert "CREATE INDEX CONCURRENTLY" in ddl
         assert "ix_users_id" in ddl
-        assert "ON users" in ddl
-        assert "(id)" in ddl
+        assert 'ON "users"' in ddl  # Quoted for SQL injection protection
+        assert '("id")' in ddl  # Quoted for SQL injection protection
 
     def test_generate_postgres_index_ddl_with_include(self):
         """Test PostgreSQL DDL with INCLUDE columns."""
@@ -318,7 +318,7 @@ class TestQueryOptimizer:
 
         ddl = IndexAdvisor.generate_index_ddl(rec, database_type="postgresql")
 
-        assert "INCLUDE (id, email)" in ddl
+        assert 'INCLUDE ("id", "email")' in ddl  # Quoted for SQL injection protection
 
     def test_generate_postgres_index_ddl_with_where(self):
         """Test PostgreSQL DDL with WHERE clause."""
@@ -357,8 +357,8 @@ class TestQueryOptimizer:
 
         assert "CREATE NONCLUSTERED INDEX" in ddl
         assert "IX_users_id" in ddl
-        assert "ON dbo.users" in ddl
-        assert "(id)" in ddl
+        assert "ON [dbo].[users]" in ddl  # Quoted for SQL injection protection
+        assert "([id])" in ddl  # Quoted for SQL injection protection
         assert "WITH (ONLINE = ON, FILLFACTOR = 90)" in ddl
 
     def test_generate_sqlserver_index_ddl_with_include(self):
@@ -372,7 +372,7 @@ class TestQueryOptimizer:
 
         ddl = IndexAdvisor.generate_index_ddl(rec, database_type="sqlserver")
 
-        assert "INCLUDE (id, email)" in ddl
+        assert "INCLUDE ([id], [email])" in ddl  # Quoted for SQL injection protection
 
     def test_generate_sqlserver_index_ddl_with_where(self):
         """Test SQL Server DDL with WHERE clause."""
@@ -419,7 +419,7 @@ class TestQueryOptimizer:
         query = QueryOptimizer.optimize_row_count_query("users", database_type="unknown")
 
         assert "SELECT COUNT(*)" in query
-        assert "FROM users" in query
+        assert 'FROM "users"' in query  # Quoted for SQL injection protection
 
     def test_optimize_checksum_query_postgres(self):
         """Test checksum query optimization for PostgreSQL."""

@@ -195,8 +195,9 @@ class TestHashingTransformer:
 
     def test_hashing_with_salt(self):
         """Test hashing with salt."""
-        transformer1 = HashingTransformer(salt="salt1")
-        transformer2 = HashingTransformer(salt="salt2")
+        # SEC-3: Salts must be at least 8 characters
+        transformer1 = HashingTransformer(salt="salt1_secure")
+        transformer2 = HashingTransformer(salt="salt2_secure")
 
         value = "test@example.com"
         result1 = transformer1.transform(value, {"field_name": "email"})
@@ -214,18 +215,19 @@ class TestHashingTransformer:
 
     def test_hashing_different_algorithms(self):
         """Test different hashing algorithms."""
+        # SEC-2: Only secure algorithms are allowed (MD5 is rejected)
         transformer_sha256 = HashingTransformer(algorithm="sha256")
         transformer_sha512 = HashingTransformer(algorithm="sha512")
-        transformer_md5 = HashingTransformer(algorithm="md5")
+        transformer_blake2b = HashingTransformer(algorithm="blake2b")
 
         value = "test@example.com"
         result_sha256 = transformer_sha256.transform(value, {"field_name": "email"})
         result_sha512 = transformer_sha512.transform(value, {"field_name": "email"})
-        result_md5 = transformer_md5.transform(value, {"field_name": "email"})
+        result_blake2b = transformer_blake2b.transform(value, {"field_name": "email"})
 
         assert len(result_sha256) == 64  # SHA256
         assert len(result_sha512) == 128  # SHA512
-        assert len(result_md5) == 32  # MD5
+        assert len(result_blake2b) == 128  # BLAKE2b
 
     def test_hashing_deterministic(self):
         """Test that hashing is deterministic."""
@@ -262,12 +264,12 @@ class TestHashingTransformer:
         assert len(result) == 64
 
     def test_hashing_exception_handling(self):
-        """Test exception handling in hashing."""
-        transformer = HashingTransformer(algorithm="invalid_algorithm")
-        result = transformer.transform("test", {"field_name": "email"})
+        """Test exception handling in hashing - insecure algorithms rejected at init."""
+        import pytest
 
-        # Should return original value on error
-        assert result == "test"
+        # SEC-2: Invalid/insecure algorithms are rejected at initialization
+        with pytest.raises(ValueError, match="Insecure hash algorithm"):
+            HashingTransformer(algorithm="invalid_algorithm")
 
 
 class TestTypeConversionTransformer:
@@ -730,8 +732,9 @@ class TestCreateGDPRPipeline:
 
     def test_gdpr_pipeline_different_salts(self):
         """Test GDPR pipeline with different salts produces different hashes."""
-        pipeline1 = create_gdpr_pipeline(salt="salt1")
-        pipeline2 = create_gdpr_pipeline(salt="salt2")
+        # SEC-3: Salts must be at least 8 characters
+        pipeline1 = create_gdpr_pipeline(salt="salt1_secure")
+        pipeline2 = create_gdpr_pipeline(salt="salt2_secure")
 
         row = {"email": "user@example.com"}
         result1 = pipeline1.transform_row(row)

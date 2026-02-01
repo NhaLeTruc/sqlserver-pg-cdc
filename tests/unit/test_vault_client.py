@@ -26,9 +26,11 @@ class TestVaultClientInit:
 
         # Assert
         assert client.vault_addr == "https://vault.example.com"
-        assert client.vault_token == "test-token-123"
+        # SEC-5: Token is now stored as private attribute
+        assert client._vault_token == "test-token-123"
         assert client.namespace is None
-        assert client.headers == {
+        # SEC-5: Headers are now generated on-demand via property
+        assert client._headers == {
             "X-Vault-Token": "test-token-123",
             "Content-Type": "application/json"
         }
@@ -51,7 +53,8 @@ class TestVaultClientInit:
 
         # Assert
         assert client.vault_addr == "https://vault.env.com"
-        assert client.vault_token == "env-token-456"
+        # SEC-5: Token is now stored as private attribute
+        assert client._vault_token == "env-token-456"
         assert mock_getenv.call_count == 2
 
     @patch('src.utils.vault_client.os.getenv')
@@ -107,8 +110,9 @@ class TestVaultClientInit:
 
         # Assert
         assert client.namespace == "my-namespace"
-        assert "X-Vault-Namespace" in client.headers
-        assert client.headers["X-Vault-Namespace"] == "my-namespace"
+        # SEC-5: Headers are now generated on-demand via property
+        assert "X-Vault-Namespace" in client._headers
+        assert client._headers["X-Vault-Namespace"] == "my-namespace"
 
     def test_init_without_namespace_no_namespace_header(self):
         """Test that no namespace header is added when namespace is not provided"""
@@ -119,7 +123,8 @@ class TestVaultClientInit:
         )
 
         # Assert
-        assert "X-Vault-Namespace" not in client.headers
+        # SEC-5: Headers are now generated on-demand via property
+        assert "X-Vault-Namespace" not in client._headers
 
 
 
@@ -152,9 +157,10 @@ class TestGetSecret:
 
         # Assert
         assert result == {"username": "admin", "password": "secret123"}
+        # SEC-5: Headers are now generated on-demand via property
         mock_get.assert_called_once_with(
             "https://vault.example.com/v1/secret/data/myapp/creds",
-            headers=client.headers,
+            headers=client._headers,
             timeout=10
         )
 
@@ -472,9 +478,10 @@ class TestGetDatabaseCredentials:
         client.get_database_credentials("sqlserver")
 
         # Assert
+        # SEC-5: Headers are now generated on-demand via property
         mock_get.assert_called_once_with(
             "https://vault.example.com/v1/secret/data/database/sqlserver",
-            headers=client.headers,
+            headers=client._headers,
             timeout=10
         )
 

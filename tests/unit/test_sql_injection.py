@@ -52,7 +52,7 @@ class TestPostgreSQLQuoting:
 
     def test_reject_multiple_dots(self):
         """Test rejection of invalid schema.table.extra format"""
-        with pytest.raises(ValueError, match="Invalid schema.table format"):
+        with pytest.raises(ValueError, match="Invalid identifier format"):
             _quote_postgres_identifier("public.dbo.customers")
 
     def test_allow_underscores_and_numbers(self):
@@ -96,7 +96,7 @@ class TestSQLServerQuoting:
 
     def test_reject_multiple_dots(self):
         """Test rejection of invalid schema.table.extra format"""
-        with pytest.raises(ValueError, match="Invalid schema.table format"):
+        with pytest.raises(ValueError, match="Invalid identifier format"):
             _quote_sqlserver_identifier("master.dbo.customers")
 
     def test_allow_underscores_and_numbers(self):

@@ -6,6 +6,7 @@ Provides transformers for masking personally identifiable information
 """
 
 import hashlib
+import json
 import logging
 import re
 import secrets
@@ -98,6 +99,11 @@ class PIIMaskingTransformer(Transformer):
 
         local, domain = email.split("@", 1)
 
+        # BUG-4: Validate email format - reject malformed emails like user@@example.com
+        if not local or not domain or domain.startswith("@") or "@" in domain:
+            logger.debug("Invalid email format detected")
+            return self.mask_char * len(email)
+
         if len(local) <= 1:
             return email
 
@@ -169,8 +175,14 @@ class PIIMaskingTransformer(Transformer):
         digits = re.sub(r"\D", "", card)
 
         if len(digits) < 13 or len(digits) > 19:
-            # Not a valid credit card length
+            # BUG-3: Log invalid credit card length for data quality monitoring
+            logger.debug(f"Invalid credit card length: {len(digits)} digits")
             return self.mask_char * len(card)
+
+        # BUG-3: Log Luhn validation failures for data quality monitoring
+        # (but still mask the card to protect PII)
+        if not self._luhn_check(digits):
+            logger.debug("Credit card failed Luhn checksum validation")
 
         # Keep last 4 digits
         masked_digits = self.mask_char * (len(digits) - 4) + digits[-4:]
@@ -202,6 +214,24 @@ class PIIMaskingTransformer(Transformer):
 
         # IPv6 or other - mask most of it
         return ip[:4] + self.mask_char * (len(ip) - 4)
+
+    def _luhn_check(self, card_number: str) -> bool:
+        """
+        Validate credit card number using Luhn algorithm.
+
+        Args:
+            card_number: String of digits only
+
+        Returns:
+            True if valid, False otherwise
+        """
+        digits = [int(d) for d in card_number]
+        # Double every second digit from right, subtract 9 if > 9
+        for i in range(len(digits) - 2, -1, -2):
+            digits[i] *= 2
+            if digits[i] > 9:
+                digits[i] -= 9
+        return sum(digits) % 10 == 0
 
 
 class HashingTransformer(Transformer):
@@ -263,7 +293,15 @@ class HashingTransformer(Transformer):
                 return None
 
             try:
-                data = f"{self.salt}{str(value)}".encode()
+                # BUG-5: Handle complex types properly for consistent hashing
+                if isinstance(value, float):
+                    str_value = repr(value)  # Preserve precision
+                elif isinstance(value, (dict, list)):
+                    str_value = json.dumps(value, sort_keys=True)
+                else:
+                    str_value = str(value)
+
+                data = f"{self.salt}{str_value}".encode()
                 hasher = hashlib.new(self.algorithm)
                 hasher.update(data)
                 hash_value = hasher.hexdigest()

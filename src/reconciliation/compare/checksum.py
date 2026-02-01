@@ -6,9 +6,12 @@ using SHA256 hashing, with support for both full and chunked processing.
 """
 
 import hashlib
+import logging
 from typing import Any
 
 from src.utils.retry import retry_database_operation
+
+logger = logging.getLogger(__name__)
 
 from .quoting import _get_db_type, _quote_identifier
 
@@ -129,8 +132,9 @@ def _get_primary_key_column(cursor: Any, table_name: str) -> str | None:
             result = cursor.fetchone()
             return result[0] if result else None
 
-    except Exception:
-        # If we can't determine primary key, return None
+    except Exception as e:
+        # BUG-6: Log the exception instead of silently returning None
+        logger.warning(f"Failed to get primary key column for {table_name}: {e}")
         return None
 
 

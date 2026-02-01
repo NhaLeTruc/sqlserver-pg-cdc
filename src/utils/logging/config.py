@@ -122,6 +122,31 @@ def get_logger(name: str) -> logging.Logger:
     return logging.getLogger(name)
 
 
+def shutdown_logging() -> None:
+    """
+    Shutdown logging and release all file handles.
+
+    BUG-13: Provides explicit cleanup for RotatingFileHandler to prevent
+    file handle leaks. Call this during application shutdown.
+
+    Example:
+        import atexit
+        atexit.register(shutdown_logging)
+    """
+    root_logger = logging.getLogger()
+
+    # Close and remove all handlers
+    for handler in root_logger.handlers[:]:
+        try:
+            handler.close()
+        except Exception:
+            pass
+        root_logger.removeHandler(handler)
+
+    # Also call logging.shutdown() for complete cleanup
+    logging.shutdown()
+
+
 def configure_from_env() -> None:
     """
     Configure logging from environment variables

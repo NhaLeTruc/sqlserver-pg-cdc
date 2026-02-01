@@ -50,7 +50,16 @@ class TypeConversionTransformer(Transformer):
             try:
                 converted = self.target_type(value)
 
-                if type(value) != type(converted):
+                # BUG-9: Handle bool/int subclass issue for reliable type comparison
+                original_type = type(value)
+                converted_type = type(converted)
+                # Use 'is' for type comparison to handle bool (subclass of int) correctly
+                type_changed = original_type is not converted_type
+                # Special case: bool and int are different types even though bool is subclass of int
+                if original_type is bool or converted_type is bool:
+                    type_changed = original_type is not converted_type
+
+                if type_changed:
                     TRANSFORMATIONS_APPLIED.labels(
                         transformer_type=self.get_type(),
                         field_pattern=context.get("field_name", "unknown"),
@@ -176,8 +185,9 @@ class TransformationPipeline:
                     if pattern.match(field_name):
                         # Apply all transformers for this pattern
                         for transformer in transformers:
+                            # BUG-10: Copy row in context to prevent mutation of original
                             value = transformer.transform(
-                                value, {"field_name": field_name, "row": row}
+                                value, {"field_name": field_name, "row": row.copy()}
                             )
 
                 transformed[field_name] = value

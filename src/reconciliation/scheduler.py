@@ -200,7 +200,7 @@ def reconcile_job_wrapper(
     try:
         if use_connection_pool:
             # Use connection pooling for better performance
-            from utils.db_pool import get_postgres_pool, get_sqlserver_pool
+            from src.utils.db_pool import get_postgres_pool, get_sqlserver_pool
 
             postgres_pool = get_postgres_pool()
             sqlserver_pool = get_sqlserver_pool()

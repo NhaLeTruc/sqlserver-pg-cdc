@@ -7,6 +7,7 @@ checksum state across reconciliation runs.
 
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -185,6 +186,6 @@ class IncrementalChecksumTracker:
 
     def _get_state_file(self, table: str) -> Path:
         """Get state file path for table."""
-        # Sanitize table name for filesystem
-        safe_table_name = table.replace("/", "_").replace("\\", "_")
+        # BUG-12: Sanitize table name for filesystem - handle all OS special chars
+        safe_table_name = re.sub(r'[/\\:*?"<>|]', '_', table)
         return self.state_dir / f"{safe_table_name}_checksum_state.json"

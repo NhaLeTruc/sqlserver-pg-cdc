@@ -111,11 +111,16 @@ def retry_with_backoff(
                     )
 
                     # Call retry callback if provided
+                    # BUG-11: Note - callbacks should not raise exceptions as they are
+                    # logged but otherwise ignored. If metrics recording is critical,
+                    # ensure the callback handles its own exceptions appropriately.
                     if on_retry:
                         try:
                             on_retry(attempt + 1, e, delay)
                         except Exception as callback_error:
-                            logger.error(f"Error in retry callback: {callback_error}")
+                            logger.error(
+                                f"Error in retry callback (metrics may not be recorded): {callback_error}"
+                            )
 
                     # Wait before retrying
                     time.sleep(delay)
@@ -255,11 +260,16 @@ def retry_database_operation(
                     )
 
                     # Call retry callback if provided
+                    # BUG-11: Note - callbacks should not raise exceptions as they are
+                    # logged but otherwise ignored. If metrics recording is critical,
+                    # ensure the callback handles its own exceptions appropriately.
                     if on_retry:
                         try:
                             on_retry(attempt + 1, e, delay)
                         except Exception as callback_error:
-                            logger.error(f"Error in retry callback: {callback_error}")
+                            logger.error(
+                                f"Error in retry callback (metrics may not be recorded): {callback_error}"
+                            )
 
                     # Wait before retrying
                     time.sleep(delay)

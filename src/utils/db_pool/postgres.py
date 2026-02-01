@@ -72,7 +72,13 @@ class PostgresConnectionPool(BaseConnectionPool):
                 cursor.execute("SELECT 1")
                 cursor.fetchone()
             return True
-        except Exception:
+        except (psycopg2.Error, psycopg2.Warning):
+            # BUG-8: Only catch specific database exceptions
+            return False
+        except Exception as e:
+            # BUG-8: Re-raise critical exceptions
+            if isinstance(e, (SystemExit, KeyboardInterrupt, GeneratorExit)):
+                raise
             return False
 
     def _close_connection(self, conn: psycopg2.extensions.connection) -> None:

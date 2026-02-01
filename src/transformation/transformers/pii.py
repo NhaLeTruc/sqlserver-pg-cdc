@@ -8,6 +8,7 @@ Provides transformers for masking personally identifiable information
 import hashlib
 import logging
 import re
+import secrets
 from typing import Any
 
 from .base import (
@@ -80,7 +81,8 @@ class PIIMaskingTransformer(Transformer):
                     transformer_type=self.get_type(),
                     error_type=type(e).__name__,
                 ).inc()
-                logger.warning(f"PII masking failed for {field_name}: {e}")
+                # SEC-7: Don't log field names to avoid leaking PII field information
+                logger.warning(f"PII masking failed: {type(e).__name__}")
                 return value
 
     def _mask_email(self, email: str) -> str:
@@ -210,21 +212,47 @@ class HashingTransformer(Transformer):
     transformation of identifiers.
     """
 
+    # SEC-2: Only allow cryptographically secure hash algorithms
+    ALLOWED_ALGORITHMS = frozenset({"sha256", "sha384", "sha512", "blake2b", "blake2s"})
+    MIN_SALT_LENGTH = 8
+
     def __init__(
         self,
         algorithm: str = "sha256",
-        salt: str = "",
+        salt: str | None = None,
         truncate: int | None = None,
     ):
         """
         Initialize hashing transformer.
 
         Args:
-            algorithm: Hash algorithm (sha256, sha512, md5, etc.)
-            salt: Salt to add to values before hashing
+            algorithm: Hash algorithm (sha256, sha384, sha512, blake2b, blake2s)
+            salt: Salt to add to values before hashing. If None, a random salt is generated.
             truncate: Optional truncation length for hash output
+
+        Raises:
+            ValueError: If algorithm is insecure or salt is too short
         """
-        self.algorithm = algorithm
+        # SEC-2: Reject weak/insecure hash algorithms
+        if algorithm.lower() not in self.ALLOWED_ALGORITHMS:
+            raise ValueError(
+                f"Insecure hash algorithm: {algorithm}. "
+                f"Allowed algorithms: {', '.join(sorted(self.ALLOWED_ALGORITHMS))}"
+            )
+
+        # SEC-3: Require strong salts
+        if salt is None:
+            salt = secrets.token_hex(16)
+            logger.warning(
+                "No salt provided to HashingTransformer. Generated random salt. "
+                "For consistent hashing across runs, provide an explicit salt."
+            )
+        elif len(salt) < self.MIN_SALT_LENGTH:
+            raise ValueError(
+                f"Salt must be at least {self.MIN_SALT_LENGTH} characters long"
+            )
+
+        self.algorithm = algorithm.lower()
         self.salt = salt
         self.truncate = truncate
 

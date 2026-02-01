@@ -13,6 +13,7 @@ from typing import Any
 from opentelemetry import trace
 from prometheus_client import Counter, Histogram
 
+from src.utils.sql_safety import validate_identifier, validate_integer_param
 from src.utils.tracing import trace_operation
 
 from .state import IncrementalChecksumTracker
@@ -192,7 +193,13 @@ def calculate_checksum_chunked(
 
     Returns:
         Checksum hash
+
+    Raises:
+        ValueError: If chunk_size is not a positive integer or identifiers are invalid
     """
+    # SEC-4: Validate chunk_size to prevent SQL injection
+    validate_integer_param(chunk_size, "chunk_size", min_value=1)
+
     with trace_operation(
         "calculate_checksum_chunked",
         kind=trace.SpanKind.CLIENT,
@@ -208,6 +215,9 @@ def calculate_checksum_chunked(
         offset = 0
 
         while True:
+            # SEC-4: Validate offset before each iteration
+            validate_integer_param(offset, "offset", min_value=0)
+
             # Fetch chunk
             if db_type == "postgresql":
                 query = f"""
@@ -262,6 +272,9 @@ def _get_db_type(cursor: Any) -> str:
 
 def _quote_identifier(cursor: Any, identifier: str, db_type: str) -> str:
     """Quote identifier based on database type."""
+    # Validate identifier to prevent SQL injection
+    validate_identifier(identifier)
+
     if db_type == "postgresql":
         return f'"{identifier}"'
     elif db_type == "sqlserver":

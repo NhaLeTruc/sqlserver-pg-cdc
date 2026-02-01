@@ -6,6 +6,7 @@ pipelines for common use cases (PII masking, GDPR compliance, etc.).
 """
 
 import logging
+import secrets
 
 from .pii import HashingTransformer, PIIMaskingTransformer
 from .types import TransformationPipeline
@@ -13,18 +14,31 @@ from .types import TransformationPipeline
 logger = logging.getLogger(__name__)
 
 
-def create_pii_pipeline(salt: str = "default_salt") -> TransformationPipeline:
+def create_pii_pipeline(salt: str | None = None) -> TransformationPipeline:
     """
     Create standard PII transformation pipeline.
 
     This is a pre-configured pipeline for common PII masking scenarios.
 
     Args:
-        salt: Salt for hashing transformations
+        salt: Salt for hashing transformations. If None, a cryptographically
+              secure random salt is generated (note: this means hashes won't
+              be consistent across pipeline instances).
 
     Returns:
         Configured TransformationPipeline
+
+    Raises:
+        ValueError: If salt is provided but is less than 8 characters
     """
+    # SEC-3: Generate secure salt if not provided
+    if salt is None:
+        salt = secrets.token_hex(16)
+        logger.warning(
+            "No salt provided to create_pii_pipeline. Generated random salt. "
+            "For consistent hashing across runs, provide an explicit salt."
+        )
+
     pipeline = TransformationPipeline()
 
     # Mask PII fields
@@ -51,18 +65,31 @@ def create_pii_pipeline(salt: str = "default_salt") -> TransformationPipeline:
     return pipeline
 
 
-def create_gdpr_pipeline(salt: str = "gdpr_salt") -> TransformationPipeline:
+def create_gdpr_pipeline(salt: str | None = None) -> TransformationPipeline:
     """
     Create GDPR-compliant transformation pipeline.
 
     Pseudonymizes personal data while maintaining data utility.
 
     Args:
-        salt: Salt for hashing transformations
+        salt: Salt for hashing transformations. If None, a cryptographically
+              secure random salt is generated (note: this means hashes won't
+              be consistent across pipeline instances).
 
     Returns:
         Configured TransformationPipeline
+
+    Raises:
+        ValueError: If salt is provided but is less than 8 characters
     """
+    # SEC-3: Generate secure salt if not provided
+    if salt is None:
+        salt = secrets.token_hex(16)
+        logger.warning(
+            "No salt provided to create_gdpr_pipeline. Generated random salt. "
+            "For consistent hashing across runs, provide an explicit salt."
+        )
+
     pipeline = TransformationPipeline()
 
     # Pseudonymize identifiable information

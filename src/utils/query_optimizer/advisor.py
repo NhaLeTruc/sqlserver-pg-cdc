@@ -7,6 +7,8 @@ and generating database-specific DDL statements for creating those indexes.
 
 from dataclasses import dataclass
 
+from src.utils.sql_safety import quote_identifier, validate_identifier
+
 
 @dataclass
 class IndexRecommendation:
@@ -140,12 +142,26 @@ class IndexAdvisor:
     @staticmethod
     def _generate_postgres_index_ddl(recommendation: IndexRecommendation) -> str:
         """Generate PostgreSQL index DDL."""
-        # Index name
+        # Validate all identifiers
+        validate_identifier(recommendation.table_name)
+        for col in recommendation.column_names:
+            validate_identifier(col)
+        if recommendation.include_columns:
+            for col in recommendation.include_columns:
+                validate_identifier(col)
+        if recommendation.index_type not in ("btree", "hash", "gin", "gist", "brin"):
+            raise ValueError(f"Invalid index type: {recommendation.index_type}")
+
+        # Index name (validated identifiers are safe for concatenation)
         columns_str = "_".join(recommendation.column_names)
         index_name = f"ix_{recommendation.table_name}_{columns_str}"
+        validate_identifier(index_name)
 
-        # Column list
-        columns = ", ".join(recommendation.column_names)
+        # Quote identifiers
+        quoted_table = quote_identifier(recommendation.table_name, "postgresql")
+        quoted_index = quote_identifier(index_name, "postgresql")
+        quoted_columns = [quote_identifier(col, "postgresql") for col in recommendation.column_names]
+        columns = ", ".join(quoted_columns)
 
         # Index type
         index_type_clause = ""
@@ -155,17 +171,19 @@ class IndexAdvisor:
         # INCLUDE clause
         include_clause = ""
         if recommendation.include_columns:
-            include_cols = ", ".join(recommendation.include_columns)
+            quoted_include = [quote_identifier(col, "postgresql") for col in recommendation.include_columns]
+            include_cols = ", ".join(quoted_include)
             include_clause = f" INCLUDE ({include_cols})"
 
         # WHERE clause for partial indexes
+        # Note: where_clause is passed through as-is; callers must ensure it's safe
         where_clause = ""
         if recommendation.where_clause:
             where_clause = f" WHERE {recommendation.where_clause}"
 
         ddl = (
-            f"CREATE INDEX CONCURRENTLY {index_name}\n"
-            f"ON {recommendation.table_name}{index_type_clause} ({columns})"
+            f"CREATE INDEX CONCURRENTLY {quoted_index}\n"
+            f"ON {quoted_table}{index_type_clause} ({columns})"
             f"{include_clause}{where_clause};"
         )
 
@@ -174,27 +192,41 @@ class IndexAdvisor:
     @staticmethod
     def _generate_sqlserver_index_ddl(recommendation: IndexRecommendation) -> str:
         """Generate SQL Server index DDL."""
-        # Index name
+        # Validate all identifiers
+        validate_identifier(recommendation.table_name)
+        for col in recommendation.column_names:
+            validate_identifier(col)
+        if recommendation.include_columns:
+            for col in recommendation.include_columns:
+                validate_identifier(col)
+
+        # Index name (validated identifiers are safe for concatenation)
         columns_str = "_".join(recommendation.column_names)
         index_name = f"IX_{recommendation.table_name}_{columns_str}"
+        validate_identifier(index_name)
 
-        # Column list
-        columns = ", ".join(recommendation.column_names)
+        # Quote identifiers
+        quoted_table = quote_identifier(recommendation.table_name, "sqlserver")
+        quoted_index = quote_identifier(index_name, "sqlserver")
+        quoted_columns = [quote_identifier(col, "sqlserver") for col in recommendation.column_names]
+        columns = ", ".join(quoted_columns)
 
         # INCLUDE clause
         include_clause = ""
         if recommendation.include_columns:
-            include_cols = ", ".join(recommendation.include_columns)
+            quoted_include = [quote_identifier(col, "sqlserver") for col in recommendation.include_columns]
+            include_cols = ", ".join(quoted_include)
             include_clause = f"\nINCLUDE ({include_cols})"
 
         # WHERE clause for filtered indexes
+        # Note: where_clause is passed through as-is; callers must ensure it's safe
         where_clause = ""
         if recommendation.where_clause:
             where_clause = f"\nWHERE {recommendation.where_clause}"
 
         ddl = (
-            f"CREATE NONCLUSTERED INDEX {index_name}\n"
-            f"ON dbo.{recommendation.table_name} ({columns})"
+            f"CREATE NONCLUSTERED INDEX {quoted_index}\n"
+            f"ON [dbo].{quoted_table} ({columns})"
             f"{include_clause}{where_clause}\n"
             f"WITH (ONLINE = ON, FILLFACTOR = 90);"
         )

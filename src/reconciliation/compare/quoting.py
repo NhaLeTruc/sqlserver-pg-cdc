@@ -15,6 +15,12 @@ except ImportError:
     PSYCOPG2_AVAILABLE = False
 
 
+# SEC-6: Strict ASCII-only pattern for SQL identifiers (no Unicode via \w)
+VALID_IDENTIFIER_PATTERN = re.compile(
+    r'^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)?$'
+)
+
+
 def _quote_postgres_identifier(identifier: str, cursor: Any = None) -> str:
     """
     Quote PostgreSQL identifier using psycopg2.sql.Identifier for SQL injection protection
@@ -29,8 +35,9 @@ def _quote_postgres_identifier(identifier: str, cursor: Any = None) -> str:
     Raises:
         ValueError: If identifier format is invalid
     """
-    # Validate identifier format first
-    if not re.match(r'^[\w\.\[\]]+$', identifier):
+    # Validate identifier format first (strip brackets for SQL Server compatibility)
+    clean_identifier = identifier.replace('[', '').replace(']', '')
+    if not VALID_IDENTIFIER_PATTERN.match(clean_identifier):
         raise ValueError(f"Invalid identifier format: {identifier}")
 
     if not PSYCOPG2_AVAILABLE or cursor is None:
@@ -71,8 +78,9 @@ def _quote_sqlserver_identifier(identifier: str) -> str:
     Raises:
         ValueError: If identifier format is invalid
     """
-    # Validate identifier format
-    if not re.match(r'^[\w\.\[\]]+$', identifier):
+    # Validate identifier format (strip brackets before validation)
+    clean_identifier = identifier.replace('[', '').replace(']', '')
+    if not VALID_IDENTIFIER_PATTERN.match(clean_identifier):
         raise ValueError(f"Invalid identifier format: {identifier}")
 
     # Remove existing brackets if present

@@ -40,7 +40,7 @@ class VaultClient:
             ValueError: If vault_addr or vault_token are not provided
         """
         self.vault_addr = vault_addr or os.getenv("VAULT_ADDR")
-        self.vault_token = vault_token or os.getenv("VAULT_TOKEN")
+        self._vault_token = vault_token or os.getenv("VAULT_TOKEN")
         self.namespace = namespace
 
         if not self.vault_addr:
@@ -49,7 +49,7 @@ class VaultClient:
                 "or pass vault_addr parameter."
             )
 
-        if not self.vault_token:
+        if not self._vault_token:
             raise ValueError(
                 "Vault token not provided. Set VAULT_TOKEN environment variable "
                 "or pass vault_token parameter."
@@ -58,16 +58,22 @@ class VaultClient:
         # Remove trailing slash from vault_addr
         self.vault_addr = self.vault_addr.rstrip("/")
 
-        # Setup headers
-        self.headers = {
-            "X-Vault-Token": self.vault_token,
+        logger.info(f"Initialized Vault client for {self.vault_addr}")
+
+    def __repr__(self) -> str:
+        """Return safe string representation without exposing token."""
+        return f"VaultClient(vault_addr={self.vault_addr!r}, namespace={self.namespace!r})"
+
+    @property
+    def _headers(self) -> dict[str, str]:
+        """Generate headers on-demand to avoid storing token in a dict."""
+        headers = {
+            "X-Vault-Token": self._vault_token,
             "Content-Type": "application/json"
         }
-
         if self.namespace:
-            self.headers["X-Vault-Namespace"] = self.namespace
-
-        logger.info(f"Initialized Vault client for {self.vault_addr}")
+            headers["X-Vault-Namespace"] = self.namespace
+        return headers
 
     def get_secret(self, secret_path: str) -> dict[str, Any]:
         """
@@ -115,7 +121,7 @@ class VaultClient:
 
         logger.debug(f"Fetching secret from: {url}")
 
-        response = requests.get(url, headers=self.headers, timeout=10)
+        response = requests.get(url, headers=self._headers, timeout=10)
 
         if response.status_code == 404:
             raise ValueError(f"Secret not found at path: {secret_path}")

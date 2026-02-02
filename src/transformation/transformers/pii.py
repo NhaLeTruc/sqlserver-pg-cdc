@@ -126,6 +126,8 @@ class PIIMaskingTransformer(Transformer):
         # Extract all digits
         digits = re.sub(r"\D", "", phone)
 
+        # Phone numbers with fewer than 4 digits are not valid phone numbers,
+        # so return them unchanged rather than treating them as PII
         if len(digits) < 4:
             return phone
 
@@ -156,7 +158,11 @@ class PIIMaskingTransformer(Transformer):
         digits = re.sub(r"\D", "", ssn)
 
         if len(digits) != 9:
-            # Not a valid SSN, mask entire value
+            # CQ-10: Log when SSN validation fails for data quality monitoring
+            logger.debug(
+                f"Invalid SSN format detected: expected 9 digits, got {len(digits)}. "
+                "Masking entire value."
+            )
             return self.mask_char * len(ssn)
 
         if self.preserve_format and "-" in ssn:
@@ -202,19 +208,44 @@ class PIIMaskingTransformer(Transformer):
 
     def _mask_ip_address(self, ip: str) -> str:
         """
-        Mask IP address keeping first octet.
+        Mask IP address preserving network prefix for anonymization.
+
+        For IPv4: Keep first octet, mask the rest.
+        For IPv6: Keep network prefix (first 4 groups), mask interface identifier.
 
         Examples:
             192.168.1.100 -> 192.***.*.***
             10.0.0.1 -> 10.*.*.*
+            2001:0db8:85a3:0000:0000:8a2e:0370:7334 -> 2001:0db8:85a3:0000:****:****:****:****
+            fe80::1 -> fe80:****:****:****
         """
         # IPv4 pattern
         if re.match(r"^\d+\.\d+\.\d+\.\d+$", ip):
             parts = ip.split(".")
             return f"{parts[0]}.{self.mask_char * 3}.{self.mask_char}.{self.mask_char * 3}"
 
-        # IPv6 or other - mask most of it
-        return ip[:4] + self.mask_char * (len(ip) - 4)
+        # CQ-9: Proper IPv6 masking - keep network prefix, mask interface identifier
+        # IPv6 addresses have 8 groups separated by colons
+        if ":" in ip:
+            # Handle compressed IPv6 (::) by expanding first
+            if "::" in ip:
+                # Split on :: and expand with zeros
+                before, after = ip.split("::", 1)
+                before_parts = before.split(":") if before else []
+                after_parts = after.split(":") if after else []
+                missing = 8 - len(before_parts) - len(after_parts)
+                parts = before_parts + ["0000"] * missing + after_parts
+            else:
+                parts = ip.split(":")
+
+            if len(parts) >= 4:
+                # Keep first 4 groups (network prefix), mask the rest (interface ID)
+                masked_parts = parts[:4] + [self.mask_char * 4] * (len(parts) - 4)
+                return ":".join(masked_parts)
+
+        # Fallback for unrecognized format - mask most of it keeping prefix
+        prefix_len = min(4, len(ip) // 2)
+        return ip[:prefix_len] + self.mask_char * (len(ip) - prefix_len)
 
     def _luhn_check(self, card_number: str) -> bool:
         """

@@ -458,7 +458,7 @@ class TestSchedulerLifecycle:
 class TestSetupLogging:
     """Test setup_logging utility function"""
 
-    @patch('src.reconciliation.scheduler.logging.basicConfig')
+    @patch('src.reconciliation.scheduler.jobs.logging.basicConfig')
     def test_setup_logging_default_level(self, mock_basic_config):
         """Test setup_logging with default INFO level"""
         from src.reconciliation.scheduler import setup_logging
@@ -469,7 +469,7 @@ class TestSetupLogging:
         call_kwargs = mock_basic_config.call_args[1]
         assert call_kwargs['level'] == 20  # logging.INFO
 
-    @patch('src.reconciliation.scheduler.logging.basicConfig')
+    @patch('src.reconciliation.scheduler.jobs.logging.basicConfig')
     def test_setup_logging_debug_level(self, mock_basic_config):
         """Test setup_logging with DEBUG level"""
         from src.reconciliation.scheduler import setup_logging
@@ -479,7 +479,7 @@ class TestSetupLogging:
         call_kwargs = mock_basic_config.call_args[1]
         assert call_kwargs['level'] == 10  # logging.DEBUG
 
-    @patch('src.reconciliation.scheduler.logging.basicConfig')
+    @patch('src.reconciliation.scheduler.jobs.logging.basicConfig')
     def test_setup_logging_warning_level(self, mock_basic_config):
         """Test setup_logging with WARNING level"""
         from src.reconciliation.scheduler import setup_logging
@@ -489,7 +489,7 @@ class TestSetupLogging:
         call_kwargs = mock_basic_config.call_args[1]
         assert call_kwargs['level'] == 30  # logging.WARNING
 
-    @patch('src.reconciliation.scheduler.logging.basicConfig')
+    @patch('src.reconciliation.scheduler.jobs.logging.basicConfig')
     def test_setup_logging_error_level(self, mock_basic_config):
         """Test setup_logging with ERROR level"""
         from src.reconciliation.scheduler import setup_logging
@@ -499,7 +499,7 @@ class TestSetupLogging:
         call_kwargs = mock_basic_config.call_args[1]
         assert call_kwargs['level'] == 40  # logging.ERROR
 
-    @patch('src.reconciliation.scheduler.logging.basicConfig')
+    @patch('src.reconciliation.scheduler.jobs.logging.basicConfig')
     def test_setup_logging_format_and_dateformat(self, mock_basic_config):
         """Test setup_logging sets format and datefmt"""
         from src.reconciliation.scheduler import setup_logging

@@ -14,6 +14,9 @@ from .base import BaseConnectionPool
 class PostgresConnectionPool(BaseConnectionPool):
     """Connection pool for PostgreSQL databases."""
 
+    # CQ-11: Default connection timeout as class constant
+    DEFAULT_CONNECT_TIMEOUT = 10
+
     def __init__(
         self,
         host: str,
@@ -21,6 +24,7 @@ class PostgresConnectionPool(BaseConnectionPool):
         database: str,
         user: str,
         password: str,
+        connect_timeout: int | None = None,
         **kwargs: Any,
     ):
         """
@@ -32,6 +36,7 @@ class PostgresConnectionPool(BaseConnectionPool):
             database: Database name
             user: Username
             password: Password
+            connect_timeout: Connection timeout in seconds (default: 10)
             **kwargs: Additional arguments for BaseConnectionPool
         """
         self.host = host
@@ -39,6 +44,11 @@ class PostgresConnectionPool(BaseConnectionPool):
         self.database = database
         self.user = user
         self.password = password
+        # CQ-11: Make timeout configurable
+        self.connect_timeout = (
+            connect_timeout if connect_timeout is not None
+            else self.DEFAULT_CONNECT_TIMEOUT
+        )
 
         super().__init__(**kwargs)
 
@@ -56,7 +66,7 @@ class PostgresConnectionPool(BaseConnectionPool):
                 database=self.database,
                 user=self.user,
                 password=self.password,
-                connect_timeout=10,
+                connect_timeout=self.connect_timeout,
             )
             # Set autocommit to avoid transaction issues in pool
             conn.set_session(autocommit=True)

@@ -27,6 +27,61 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# CQ-13: Extract common retry logic to reduce code duplication
+def _calculate_delay_with_jitter(
+    attempt: int,
+    base_delay: float,
+    max_delay: float,
+    exponential_base: float,
+    jitter: bool,
+) -> float:
+    """
+    Calculate delay with exponential backoff and optional jitter.
+
+    Args:
+        attempt: Current attempt number (0-based)
+        base_delay: Initial delay in seconds
+        max_delay: Maximum delay in seconds
+        exponential_base: Base for exponential backoff
+        jitter: Whether to add random jitter
+
+    Returns:
+        Delay in seconds
+    """
+    delay = min(base_delay * (exponential_base ** attempt), max_delay)
+
+    if jitter:
+        jitter_amount = delay * 0.25
+        delay = delay + random.uniform(-jitter_amount, jitter_amount)
+        delay = max(0.1, delay)  # Ensure minimum delay
+
+    return delay
+
+
+def _handle_retry_callback(
+    on_retry: Callable[[int, Exception, float], None] | None,
+    attempt: int,
+    exception: Exception,
+    delay: float,
+) -> None:
+    """
+    Safely execute retry callback.
+
+    Args:
+        on_retry: Callback function or None
+        attempt: Current attempt number (1-based for user)
+        exception: The exception that triggered retry
+        delay: Delay before next attempt
+    """
+    if on_retry:
+        try:
+            on_retry(attempt, exception, delay)
+        except Exception as callback_error:
+            logger.error(
+                f"Error in retry callback (metrics may not be recorded): {callback_error}"
+            )
+
+
 def retry_with_backoff(
     max_retries: int = 3,
     base_delay: float = 1.0,
@@ -69,6 +124,7 @@ def retry_with_backoff(
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
             last_exception = None
+            func_name = getattr(func, '__name__', 'function')
 
             for attempt in range(max_retries + 1):
                 try:
@@ -77,12 +133,8 @@ def retry_with_backoff(
                 except Exception as e:
                     last_exception = e
 
-                    # Get function name safely
-                    func_name = getattr(func, '__name__', 'function')
-
                     # Check if this exception type is retryable
                     if retryable_exceptions and not isinstance(e, retryable_exceptions):
-                        # Non-retryable exception, raise immediately
                         logger.error(
                             f"Non-retryable exception in {func_name}: {type(e).__name__}: {e}"
                         )
@@ -96,40 +148,24 @@ def retry_with_backoff(
                         )
                         raise
 
-                    # Calculate delay with exponential backoff
-                    delay = min(base_delay * (exponential_base ** attempt), max_delay)
-
-                    # Add jitter if enabled (±25% of delay)
-                    if jitter:
-                        jitter_amount = delay * 0.25
-                        delay = delay + random.uniform(-jitter_amount, jitter_amount)
-                        delay = max(0.1, delay)  # Ensure minimum delay
+                    # CQ-13: Use extracted helper functions
+                    delay = _calculate_delay_with_jitter(
+                        attempt, base_delay, max_delay, exponential_base, jitter
+                    )
 
                     logger.warning(
                         f"Attempt {attempt + 1}/{max_retries} failed for {func_name}: "
                         f"{type(e).__name__}: {e}. Retrying in {delay:.2f}s..."
                     )
 
-                    # Call retry callback if provided
-                    # BUG-11: Note - callbacks should not raise exceptions as they are
-                    # logged but otherwise ignored. If metrics recording is critical,
-                    # ensure the callback handles its own exceptions appropriately.
-                    if on_retry:
-                        try:
-                            on_retry(attempt + 1, e, delay)
-                        except Exception as callback_error:
-                            logger.error(
-                                f"Error in retry callback (metrics may not be recorded): {callback_error}"
-                            )
-
-                    # Wait before retrying
+                    _handle_retry_callback(on_retry, attempt + 1, e, delay)
                     time.sleep(delay)
 
             # This should never be reached, but just in case
             if last_exception:
                 raise last_exception
             else:
-                raise RuntimeError(f"Unexpected error in retry logic for {func.__name__}")
+                raise RuntimeError(f"Unexpected error in retry logic for {func_name}")
 
         return wrapper
     return decorator
@@ -215,10 +251,15 @@ def retry_database_operation(
             cursor.execute(query)
             return cursor.fetchall()
     """
+    # CQ-13: Defaults for database operations
+    max_delay = 60.0
+    exponential_base = 2.0
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs) -> Any:
             last_exception = None
+            func_name = getattr(func, '__name__', 'function')
 
             for attempt in range(max_retries + 1):
                 try:
@@ -227,12 +268,8 @@ def retry_database_operation(
                 except Exception as e:
                     last_exception = e
 
-                    # Get function name safely
-                    func_name = getattr(func, '__name__', 'function')
-
                     # Check if this is a retryable database exception
                     if not is_retryable_db_exception(e):
-                        # Non-retryable exception (e.g., syntax error), raise immediately
                         logger.error(
                             f"Non-retryable database error in {func_name}: "
                             f"{type(e).__name__}: {e}"
@@ -247,11 +284,10 @@ def retry_database_operation(
                         )
                         raise
 
-                    # Calculate delay with exponential backoff and jitter
-                    delay = min(base_delay * (2.0 ** attempt), 60.0)
-                    jitter_amount = delay * 0.25
-                    delay = delay + random.uniform(-jitter_amount, jitter_amount)
-                    delay = max(0.1, delay)
+                    # CQ-13: Use extracted helper function for delay calculation
+                    delay = _calculate_delay_with_jitter(
+                        attempt, base_delay, max_delay, exponential_base, jitter=True
+                    )
 
                     logger.warning(
                         f"Retryable database error in {func_name} "
@@ -259,26 +295,15 @@ def retry_database_operation(
                         f"{type(e).__name__}: {e}. Retrying in {delay:.2f}s..."
                     )
 
-                    # Call retry callback if provided
-                    # BUG-11: Note - callbacks should not raise exceptions as they are
-                    # logged but otherwise ignored. If metrics recording is critical,
-                    # ensure the callback handles its own exceptions appropriately.
-                    if on_retry:
-                        try:
-                            on_retry(attempt + 1, e, delay)
-                        except Exception as callback_error:
-                            logger.error(
-                                f"Error in retry callback (metrics may not be recorded): {callback_error}"
-                            )
-
-                    # Wait before retrying
+                    # CQ-13: Use extracted helper function for callback handling
+                    _handle_retry_callback(on_retry, attempt + 1, e, delay)
                     time.sleep(delay)
 
             # This should never be reached
             if last_exception:
                 raise last_exception
             else:
-                raise RuntimeError(f"Unexpected error in retry logic for {func.__name__}")
+                raise RuntimeError(f"Unexpected error in retry logic for {func_name}")
 
         return wrapper
     return decorator

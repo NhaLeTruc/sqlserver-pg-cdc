@@ -90,6 +90,19 @@ class PooledConnection:
         self.last_used = datetime.utcnow()
         self.use_count += 1
 
+    def __repr__(self) -> str:
+        """
+        CQ-6: Safe string representation without exposing connection objects.
+
+        Returns:
+            String representation with metadata only
+        """
+        return (
+            f"PooledConnection(created={self.created_at.isoformat()}, "
+            f"last_used={self.last_used.isoformat()}, "
+            f"uses={self.use_count}, healthy={self.is_healthy})"
+        )
+
 
 class ConnectionPoolError(Exception):
     """Base exception for connection pool errors."""

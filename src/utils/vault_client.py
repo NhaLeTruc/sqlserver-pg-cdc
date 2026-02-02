@@ -140,10 +140,15 @@ class VaultClient:
 
         return secret_data
 
+    # CQ-12: Default ports as class constants instead of hardcoded values
+    DEFAULT_POSTGRESQL_PORT = 5432
+    DEFAULT_SQLSERVER_PORT = 1433
+
     def get_database_credentials(
         self,
         database_type: str,
-        database_name: str | None = None
+        database_name: str | None = None,
+        default_port: int | None = None,
     ) -> dict[str, Any]:
         """
         Fetch database credentials from Vault
@@ -151,10 +156,13 @@ class VaultClient:
         Args:
             database_type: Type of database ("sqlserver" or "postgresql")
             database_name: Optional database name (default: uses database_type)
+            default_port: Optional default port if not in secret (default: uses
+                         standard port for database type - 5432 for PostgreSQL,
+                         1433 for SQL Server)
 
         Returns:
             Dictionary containing database credentials:
-            - For SQL Server: server, database, username, password
+            - For SQL Server: server, database, username, password, port
             - For PostgreSQL: host, port, database, username, password
 
         Raises:
@@ -196,9 +204,14 @@ class VaultClient:
                 f"Missing required fields in secret: {', '.join(missing_fields)}"
             )
 
-        # Add default port if not specified
-        if database_type == "postgresql" and "port" not in secret_data:
-            secret_data["port"] = 5432
+        # CQ-12: Add default port if not specified, using configurable or type-based default
+        if "port" not in secret_data:
+            if default_port is not None:
+                secret_data["port"] = default_port
+            elif database_type == "postgresql":
+                secret_data["port"] = self.DEFAULT_POSTGRESQL_PORT
+            elif database_type == "sqlserver":
+                secret_data["port"] = self.DEFAULT_SQLSERVER_PORT
 
         logger.info(f"Successfully fetched {database_type} credentials from Vault")
 

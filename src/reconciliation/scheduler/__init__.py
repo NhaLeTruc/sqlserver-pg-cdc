@@ -5,22 +5,13 @@ Provides cron-like scheduling functionality for automated reconciliation
 using APScheduler.
 """
 
-import logging
-from datetime import datetime
-from pathlib import Path
-
-from apscheduler.schedulers.blocking import BlockingScheduler
-
 from .jobs import reconcile_job_wrapper, setup_logging
-from .scheduler import ReconciliationScheduler, logger
+from .scheduler import ReconciliationScheduler
 
+# CQ-7: Only export public API items, not internal imports like
+# BlockingScheduler, logging, datetime, Path
 __all__ = [
     'ReconciliationScheduler',
     'reconcile_job_wrapper',
     'setup_logging',
-    'BlockingScheduler',
-    'logger',
-    'logging',
-    'datetime',
-    'Path',
 ]

@@ -9,6 +9,71 @@ from datetime import UTC, datetime
 from typing import Any
 
 
+# CQ-4: Discrepancy type handlers for cleaner dispatch pattern
+class DiscrepancyType:
+    """Constants for discrepancy types."""
+
+    ROW_COUNT_MISMATCH = "ROW_COUNT_MISMATCH"
+    CHECKSUM_MISMATCH = "CHECKSUM_MISMATCH"
+
+
+def _create_row_count_discrepancy(
+    result: dict[str, Any],
+    severity_func: callable,
+) -> dict[str, Any]:
+    """
+    Create a row count mismatch discrepancy record.
+
+    Args:
+        result: Comparison result dictionary
+        severity_func: Function to calculate severity
+
+    Returns:
+        Discrepancy dictionary
+    """
+    difference = result.get("difference", 0)
+    severity = severity_func(
+        result.get("source_count", 0),
+        abs(difference)
+    )
+
+    return {
+        "table": result["table"],
+        "issue_type": DiscrepancyType.ROW_COUNT_MISMATCH,
+        "severity": severity,
+        "details": {
+            "source_count": result.get("source_count", 0),
+            "target_count": result.get("target_count", 0),
+            "missing_rows": abs(difference) if difference < 0 else 0,
+            "extra_rows": difference if difference > 0 else 0
+        },
+        "timestamp": result.get("timestamp", datetime.now(UTC).isoformat())
+    }
+
+
+def _create_checksum_discrepancy(result: dict[str, Any]) -> dict[str, Any]:
+    """
+    Create a checksum mismatch discrepancy record.
+
+    Args:
+        result: Comparison result dictionary
+
+    Returns:
+        Discrepancy dictionary
+    """
+    return {
+        "table": result["table"],
+        "issue_type": DiscrepancyType.CHECKSUM_MISMATCH,
+        "severity": "CRITICAL",
+        "details": {
+            "source_checksum": result.get("source_checksum", ""),
+            "target_checksum": result.get("target_checksum", ""),
+            "description": "Data corruption or modification detected"
+        },
+        "timestamp": result.get("timestamp", datetime.now(UTC).isoformat())
+    }
+
+
 def format_timestamp(timestamp: datetime) -> str:
     """
     Format timestamp for reports
@@ -76,40 +141,14 @@ def generate_report(comparison_results: list[dict[str, Any]]) -> dict[str, Any]:
         else:
             tables_mismatched += 1
 
-            # Add discrepancy for row count mismatch
+            # CQ-4: Use helper functions for cleaner discrepancy creation
             if not row_count_match:
-                difference = result.get("difference", 0)
-                severity = _calculate_severity(
-                    result.get("source_count", 0),
-                    abs(difference)
+                discrepancies.append(
+                    _create_row_count_discrepancy(result, _calculate_severity)
                 )
 
-                discrepancies.append({
-                    "table": result["table"],
-                    "issue_type": "ROW_COUNT_MISMATCH",
-                    "severity": severity,
-                    "details": {
-                        "source_count": result.get("source_count", 0),
-                        "target_count": result.get("target_count", 0),
-                        "missing_rows": abs(difference) if difference < 0 else 0,
-                        "extra_rows": difference if difference > 0 else 0
-                    },
-                    "timestamp": result.get("timestamp", datetime.now(UTC).isoformat())
-                })
-
-            # Add discrepancy for checksum mismatch
             if not checksum_match:
-                discrepancies.append({
-                    "table": result["table"],
-                    "issue_type": "CHECKSUM_MISMATCH",
-                    "severity": "CRITICAL",
-                    "details": {
-                        "source_checksum": result.get("source_checksum", ""),
-                        "target_checksum": result.get("target_checksum", ""),
-                        "description": "Data corruption or modification detected"
-                    },
-                    "timestamp": result.get("timestamp", datetime.now(UTC).isoformat())
-                })
+                discrepancies.append(_create_checksum_discrepancy(result))
 
     # Determine overall status
     status = "PASS" if tables_mismatched == 0 else "FAIL"
@@ -208,7 +247,7 @@ def _generate_recommendations(
 
     # Check for row count mismatches
     row_count_issues = [
-        d for d in discrepancies if d["issue_type"] == "ROW_COUNT_MISMATCH"
+        d for d in discrepancies if d["issue_type"] == DiscrepancyType.ROW_COUNT_MISMATCH
     ]
 
     if row_count_issues:
@@ -239,7 +278,7 @@ def _generate_recommendations(
 
     # Check for checksum mismatches
     checksum_issues = [
-        d for d in discrepancies if d["issue_type"] == "CHECKSUM_MISMATCH"
+        d for d in discrepancies if d["issue_type"] == DiscrepancyType.CHECKSUM_MISMATCH
     ]
 
     if checksum_issues:

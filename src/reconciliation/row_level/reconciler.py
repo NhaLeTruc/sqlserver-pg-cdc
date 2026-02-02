@@ -11,46 +11,43 @@ from datetime import UTC, datetime
 from typing import Any
 
 from opentelemetry import trace
-from prometheus_client import REGISTRY, Counter, Histogram
+from prometheus_client import Counter, Histogram
 
+from utils.metrics import get_or_create_metric
 from utils.tracing import get_tracer, trace_operation
 
 logger = logging.getLogger(__name__)
 tracer = get_tracer()
 
 
-# Metrics
-try:
-    ROW_LEVEL_DISCREPANCIES = Counter(
+# CQ-3: Use get_or_create_metric utility to reduce duplicate try-except blocks
+ROW_LEVEL_DISCREPANCIES = get_or_create_metric(
+    lambda: Counter(
         "row_level_discrepancies_total",
         "Total row-level discrepancies found",
         ["table", "discrepancy_type"],
-        registry=REGISTRY
-    )
-except ValueError:
-    # Metric already registered, get existing one
-    ROW_LEVEL_DISCREPANCIES = REGISTRY._names_to_collectors.get("row_level_discrepancies_total")
+    ),
+    "row_level_discrepancies_total",
+)
 
-try:
-    ROW_LEVEL_RECONCILIATION_TIME = Histogram(
+ROW_LEVEL_RECONCILIATION_TIME = get_or_create_metric(
+    lambda: Histogram(
         "row_level_reconciliation_seconds",
         "Time to perform row-level reconciliation",
         ["table"],
         buckets=[1, 5, 10, 30, 60, 120, 300, 600, 1800, 3600],
-        registry=REGISTRY
-    )
-except ValueError:
-    ROW_LEVEL_RECONCILIATION_TIME = REGISTRY._names_to_collectors.get("row_level_reconciliation_seconds")
+    ),
+    "row_level_reconciliation_seconds",
+)
 
-try:
-    ROW_COMPARISON_TIME = Histogram(
+ROW_COMPARISON_TIME = get_or_create_metric(
+    lambda: Histogram(
         "row_comparison_seconds",
         "Time to compare individual rows",
         buckets=[0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0],
-        registry=REGISTRY
-    )
-except ValueError:
-    ROW_COMPARISON_TIME = REGISTRY._names_to_collectors.get("row_comparison_seconds")
+    ),
+    "row_comparison_seconds",
+)
 
 
 @dataclass

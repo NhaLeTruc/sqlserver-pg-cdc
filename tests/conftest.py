@@ -11,9 +11,15 @@ Fixtures:
 
 import os
 import subprocess
+import sys
 import time
 from collections.abc import Generator
 from pathlib import Path
+
+# Add src directory to Python path for imports
+_src_path = Path(__file__).parent.parent / "src"
+if str(_src_path) not in sys.path:
+    sys.path.insert(0, str(_src_path))
 
 import psycopg2
 import pyodbc

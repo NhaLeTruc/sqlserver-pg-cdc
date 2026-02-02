@@ -9,7 +9,7 @@ import hashlib
 import logging
 from typing import Any
 
-from src.utils.retry import retry_database_operation
+from utils.retry import retry_database_operation
 
 logger = logging.getLogger(__name__)
 

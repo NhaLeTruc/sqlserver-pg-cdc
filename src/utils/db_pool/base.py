@@ -18,7 +18,7 @@ from typing import Any
 from opentelemetry import trace
 from prometheus_client import Counter, Gauge, Histogram
 
-from src.utils.tracing import trace_operation
+from utils.tracing import trace_operation
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +152,7 @@ class BaseConnectionPool:
         self._lock = threading.RLock()
         self._closed = False
         self._last_health_check = datetime.utcnow()
+        self._stop_event = threading.Event()
 
         # Initialize pool with minimum connections
         self._initialize_pool()
@@ -259,10 +260,13 @@ class BaseConnectionPool:
 
     def _health_check_worker(self) -> None:
         """Background worker to perform periodic health checks."""
-        while not self._closed:
+        while not self._stop_event.is_set():
             try:
-                time.sleep(self.health_check_interval)
-                self._perform_health_checks()
+                # Use wait with timeout instead of sleep for responsive shutdown
+                if self._stop_event.wait(timeout=self.health_check_interval):
+                    break  # Stop event was set
+                if not self._closed:
+                    self._perform_health_checks()
             except Exception as e:
                 logger.error(f"Health check worker error: {e}")
 
@@ -271,44 +275,42 @@ class BaseConnectionPool:
         if self._closed:
             return
 
+        # CONC-2: Drain pool atomically under lock, check health, return connections
         with self._lock:
-            # Get snapshot of current connections
-            connections_to_check = list(self._all_connections)
+            # Drain all idle connections from the pool atomically
+            idle_connections: list[PooledConnection] = []
+            while True:
+                try:
+                    conn = self._pool.get_nowait()
+                    idle_connections.append(conn)
+                except Empty:
+                    break
 
-        unhealthy_connections = []
+        # Check health outside the lock to avoid blocking acquire
+        healthy_connections: list[PooledConnection] = []
+        unhealthy_connections: list[PooledConnection] = []
 
-        for pooled_conn in connections_to_check:
-            # Only check connections that are currently in the pool (idle)
+        for pooled_conn in idle_connections:
             try:
-                # Non-blocking check if connection is in pool
-                if pooled_conn in self._pool.queue:
-                    if not self._check_connection_health(pooled_conn):
-                        unhealthy_connections.append(pooled_conn)
+                if self._check_connection_health(pooled_conn):
+                    healthy_connections.append(pooled_conn)
+                else:
+                    unhealthy_connections.append(pooled_conn)
             except Exception as e:
                 logger.warning(f"Error during health check: {e}")
+                unhealthy_connections.append(pooled_conn)
+
+        # Return healthy connections to pool under lock
+        with self._lock:
+            for pooled_conn in healthy_connections:
+                try:
+                    self._pool.put_nowait(pooled_conn)
+                except Exception as e:
+                    logger.error(f"Error returning connection to pool: {e}")
 
         # Recycle unhealthy connections
         for pooled_conn in unhealthy_connections:
             try:
-                # Remove from pool if present
-                temp_queue: Queue[PooledConnection] = Queue(maxsize=self.max_size)
-                while True:
-                    try:
-                        conn = self._pool.get_nowait()
-                        if conn != pooled_conn:
-                            temp_queue.put_nowait(conn)
-                    except Empty:
-                        break
-
-                # Put back all connections except the unhealthy one
-                while True:
-                    try:
-                        conn = temp_queue.get_nowait()
-                        self._pool.put_nowait(conn)
-                    except Empty:
-                        break
-
-                # Recycle the unhealthy connection
                 self._recycle_connection(pooled_conn)
                 logger.info("Recycled unhealthy connection")
             except Exception as e:
@@ -438,12 +440,23 @@ class BaseConnectionPool:
                                     f"No connection available within {self.acquire_timeout}s"
                                 )
 
-                    # Validate connection health
-                    if not self._check_connection_health(pooled_conn):
-                        logger.info("Connection unhealthy, recycling and retrying")
-                        self._recycle_connection(pooled_conn)
+                    # CONC-3: Track acquisition state and ensure cleanup in all paths
+                    try:
+                        # Validate connection health
+                        if not self._check_connection_health(pooled_conn):
+                            logger.info("Connection unhealthy, recycling and retrying")
+                            self._recycle_connection(pooled_conn)
+                            pooled_conn = None
+                            # Continue loop to try another connection
+                            continue
+                    except Exception as e:
+                        # Ensure connection is cleaned up on any exception
+                        logger.warning(f"Exception during health check: {e}")
+                        try:
+                            self._recycle_connection(pooled_conn)
+                        except Exception:
+                            pass
                         pooled_conn = None
-                        # Continue loop to try another connection
                         continue
 
                     # Connection is healthy, break out of loop
@@ -479,6 +492,13 @@ class BaseConnectionPool:
 
         logger.info(f"Closing connection pool '{self.pool_name}'")
         self._closed = True
+
+        # CONC-4: Explicitly stop the health check thread
+        self._stop_event.set()
+        if self._health_check_thread.is_alive():
+            self._health_check_thread.join(timeout=5.0)
+            if self._health_check_thread.is_alive():
+                logger.warning("Health check thread did not stop within timeout")
 
         with self._lock:
             # Close all connections

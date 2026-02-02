@@ -5,7 +5,7 @@ Provides JSON-formatted logging with correlation IDs, contextual information,
 and integration with monitoring systems.
 
 Usage:
-    from src.utils.logging import setup_logging, get_logger
+    from utils.logging import setup_logging, get_logger
 
     # Setup logging (call once at application startup)
     setup_logging(level="INFO", log_file="/var/log/cdc/app.log")

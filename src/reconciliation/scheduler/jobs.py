@@ -35,7 +35,7 @@ def reconcile_job_wrapper(
         validate_checksums: Whether to validate checksums
         use_connection_pool: Whether to use connection pooling (default: True)
     """
-    from src.reconciliation.report import export_report_json, generate_report
+    from reconciliation.report import export_report_json, generate_report
 
     timestamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     output_path = Path(output_dir) / f"reconcile_{timestamp}.json"
@@ -48,7 +48,7 @@ def reconcile_job_wrapper(
     try:
         if use_connection_pool:
             # Use connection pooling for better performance
-            from src.utils.db_pool import get_postgres_pool, get_sqlserver_pool
+            from utils.db_pool import get_postgres_pool, get_sqlserver_pool
 
             postgres_pool = get_postgres_pool()
             sqlserver_pool = get_sqlserver_pool()
@@ -144,7 +144,7 @@ def _reconcile_tables(
     Returns:
         Tuple of (comparison_results, failed_tables)
     """
-    from src.reconciliation.compare import reconcile_table
+    from reconciliation.compare import reconcile_table
 
     comparison_results = []
     failed_tables = []

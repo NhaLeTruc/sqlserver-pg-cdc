@@ -9,7 +9,7 @@ Provides resilient retry logic for transient failures with:
 - Callback support for metrics integration
 
 Usage:
-    from src.utils.retry import retry_with_backoff
+    from utils.retry import retry_with_backoff
 
     @retry_with_backoff(max_retries=3, base_delay=1.0)
     def database_operation():

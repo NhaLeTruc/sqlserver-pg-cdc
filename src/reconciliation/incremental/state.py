@@ -11,10 +11,11 @@ import re
 from datetime import UTC, datetime
 from pathlib import Path
 
+from filelock import FileLock
 from opentelemetry import trace
 from prometheus_client import Counter
 
-from src.utils.tracing import trace_operation
+from utils.tracing import trace_operation
 
 logger = logging.getLogger(__name__)
 
@@ -62,14 +63,16 @@ class IncrementalChecksumTracker:
             table=table,
         ):
             state_file = self._get_state_file(table)
+            lock_file = self._get_lock_file(table)
 
             if not state_file.exists():
                 logger.debug(f"No previous checksum state for table {table}")
                 return None
 
             try:
-                with open(state_file) as f:
-                    state = json.load(f)
+                with FileLock(lock_file):
+                    with open(state_file) as f:
+                        state = json.load(f)
 
                 last_run = datetime.fromisoformat(state["last_run"])
                 logger.debug(f"Last checksum for {table}: {last_run.isoformat()}")
@@ -92,13 +95,15 @@ class IncrementalChecksumTracker:
             Last checksum value, or None if never calculated
         """
         state_file = self._get_state_file(table)
+        lock_file = self._get_lock_file(table)
 
         if not state_file.exists():
             return None
 
         try:
-            with open(state_file) as f:
-                state = json.load(f)
+            with FileLock(lock_file):
+                with open(state_file) as f:
+                    state = json.load(f)
             return state.get("checksum")
         except (json.JSONDecodeError, KeyError) as e:
             logger.warning(f"Failed to load checksum for {table}: {e}")
@@ -132,6 +137,7 @@ class IncrementalChecksumTracker:
                 timestamp = datetime.now(UTC)
 
             state_file = self._get_state_file(table)
+            lock_file = self._get_lock_file(table)
 
             state = {
                 "table": table,
@@ -142,8 +148,9 @@ class IncrementalChecksumTracker:
             }
 
             try:
-                with open(state_file, "w") as f:
-                    json.dump(state, f, indent=2)
+                with FileLock(lock_file):
+                    with open(state_file, "w") as f:
+                        json.dump(state, f, indent=2)
 
                 logger.info(
                     f"Saved checksum state for {table}: "
@@ -164,10 +171,12 @@ class IncrementalChecksumTracker:
             table: Table name
         """
         state_file = self._get_state_file(table)
+        lock_file = self._get_lock_file(table)
 
-        if state_file.exists():
-            state_file.unlink()
-            logger.info(f"Cleared checksum state for table {table}")
+        with FileLock(lock_file):
+            if state_file.exists():
+                state_file.unlink()
+                logger.info(f"Cleared checksum state for table {table}")
 
     def list_tracked_tables(self) -> list[str]:
         """
@@ -189,3 +198,8 @@ class IncrementalChecksumTracker:
         # BUG-12: Sanitize table name for filesystem - handle all OS special chars
         safe_table_name = re.sub(r'[/\\:*?"<>|]', '_', table)
         return self.state_dir / f"{safe_table_name}_checksum_state.json"
+
+    def _get_lock_file(self, table: str) -> Path:
+        """Get lock file path for table state file."""
+        state_file = self._get_state_file(table)
+        return state_file.with_suffix(".lock")

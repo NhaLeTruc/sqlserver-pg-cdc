@@ -7,7 +7,7 @@ and generating database-specific DDL statements for creating those indexes.
 
 from dataclasses import dataclass
 
-from src.utils.sql_safety import quote_identifier, validate_identifier
+from utils.sql_safety import quote_identifier, validate_identifier
 
 
 @dataclass

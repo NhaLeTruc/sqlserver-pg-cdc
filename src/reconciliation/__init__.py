@@ -10,9 +10,9 @@ Components:
 - scheduler: Automated reconciliation scheduling
 
 Usage:
-    from src.reconciliation.compare import compare_row_counts, compare_checksums
-    from src.reconciliation.report import generate_report
-    from src.reconciliation.scheduler import ReconciliationScheduler
+    from reconciliation.compare import compare_row_counts, compare_checksums
+    from reconciliation.report import generate_report
+    from reconciliation.scheduler import ReconciliationScheduler
 """
 
 __version__ = "1.0.0"

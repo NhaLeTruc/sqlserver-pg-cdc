@@ -12,7 +12,7 @@ Available commands:
 
 import sys
 
-from src.utils.vault_client import VaultClient
+from utils.vault_client import VaultClient
 
 from .commands import cmd_report, cmd_run, cmd_schedule
 from .credentials import get_credentials_from_vault_or_env, setup_logging

@@ -8,7 +8,7 @@ full table reconciliation including optional checksum validation.
 from datetime import UTC, datetime
 from typing import Any
 
-from src.utils.retry import retry_database_operation
+from utils.retry import retry_database_operation
 
 from .checksum import calculate_checksum
 from .quoting import _quote_identifier

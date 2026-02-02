@@ -2,7 +2,7 @@
 Row count and checksum comparison logic for data reconciliation.
 
 BUG-7: This file now re-exports from the compare/ submodule for backward compatibility.
-New code should import directly from src.reconciliation.compare instead.
+New code should import directly from reconciliation.compare instead.
 
 This module provides functions to compare data between source and target databases:
 - Row count comparison
@@ -11,7 +11,7 @@ This module provides functions to compare data between source and target databas
 """
 
 # Re-export everything from the compare submodule for backward compatibility
-from src.reconciliation.compare import (
+from reconciliation.compare import (
     _get_db_type,
     _quote_identifier,
     _quote_postgres_identifier,

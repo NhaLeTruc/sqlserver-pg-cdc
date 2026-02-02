@@ -5,7 +5,7 @@ Provides optimized query generation for common reconciliation patterns
 including row counts and checksum calculations.
 """
 
-from src.utils.sql_safety import quote_identifier, quote_schema_table, validate_identifier
+from utils.sql_safety import quote_identifier, quote_schema_table, validate_identifier
 
 
 class QueryOptimizer:

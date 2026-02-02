@@ -2,7 +2,7 @@
 Row-level reconciliation for detailed discrepancy detection.
 
 BUG-7: This file now re-exports from the row_level/ submodule for backward compatibility.
-New code should import directly from src.reconciliation.row_level instead.
+New code should import directly from reconciliation.row_level instead.
 
 Identifies:
 - Missing rows (in source but not target)
@@ -14,7 +14,7 @@ Performance optimized for tables up to 10M rows using batching and streaming.
 """
 
 # Re-export everything from the row_level submodule for backward compatibility
-from src.reconciliation.row_level import (
+from reconciliation.row_level import (
     RowDiscrepancy,
     RowLevelReconciler,
     _format_value,

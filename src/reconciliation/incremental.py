@@ -2,7 +2,7 @@
 Incremental checksum calculation using CDC metadata.
 
 BUG-7: This file now re-exports from the incremental/ submodule for backward compatibility.
-New code should import directly from src.reconciliation.incremental instead.
+New code should import directly from reconciliation.incremental instead.
 
 Only checksums rows modified since last reconciliation run.
 Stores checksum state for incremental updates to achieve 10-100x speedup
@@ -10,7 +10,7 @@ on large tables with few changes.
 """
 
 # Re-export everything from the incremental submodule for backward compatibility
-from src.reconciliation.incremental import (
+from reconciliation.incremental import (
     IncrementalChecksumTracker,
     _calculate_delta_checksum,
     _calculate_full_checksum,

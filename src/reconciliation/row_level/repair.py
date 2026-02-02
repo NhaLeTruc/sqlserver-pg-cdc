@@ -11,7 +11,7 @@ from typing import Any
 
 from opentelemetry import trace
 
-from src.utils.tracing import trace_operation
+from utils.tracing import trace_operation
 
 from .reconciler import RowDiscrepancy
 

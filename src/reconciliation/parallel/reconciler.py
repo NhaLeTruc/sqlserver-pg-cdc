@@ -6,6 +6,7 @@ concurrently using ThreadPoolExecutor.
 """
 
 import logging
+import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, TimeoutError, as_completed
 from datetime import UTC, datetime
@@ -13,7 +14,7 @@ from typing import Any
 
 from opentelemetry import trace
 
-from src.utils.tracing import trace_operation
+from utils.tracing import trace_operation
 
 from .metrics import (
     PARALLEL_ACTIVE_WORKERS,
@@ -24,6 +25,12 @@ from .metrics import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class CancellationError(Exception):
+    """Raised when a task is cancelled via cancellation token."""
+
+    pass
 
 
 class ParallelReconciler:
@@ -51,6 +58,10 @@ class ParallelReconciler:
         self.max_workers = max_workers
         self.timeout_per_table = timeout_per_table
         self.fail_fast = fail_fast
+        # CONC-5: Lock for thread-safe metric updates
+        self._metrics_lock = threading.Lock()
+        # CONC-6: Cancellation tokens for worker threads
+        self._cancellation_tokens: dict[str, threading.Event] = {}
 
         logger.info(
             f"ParallelReconciler initialized: "
@@ -130,23 +141,31 @@ class ParallelReconciler:
                     f"with {self.max_workers} workers"
                 )
 
-                # Update queue size metric
-                PARALLEL_QUEUE_SIZE.set(len(tables))
+                # CONC-5: Update queue size metric with lock for atomicity
+                with self._metrics_lock:
+                    PARALLEL_QUEUE_SIZE.set(len(tables))
+
+                # CONC-6: Create cancellation tokens for each table
+                self._cancellation_tokens = {
+                    table: threading.Event() for table in tables
+                }
 
                 with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
-                    # Submit all tasks
+                    # Submit all tasks with their cancellation tokens
                     future_to_table = {
                         executor.submit(
                             self._reconcile_table_wrapper,
                             table,
                             reconcile_func,
+                            self._cancellation_tokens[table],
                             **reconcile_kwargs,
                         ): table
                         for table in tables
                     }
 
                     # Track active workers
-                    PARALLEL_ACTIVE_WORKERS.set(min(self.max_workers, len(tables)))
+                    with self._metrics_lock:
+                        PARALLEL_ACTIVE_WORKERS.set(min(self.max_workers, len(tables)))
 
                     # Collect results as they complete
                     completed_count = 0
@@ -154,11 +173,12 @@ class ParallelReconciler:
                         table = future_to_table[future]
                         completed_count += 1
 
-                        # Update queue and worker metrics
-                        PARALLEL_QUEUE_SIZE.set(len(tables) - completed_count)
-                        PARALLEL_ACTIVE_WORKERS.set(
-                            min(self.max_workers, len(tables) - completed_count)
-                        )
+                        # CONC-5: Update queue and worker metrics atomically
+                        with self._metrics_lock:
+                            PARALLEL_QUEUE_SIZE.set(len(tables) - completed_count)
+                            PARALLEL_ACTIVE_WORKERS.set(
+                                min(self.max_workers, len(tables) - completed_count)
+                            )
 
                         try:
                             result = future.result(timeout=self.timeout_per_table)
@@ -172,6 +192,11 @@ class ParallelReconciler:
                             )
 
                         except TimeoutError:
+                            # CONC-6: Signal cancellation to the worker thread
+                            if table in self._cancellation_tokens:
+                                self._cancellation_tokens[table].set()
+                                logger.debug(f"Signaled cancellation for table {table}")
+
                             results["timeout"] += 1
                             results["errors"].append(
                                 {
@@ -190,6 +215,9 @@ class ParallelReconciler:
 
                             if self.fail_fast:
                                 logger.warning("Fail-fast enabled, canceling remaining tasks")
+                                # Signal cancellation for all remaining tasks
+                                for t, token in self._cancellation_tokens.items():
+                                    token.set()
                                 break
 
                         except Exception as e:
@@ -211,11 +239,18 @@ class ParallelReconciler:
 
                             if self.fail_fast:
                                 logger.warning("Fail-fast enabled, canceling remaining tasks")
+                                # Signal cancellation for all remaining tasks
+                                for t, token in self._cancellation_tokens.items():
+                                    token.set()
                                 break
 
-                # Reset metrics
-                PARALLEL_ACTIVE_WORKERS.set(0)
-                PARALLEL_QUEUE_SIZE.set(0)
+                # Clear cancellation tokens
+                self._cancellation_tokens.clear()
+
+                # Reset metrics atomically
+                with self._metrics_lock:
+                    PARALLEL_ACTIVE_WORKERS.set(0)
+                    PARALLEL_QUEUE_SIZE.set(0)
 
                 # Finalize results
                 end_time = datetime.now(UTC)
@@ -238,6 +273,7 @@ class ParallelReconciler:
         self,
         table: str,
         reconcile_func: Callable,
+        cancellation_token: threading.Event,
         **kwargs,
     ) -> dict[str, Any]:
         """
@@ -246,6 +282,7 @@ class ParallelReconciler:
         Args:
             table: Table name
             reconcile_func: Function to reconcile the table
+            cancellation_token: Event to signal cancellation
             **kwargs: Additional arguments for reconcile_func
 
         Returns:
@@ -259,10 +296,27 @@ class ParallelReconciler:
             start_time = datetime.now(UTC)
 
             try:
+                # CONC-6: Check cancellation before starting
+                if cancellation_token.is_set():
+                    raise CancellationError(f"Task cancelled before starting for table {table}")
+
                 logger.debug(f"Starting reconciliation for table: {table}")
 
-                # Call the reconciliation function
-                result = reconcile_func(table=table, **kwargs)
+                # Call the reconciliation function with cancellation token if supported
+                # This allows the reconcile_func to periodically check for cancellation
+                # For backward compatibility, try without cancellation_token if function doesn't accept it
+                try:
+                    result = reconcile_func(
+                        table=table,
+                        cancellation_token=cancellation_token,
+                        **kwargs,
+                    )
+                except TypeError as e:
+                    if "cancellation_token" in str(e):
+                        # Function doesn't accept cancellation_token, call without it
+                        result = reconcile_func(table=table, **kwargs)
+                    else:
+                        raise
 
                 # Ensure result is a dictionary
                 if not isinstance(result, dict):

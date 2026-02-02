@@ -5,7 +5,7 @@ from typing import Any
 import pyodbc
 from opentelemetry import trace
 
-from src.utils.tracing import trace_operation
+from utils.tracing import trace_operation
 
 from .base import BaseConnectionPool
 

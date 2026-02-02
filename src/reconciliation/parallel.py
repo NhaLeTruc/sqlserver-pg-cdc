@@ -2,7 +2,7 @@
 Parallel table reconciliation for improved performance.
 
 BUG-7: This file now re-exports from the parallel/ submodule for backward compatibility.
-New code should import directly from src.reconciliation.parallel instead.
+New code should import directly from reconciliation.parallel instead.
 
 Processes multiple tables concurrently using ThreadPoolExecutor to reduce
 total reconciliation time by 3-5x.
@@ -20,7 +20,7 @@ Designed for tables up to 10M rows with safe concurrent database access.
 """
 
 # Re-export everything from the parallel submodule for backward compatibility
-from src.reconciliation.parallel import (
+from reconciliation.parallel import (
     ParallelReconciler,
     create_parallel_reconcile_job,
     estimate_optimal_workers,

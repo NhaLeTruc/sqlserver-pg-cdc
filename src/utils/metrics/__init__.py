@@ -5,7 +5,7 @@ This module provides utilities for publishing custom application metrics
 to Prometheus for monitoring and alerting.
 
 Usage:
-    from src.utils.metrics import MetricsPublisher, ReconciliationMetrics
+    from utils.metrics import MetricsPublisher, ReconciliationMetrics
 
     # Initialize publisher
     metrics = MetricsPublisher(port=9091)

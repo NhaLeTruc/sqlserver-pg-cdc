@@ -13,8 +13,8 @@ from typing import Any
 from opentelemetry import trace
 from prometheus_client import Counter, Histogram
 
-from src.utils.sql_safety import validate_identifier, validate_integer_param
-from src.utils.tracing import trace_operation
+from utils.sql_safety import validate_identifier, validate_integer_param
+from utils.tracing import trace_operation
 
 from .state import IncrementalChecksumTracker
 

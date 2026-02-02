@@ -10,7 +10,7 @@ import logging
 import os
 import sys
 
-from src.utils.vault_client import VaultClient
+from utils.vault_client import VaultClient
 
 logger = logging.getLogger(__name__)
 

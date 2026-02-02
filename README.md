@@ -99,7 +99,7 @@ The pipeline supports parameterized configuration for data flow tuning. Key conf
 - `DEBEZIUM_MAX_BATCH_SIZE` - Batch size for change capture (default: 2048)
 - `DEBEZIUM_MAX_QUEUE_SIZE` - Internal queue size (default: 8192)
 - `DEBEZIUM_POLL_INTERVAL_MS` - Transaction log polling interval (default: 500ms)
-- `DEBEZIUM_TASKS_MAX` - **Must be 1** for SQL Server CDC (see [configuration docs](docs/CONNECTOR_CONFIGURATION.md#why-tasksmax1-is-mandatory))
+- `DEBEZIUM_TASKS_MAX` - **Must be 1** for SQL Server CDC (see [configuration docs](docs/configs-connectors.md#why-tasksmax1-is-mandatory))
 
 **PostgreSQL Sink Connector:**
 
@@ -107,7 +107,7 @@ The pipeline supports parameterized configuration for data flow tuning. Key conf
 - `SINK_TASKS_MAX` - Number of parallel tasks (default: 3)
 - `SINK_CONNECTION_POOL_SIZE` - JDBC connection pool size (default: 10)
 
-See [**Connector Configuration Guide**](docs/CONNECTOR_CONFIGURATION.md) for:
+See [**Connector Configuration Guide**](docs/configs-connectors.md) for:
 
 - Complete parameter reference
 - Performance tuning matrices for different scenarios (low latency, high throughput, bursty workloads)
@@ -128,25 +128,21 @@ Once the environment is set up, the CDC pipeline will automatically:
 # Run unit, contract, property, integration, e2e, performance tests
 make test-lite
 
+# Run all tests
 .venv/bin/pytest tests/ -v
 
+# Run with coverage
 .venv/bin/pytest tests/ -v --cov=src --cov-report=html --cov-report=term
 
-.venv/bin/pytest tests/unit/ -v
-
-.venv/bin/pytest tests/contract/ -v
-
-.venv/bin/pytest tests/property/ -v
-
-.venv/bin/pytest tests/integration/ -v
-
-.venv/bin/pytest tests/e2e/ -v
-
-.venv/bin/pytest tests/performance/ -v
-
-.venv/bin/pytest tests/latency/ -v
-
-.venv/bin/pytest tests/load/ -v
+# Run specific test categories
+.venv/bin/pytest tests/unit/ -v           # Unit tests
+.venv/bin/pytest tests/contract/ -v       # Contract tests
+.venv/bin/pytest tests/property/ -v       # Property-based tests
+.venv/bin/pytest tests/integration/ -v    # Integration tests
+.venv/bin/pytest tests/e2e/ -v            # End-to-end tests
+.venv/bin/pytest tests/performance/ -v    # Performance benchmarks
+.venv/bin/pytest tests/latency/ -v        # Latency measurements
+.venv/bin/pytest tests/load/ -v           # Load/stress tests
 ```
 
 ## Linting
@@ -161,11 +157,13 @@ make lint
 sqlserver-pg-cdc/
 ├── src/                           # Source code for CDC pipeline components
 │   ├── reconciliation/            # Data reconciliation subsystem
+│   │   ├── cli/                  # CLI commands and argument parsing
 │   │   ├── compare/              # Row count and checksum comparison
 │   │   ├── report/               # Report generation modules
-│   │   ├── scheduler/            # Scheduled reconciliation
-│   │   ├── row_level/            # Row-by-row comparison
-│   │   └── parallel/             # Parallel execution
+│   │   ├── scheduler/            # Scheduled reconciliation jobs
+│   │   ├── row_level/            # Row-by-row comparison and repair
+│   │   ├── parallel/             # Parallel execution engine
+│   │   └── incremental/          # Incremental reconciliation with state
 │   ├── transformation/            # Data transformation framework
 │   │   └── transformers/         # PII masking, hashing, type conversion
 │   └── utils/                     # Shared utilities
@@ -174,7 +172,9 @@ sqlserver-pg-cdc/
 │       ├── query_optimizer/      # Query analysis and recommendations
 │       ├── logging/              # Structured logging framework
 │       ├── tracing/              # Distributed tracing (OpenTelemetry)
-│       └── vault_client.py       # HashiCorp Vault integration
+│       ├── vault_client.py       # HashiCorp Vault integration
+│       ├── retry.py              # Retry logic with exponential backoff
+│       └── sql_safety.py         # SQL injection protection utilities
 ├── tests/                         # Comprehensive test suite
 │   ├── unit/                     # Unit tests for individual components
 │   ├── contract/                 # Contract tests for interface validation
@@ -182,24 +182,73 @@ sqlserver-pg-cdc/
 │   ├── e2e/                      # End-to-end pipeline validation tests
 │   ├── performance/              # Performance benchmarking tests
 │   ├── property/                 # Property-based tests (Hypothesis)
-│   └── chaos/                    # Chaos engineering and recovery tests
+│   ├── latency/                  # Latency measurement tests
+│   ├── load/                     # Load and stress tests (Locust)
+│   └── conftest.py               # Pytest configuration and fixtures
+├── scripts/                       # Operational and utility scripts
+│   ├── bash/                     # Shell scripts for pipeline operations
+│   ├── python/                   # Python management scripts
+│   └── sql/                      # Database initialization scripts
+├── docker/                        # Docker configuration
+│   ├── docker-compose.yml        # Main services configuration
+│   ├── docker-compose.test.yml   # Test environment configuration
+│   ├── docker-compose.logging.yml # Logging stack (Loki/Promtail)
+│   └── configs/                  # Service configurations
+│       ├── debezium/             # Debezium connector configs
+│       ├── kafka-connect/        # JDBC sink connector configs
+│       ├── prometheus/           # Prometheus and alert rules
+│       ├── grafana/              # Grafana dashboards
+│       ├── vault/                # Vault policies and configuration
+│       └── templates/            # Config templates for generation
+├── configs/                       # Additional service configurations
+│   ├── grafana/                  # Grafana dashboards and provisioning
+│   ├── loki/                     # Loki log aggregation config
+│   └── promtail/                 # Promtail log collection config
+├── kafka-connect-transforms/      # Custom Kafka Connect SMTs (Maven)
+│   ├── pom.xml                   # Maven build configuration
+│   └── src/                      # Java source for AddDeletedField SMT
 ├── docs/                          # Documentation
-│   ├── architecture.md           # System architecture overview
-│   ├── module-structure.md       # Detailed module documentation
-│   ├── monitoring.md             # Monitoring and alerting guide
-│   └── operations.md             # Operational runbooks
-├── docker-compose.yml            # Docker services configuration
-├── Makefile                      # Build and task automation
-└── README.md                     # This file
+│   ├── development-architecture.md # System architecture overview
+│   ├── development-notes.md      # Development guidelines
+│   ├── configs-connectors.md     # Connector configuration reference
+│   ├── configs-vault.md          # Vault setup and usage
+│   ├── guides-monitoring.md      # Monitoring and alerting guide
+│   ├── guides-schema-evolution.md # Schema evolution handling
+│   ├── guides-testing.md         # Testing strategy guide
+│   ├── troubleshooting-part01.md # Troubleshooting guide (part 1)
+│   ├── troubleshooting-part02.md # Troubleshooting guide (part 2)
+│   └── runbooks/                 # Operational runbooks
+│       ├── disaster-recovery.md  # DR procedures and drills
+│       ├── operations.md         # Daily operations guide
+│       ├── quickstart.md         # Getting started guide
+│       ├── quickstart-vault.md   # Vault quickstart
+│       └── schema-evolutions.md  # Schema change procedures
+├── .github/workflows/             # CI/CD configuration
+│   ├── ci.yml                    # Main CI pipeline
+│   ├── docker-build.yml          # Docker image builds
+│   └── security-scan.yml         # Security scanning
+├── Makefile                       # Build and task automation
+└── README.md                      # This file
 ```
 
 ### Key Components
 
 **Reconciliation Module** (`src/reconciliation/`)
 
-- `compare.py`: Compares row counts and checksums between SQL Server source and PostgreSQL target to verify data integrity
-- `report.py`: Generates reconciliation reports with status summaries, discrepancy details, and actionable recommendations
-- `scheduler.py`: Provides APScheduler-based automation for periodic reconciliation jobs with interval and cron triggers
+- `cli/`: Command-line interface with argument parsing and credential handling
+- `compare/`: Row count comparison and checksum validation between source and target databases
+- `report/`: Report generation with multiple output formats (JSON, CSV, console)
+- `scheduler/`: APScheduler-based automation for periodic reconciliation jobs
+- `row_level/`: Row-by-row comparison with automatic repair capabilities
+- `parallel/`: Parallel execution engine for high-performance reconciliation
+- `incremental/`: Incremental reconciliation with state persistence for efficient updates
+
+**Transformation Module** (`src/transformation/`)
+
+- `transformers/`: Data transformation pipeline with PII masking, hashing, and type conversions
+  - `pii.py`: PII detection and masking transformers
+  - `types.py`: Type conversion transformers for SQL Server to PostgreSQL mappings
+  - `rules.py`: Configurable transformation rules engine
 
 **Utilities Module** (`src/utils/`)
 
@@ -209,8 +258,8 @@ sqlserver-pg-cdc/
 - `logging/`: Structured JSON logging with console and file formatters, contextual logging support
 - `tracing/`: Distributed tracing with OpenTelemetry and Jaeger integration for end-to-end visibility
 - `vault_client.py`: Secure credential management using HashiCorp Vault KV v2 secrets engine
-
-**See [docs/module-structure.md](docs/module-structure.md) for detailed module documentation and usage examples.**
+- `retry.py`: Configurable retry logic with exponential backoff for transient failures
+- `sql_safety.py`: SQL injection protection with database-native identifier quoting
 
 ### Operational Scripts
 
@@ -234,6 +283,8 @@ The project includes comprehensive operational scripts for managing the CDC pipe
 - `backup-databases.sh`: Automated backup script with compression, retention policy, and S3 upload support
 - `restore-databases.sh`: Automated restore script with point-in-time recovery and validation
 - `collect-diagnostics.sh`: Collect diagnostic information (logs, metrics, status) for troubleshooting
+- `reset-test-environment.sh`: Reset test environment to clean state for reproducible testing
+- `setup-pre-commit.sh`: Configure pre-commit hooks for code quality enforcement
 
 **Python Scripts** (`scripts/python/`)
 
@@ -243,6 +294,13 @@ The project includes comprehensive operational scripts for managing the CDC pipe
   - Scheduled mode for periodic reconciliation jobs with configurable intervals
   - Multiple output formats (JSON, CSV, console)
   - Comprehensive logging and metrics integration
+- `analyze_query_performance.py`: Query performance analysis and optimization recommendations
+- `diagnose_performance_test.py`: Performance test diagnostics and bottleneck identification
+- `reset_test_environment.py`: Reset test databases to clean state
+
+**SQL Scripts** (`scripts/sql/`)
+
+- `create_reconciliation_indexes.sql`: Create optimized indexes for reconciliation queries
 
 ### Custom Kafka Connect Transforms
 
@@ -265,19 +323,37 @@ This transform is essential for maintaining audit trails and supporting temporal
 
 The project includes multiple test layers to ensure reliability and robustness:
 
-- **Unit Tests**: Test individual components in isolation, validating core logic in reconciliation, vault client, logging, and metrics modules
-- **Contract Tests**: Verify interfaces between components, ensuring API contracts remain stable across changes
-- **Integration Tests**: Test component interactions including database connectivity, Kafka messaging, and end-to-end replication flows
-- **E2E Tests**: Full pipeline validation from SQL Server CDC capture through Kafka streaming to PostgreSQL sink
-- **Chaos Tests**: Validate system resilience and recovery behavior under failure conditions such as:
-  - Network partitions and connectivity failures
-  - Database service interruptions
-  - Kafka broker failures
-  - Container crashes and restarts
-  - Resource exhaustion scenarios
-- **Performance Tests**: Benchmark throughput and latency under various load conditions
+- **Unit Tests** (`tests/unit/`): Test individual components in isolation, validating core logic in reconciliation, vault client, logging, and metrics modules
+- **Contract Tests** (`tests/contract/`): Verify interfaces between components, ensuring API contracts remain stable across changes
+- **Property Tests** (`tests/property/`): Property-based testing with Hypothesis for edge cases, SQL injection safety, and data invariants
+- **Integration Tests** (`tests/integration/`): Test component interactions including database connectivity, Kafka messaging, and end-to-end replication flows
+- **E2E Tests** (`tests/e2e/`): Full pipeline validation from SQL Server CDC capture through Kafka streaming to PostgreSQL sink
+- **Performance Tests** (`tests/performance/`): Benchmark throughput and latency under various load conditions
+- **Latency Tests** (`tests/latency/`): Measure and validate end-to-end latency requirements
+- **Load Tests** (`tests/load/`): Stress testing and scalability validation using Locust
 
-> **Note**: _Performance and Chaos tests are still under active development and require further work to establish comprehensive baseline metrics and load scenarios_
+See [tests/README.md](tests/README.md) for detailed testing documentation and execution instructions.
+
+> **Note**: _Performance and Load tests are under active development to establish comprehensive baseline metrics and load scenarios_
+
+## CI/CD
+
+The project includes GitHub Actions workflows for continuous integration and deployment:
+
+- **ci.yml**: Main CI pipeline
+  - Runs on pull requests and pushes to main
+  - Executes unit, property, contract, and integration tests
+  - Performs code linting and type checking
+  - Generates code coverage reports
+
+- **docker-build.yml**: Docker image builds
+  - Builds and pushes container images
+  - Tags images based on branch and version
+
+- **security-scan.yml**: Security scanning
+  - Dependency vulnerability scanning
+  - Container image security scanning
+  - Code security analysis
 
 ## Contributing
 
@@ -287,18 +363,30 @@ When contributing to this project:
 2. Run linting with `make lint`
 3. Add appropriate tests for new features
 4. Follow the existing code style and conventions
+5. Use pre-commit hooks: `./scripts/bash/setup-pre-commit.sh`
 
 ## License
 
-[Add your license information here]
+MIT License - See [pyproject.toml](pyproject.toml) for details.
 
 ## Operations & Runbooks
 
 Comprehensive operational documentation is available in the `docs/runbooks/` directory:
 
 - [Disaster Recovery Runbook](docs/runbooks/disaster-recovery.md) - Complete data loss scenarios, restore procedures, and quarterly DR drills
-- [Troubleshooting Guide](docs/runbooks/troubleshooting.md) - Common issues, diagnostic procedures, and solutions
 - [Operations Runbook](docs/runbooks/operations.md) - Daily operations, maintenance windows, and change management
+- [Quickstart Guide](docs/runbooks/quickstart.md) - Getting started with the CDC pipeline
+- [Vault Quickstart](docs/runbooks/quickstart-vault.md) - HashiCorp Vault setup and integration
+- [Schema Evolution Guide](docs/runbooks/schema-evolutions.md) - Handling schema changes in production
+
+Additional documentation in `docs/`:
+
+- [Connector Configuration](docs/configs-connectors.md) - Complete connector parameter reference
+- [Vault Configuration](docs/configs-vault.md) - Vault setup and secret management
+- [Monitoring Guide](docs/guides-monitoring.md) - Prometheus metrics and Grafana dashboards
+- [Testing Guide](docs/guides-testing.md) - Test strategy and execution
+- [Troubleshooting Part 1](docs/troubleshooting-part01.md) - Common issues and solutions
+- [Troubleshooting Part 2](docs/troubleshooting-part02.md) - Advanced debugging
 
 ### Quick Operations Commands
 

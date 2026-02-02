@@ -514,10 +514,6 @@ class TestSetupLogging:
                 os.unlink(log_file)
 
 
-class TestGetLogger:
-    """Test get_logger function"""
-
-
 class TestContextLogger:
     """Test ContextLogger class"""
 

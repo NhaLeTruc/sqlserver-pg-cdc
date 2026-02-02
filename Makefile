@@ -1,4 +1,4 @@
-.PHONY: help start stop restart status clean init deploy test verify logs check lint format vault-init vault-status generate-configs validate-configs show-config clean-configs
+.PHONY: help start down restart status clean init deploy test verify logs check lint format vault-init vault-status generate-configs validate-configs show-config clean-configs
 
 # Default target
 .DEFAULT_GOAL := help
@@ -44,7 +44,7 @@ start: ## Start all Docker services
 	docker compose -f docker/docker-compose.yml up -d
 	@echo "$(GREEN)✓ Services started$(NC)"
 
-stop: ## Stop all Docker services
+down: ## Stop all Docker services
 	@echo "$(YELLOW)Stopping Docker services...$(NC)"
 	docker compose -f docker/docker-compose.yml down --volumes --remove-orphans
 	@echo "$(GREEN)✓ Services stopped$(NC)"
@@ -464,112 +464,3 @@ run-hooks: ## Run pre-commit on all files
 update-hooks: ## Update pre-commit hook versions
 	@echo "$(BLUE)Updating pre-commit hooks...$(NC)"
 	@pre-commit autoupdate
-
-##@ Query Optimization
-
-analyze-query: ## Analyze query performance (usage: make analyze-query TABLE=users)
-	@echo "$(BLUE)Analyzing query performance...$(NC)"
-ifndef TABLE
-	@echo "$(RED)Error: TABLE is required. Usage: make analyze-query TABLE=users$(NC)"
-	@exit 1
-endif
-	@python3 scripts/python/analyze_query_performance.py \
-		--database postgresql \
-		--table $(TABLE) \
-		--recommend-indexes \
-		--primary-keys id
-
-recommend-indexes: ## Generate index recommendations for reconciliation (usage: make recommend-indexes TABLE=users)
-	@echo "$(BLUE)Generating index recommendations...$(NC)"
-ifndef TABLE
-	@echo "$(RED)Error: TABLE is required. Usage: make recommend-indexes TABLE=users$(NC)"
-	@exit 1
-endif
-	@python3 scripts/python/analyze_query_performance.py \
-		--database postgresql \
-		--table $(TABLE) \
-		--recommend-indexes \
-		--primary-keys id \
-		--timestamp-column updated_at \
-		--status-column status
-
-apply-indexes-postgres: ## Apply indexes to PostgreSQL (usage: make apply-indexes-postgres)
-	@echo "$(BLUE)Applying PostgreSQL indexes...$(NC)"
-	@echo "$(YELLOW)⚠ Review scripts/sql/create_reconciliation_indexes.sql before applying$(NC)"
-	@read -p "Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
-	@docker exec -i cdc-postgres psql -U postgres -d warehouse_target < scripts/sql/create_reconciliation_indexes.sql
-	@echo "$(GREEN)✓ Indexes applied to PostgreSQL$(NC)"
-
-apply-indexes-sqlserver: ## Apply indexes to SQL Server (usage: make apply-indexes-sqlserver)
-	@echo "$(BLUE)Applying SQL Server indexes...$(NC)"
-	@echo "$(YELLOW)⚠ Review scripts/sql/create_reconciliation_indexes.sql before applying$(NC)"
-	@read -p "Continue? [y/N] " confirm && [ "$$confirm" = "y" ] || exit 1
-	@docker exec -i cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
-		-S localhost -U sa -P YourStrong!Passw0rd -C -d warehouse_source \
-		-i /scripts/sql/create_reconciliation_indexes.sql
-	@echo "$(GREEN)✓ Indexes applied to SQL Server$(NC)"
-
-test-row-count: ## Test optimized row count query (usage: make test-row-count TABLE=users)
-	@echo "$(BLUE)Testing row count optimization...$(NC)"
-ifndef TABLE
-	@echo "$(RED)Error: TABLE is required. Usage: make test-row-count TABLE=users$(NC)"
-	@exit 1
-endif
-	@python3 scripts/python/analyze_query_performance.py \
-		--database postgresql \
-		--table $(TABLE) \
-		--test-row-count \
-		--config .env
-
-optimize-stats-postgres: ## Update PostgreSQL statistics for better query planning
-	@echo "$(BLUE)Updating PostgreSQL statistics...$(NC)"
-	@docker exec cdc-postgres psql -U postgres -d warehouse_target \
-		-c "ANALYZE;"
-	@echo "$(GREEN)✓ PostgreSQL statistics updated$(NC)"
-
-optimize-stats-sqlserver: ## Update SQL Server statistics for better query planning
-	@echo "$(BLUE)Updating SQL Server statistics...$(NC)"
-	@docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd \
-		-S localhost -U sa -P YourStrong!Passw0rd -C -d warehouse_source \
-		-Q "EXEC sp_updatestats"
-	@echo "$(GREEN)✓ SQL Server statistics updated$(NC)"
-
-##@ Documentation
-
-docs: ## Generate/view documentation
-	@echo "$(BLUE)Documentation:$(NC)"
-	@echo "  - $(GREEN)Vault Integration:$(NC) docs/vault-integration.md"
-	@echo "  - $(GREEN)Quick Start:$(NC) docs/quick-start-vault.md"
-	@echo "  - $(GREEN)CDC Learnings:$(NC) docs/cdc-pipeline-setup-learnings.md"
-	@echo "  - $(GREEN)Operations:$(NC) docs/operations.md"
-
-##@ Utilities
-
-shell-kafka-connect: ## Open shell in Kafka Connect container
-	@docker exec -it cdc-kafka-connect bash
-
-shell-sqlserver: ## Open shell in SQL Server container
-	@docker exec -it cdc-sqlserver bash
-
-shell-postgres: ## Open shell in PostgreSQL container
-	@docker exec -it cdc-postgres bash
-
-shell-vault: ## Open shell in Vault container
-	@docker exec -it cdc-vault sh
-
-ps: ## Show all running containers
-	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-
-urls: ## Show all service URLs
-	@echo "$(BLUE)Service URLs:$(NC)"
-	@echo "  Kafka Connect: $(GREEN)http://localhost:8083$(NC)"
-	@echo "  Schema Registry: $(GREEN)http://localhost:8081$(NC)"
-	@echo "  Vault: $(GREEN)http://localhost:8200$(NC)"
-	@echo "  Control Center: $(GREEN)http://localhost:9021$(NC)"
-
-version: ## Show versions of all components
-	@echo "$(BLUE)Component Versions:$(NC)"
-	@echo -n "Docker Compose: "; docker compose version --short
-	@echo -n "SQL Server: "; docker exec cdc-sqlserver /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P YourStrong!Passw0rd -C -Q "SELECT @@VERSION" -h -1 2>/dev/null | head -1
-	@echo -n "PostgreSQL: "; docker exec cdc-postgres psql --version
-	@echo -n "Kafka: "; docker exec cdc-kafka kafka-broker-api-versions --version 2>&1 | head -1

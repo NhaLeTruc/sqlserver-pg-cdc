@@ -70,8 +70,11 @@ def calculate_checksum(cursor: Any, table_name: str, columns: list | None = None
     hasher = hashlib.sha256()
 
     for row in cursor:
-        # Convert row to string and update hash
-        row_str = "|".join(str(val) if val is not None else "NULL" for val in row)
+        # INEFF-3: Skip str() call if value is already a string
+        row_str = "|".join(
+            val if isinstance(val, str) else str(val) if val is not None else "NULL"
+            for val in row
+        )
         hasher.update(row_str.encode('utf-8'))
 
     return hasher.hexdigest()
@@ -186,6 +189,18 @@ def calculate_checksum_chunked(
     Processes table in chunks to avoid memory exhaustion on large tables.
     Memory usage bounded to chunk_size * row_size.
 
+    INEFF-8: Memory Requirements
+    ----------------------------
+    - Peak memory usage: approximately chunk_size * average_row_size bytes
+    - For tables with 100+ columns or BLOB/TEXT data, consider reducing chunk_size
+    - Default chunk_size of 10000 rows typically uses 10-100 MB depending on schema
+    - The hasher itself uses minimal memory (constant ~100 bytes for SHA256 state)
+
+    For very large tables (100M+ rows), consider:
+    - Using smaller chunk_size (1000-5000) to reduce memory pressure
+    - Running during off-peak hours to avoid impacting production workloads
+    - Monitoring memory usage during first runs to tune chunk_size
+
     Args:
         cursor: Database cursor (pyodbc or psycopg2)
         table_name: Name of the table
@@ -244,7 +259,11 @@ def calculate_checksum_chunked(
 
         # Process chunk
         for row in rows:
-            row_str = "|".join(str(val) if val is not None else "NULL" for val in row)
+            # INEFF-3: Skip str() call if value is already a string
+            row_str = "|".join(
+                val if isinstance(val, str) else str(val) if val is not None else "NULL"
+                for val in row
+            )
             hasher.update(row_str.encode('utf-8'))
             total_rows += 1
 

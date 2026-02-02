@@ -410,9 +410,12 @@ class RowLevelReconciler:
                         continue
 
                 # Handle string comparisons (case-sensitive)
+                # INEFF-7: Only strip if initial comparison fails (optimization)
                 if isinstance(source_val, str) and isinstance(target_val, str):
-                    if source_val.strip() != target_val.strip():
-                        modified.append(col)
+                    if source_val != target_val:
+                        # Strings differ - check if it's just whitespace difference
+                        if source_val.strip() != target_val.strip():
+                            modified.append(col)
                     continue
 
                 # General comparison

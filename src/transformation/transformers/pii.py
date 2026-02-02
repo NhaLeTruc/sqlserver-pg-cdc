@@ -133,15 +133,15 @@ class PIIMaskingTransformer(Transformer):
         masked_digits = self.mask_char * (len(digits) - 4) + digits[-4:]
 
         if self.preserve_format:
-            # Preserve original format by replacing digits in place
-            result = phone
+            # INEFF-1: Use list-based approach instead of O(n²) string slicing
+            chars = list(phone)
             digit_index = 0
             for i, char in enumerate(phone):
                 if char.isdigit():
                     if digit_index < len(masked_digits):
-                        result = result[:i] + masked_digits[digit_index] + result[i + 1 :]
+                        chars[i] = masked_digits[digit_index]
                         digit_index += 1
-            return result
+            return "".join(chars)
         else:
             return masked_digits
 
@@ -188,14 +188,15 @@ class PIIMaskingTransformer(Transformer):
         masked_digits = self.mask_char * (len(digits) - 4) + digits[-4:]
 
         if self.preserve_format:
-            result = card
+            # INEFF-1: Use list-based approach instead of O(n²) string slicing
+            chars = list(card)
             digit_index = 0
             for i, char in enumerate(card):
                 if char.isdigit():
                     if digit_index < len(masked_digits):
-                        result = result[:i] + masked_digits[digit_index] + result[i + 1 :]
+                        chars[i] = masked_digits[digit_index]
                         digit_index += 1
-            return result
+            return "".join(chars)
         else:
             return masked_digits
 

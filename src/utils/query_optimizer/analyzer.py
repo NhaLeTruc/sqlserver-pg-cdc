@@ -21,6 +21,27 @@ from utils.tracing import trace_operation
 logger = logging.getLogger(__name__)
 
 
+# INEFF-6: Fixed set of allowed query types to prevent metric label explosion
+ALLOWED_QUERY_TYPES = frozenset({"SELECT", "INSERT", "UPDATE", "DELETE", "OTHER"})
+
+
+def normalize_query_type(query: str) -> str:
+    """
+    Normalize query type to fixed set to prevent unbounded metric cardinality.
+
+    Args:
+        query: SQL query string
+
+    Returns:
+        One of: SELECT, INSERT, UPDATE, DELETE, OTHER
+    """
+    query_upper = query.strip().upper()
+    for query_type in ("SELECT", "INSERT", "UPDATE", "DELETE"):
+        if query_upper.startswith(query_type):
+            return query_type
+    return "OTHER"
+
+
 # Metrics
 QUERY_EXECUTION_TIME = Histogram(
     "query_execution_seconds",

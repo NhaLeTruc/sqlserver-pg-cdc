@@ -19,15 +19,54 @@ Usage:
 
 import logging
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Callable, TypeVar
 
-from prometheus_client import CollectorRegistry
+from prometheus_client import CollectorRegistry, REGISTRY
 
 from .pipeline import ConnectorMetrics, VaultMetrics
 from .publisher import ApplicationInfo, MetricsPublisher
 from .reconciliation import ReconciliationMetrics
 
 logger = logging.getLogger(__name__)
+
+# Type variable for metric types
+T = TypeVar("T")
+
+
+def get_or_create_metric(
+    metric_factory: Callable[[], T],
+    metric_name: str,
+    registry: CollectorRegistry = REGISTRY,
+) -> T:
+    """
+    INEFF-9: Utility function for safe metric registration.
+
+    Creates a new metric or returns the existing one if already registered.
+    Reduces duplicate try-except blocks throughout the codebase.
+
+    Args:
+        metric_factory: Callable that creates the metric (e.g., lambda: Counter(...))
+        metric_name: Name of the metric for lookup if already registered
+        registry: Prometheus registry to use (default: global REGISTRY)
+
+    Returns:
+        The metric instance (either newly created or existing)
+
+    Example:
+        REQUESTS_TOTAL = get_or_create_metric(
+            lambda: Counter("requests_total", "Total requests", ["method"]),
+            "requests_total"
+        )
+    """
+    try:
+        return metric_factory()
+    except ValueError:
+        # Metric already registered, get existing one
+        existing = registry._names_to_collectors.get(metric_name)
+        if existing is not None:
+            return existing
+        # If still not found, re-raise the original error
+        raise
 
 
 def initialize_metrics(
@@ -70,6 +109,7 @@ __all__ = [
     "VaultMetrics",
     "ApplicationInfo",
     "initialize_metrics",
+    "get_or_create_metric",
 ]
 
 
